@@ -52,8 +52,8 @@ export function MatchCard({ match }: MatchCardProps) {
   return (
     <div style={{
       background: 'var(--color-background-primary)',
-      border: `0.5px solid ${isTimeout ? '#F7C1C1' : 'var(--color-border-tertiary)'}`,
-      borderRadius: 'var(--border-radius-lg)',
+      border: '0.5px solid black',
+      borderRadius: '15px',
       padding: '.875rem 1rem',
       marginBottom: '.625rem',
       opacity: isDone && !isTimeout ? 0.75 : 1,
@@ -109,7 +109,8 @@ export function MatchCard({ match }: MatchCardProps) {
           display: 'flex',
           gap: '6px',
           paddingTop: '.625rem',
-          borderTop: '0.5px solid var(--color-border-tertiary)',
+          border: '0.5px solid black',
+          borderRadius: '15px',
         }}>
           <button
             style={resultBtnStyle(match.result === 'p1', 'win')}
