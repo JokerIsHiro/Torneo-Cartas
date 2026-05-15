@@ -1,7 +1,10 @@
+import { useRef } from 'react'
 import { useTournamentStore } from '../store/tournamentStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import { Timer } from '../components/Timer'
 import { MatchCard } from '../components/MatchCard'
+import { RoundExport } from '../components/RoundExport'
+import { useExportImage } from '../hooks/useExportImage'
 
 export function Round() {
   const { nextRound, finishTournament, currentRound } = useTournamentStore()
@@ -14,24 +17,32 @@ export function Round() {
     roundSummaries,
   } = useSwissPairings()
 
+  const { ref: exportRef, exportImage } = useExportImage()
+
   const currentSummary = roundSummaries.find(r => r.number === currentRound)
 
   return (
     <div>
+      {/* Componente oculto que html2canvas capturará */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
+        <RoundExport ref={exportRef} />
+      </div>
+
       <Timer />
 
-      {/* Progreso de resultados */}
+      {/* Cabecera de ronda */}
       <div style={{
-        display: 'flex',
+        display: 'flex',--
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: '1rem',
       }}>
-        <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
-          <i className="ti ti-swords" aria-hidden="true" /> Ronda {currentRound}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
+            <i className="ti ti-swords" aria-hidden="true" /> Ronda {currentRound}
+          </span>
           {isFinalRound && (
             <span style={{
-              marginLeft: '8px',
               fontSize: '11px',
               padding: '2px 8px',
               borderRadius: 'var(--border-radius-md)',
@@ -42,10 +53,33 @@ export function Round() {
               ronda final
             </span>
           )}
-        </span>
-        <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-          {currentSummary?.matchesDone ?? 0}/{currentSummary?.matchesTotal ?? 0} resultados
-        </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+            {currentSummary?.matchesDone ?? 0}/{currentSummary?.matchesTotal ?? 0} resultados
+          </span>
+
+          {/* Botón exportar */}
+          <button
+            onClick={() => exportImage(`ronda-${currentRound}`)}
+            style={{
+              padding: '6px 12px',
+              fontSize: '12px',
+              border: '0.5px solid var(--color-border-tertiary)',
+              borderRadius: 'var(--border-radius-md)',
+              background: 'var(--color-background-primary)',
+              color: 'var(--color-text-secondary)',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all .15s',
+            }}
+          >
+            <i className="ti ti-download" aria-hidden="true" /> Exportar imagen
+          </button>
+        </div>
       </div>
 
       {/* Partidas */}
@@ -90,7 +124,10 @@ export function Round() {
   )
 }
 
-function actionBtnStyle(color = 'var(--color-text-primary)', borderColor = 'var(--color-border-secondary)'): React.CSSProperties {
+function actionBtnStyle(
+  color = 'var(--color-text-primary)',
+  borderColor = 'var(--color-border-secondary)'
+): React.CSSProperties {
   return {
     width: '100%',
     padding: '10px',
