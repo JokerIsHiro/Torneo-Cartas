@@ -109,11 +109,11 @@ export function MatchCard({ match }: MatchCardProps) {
           display: 'flex',
           gap: '6px',
           paddingTop: '.625rem',
-          border: '0.5px solid black',
-          borderRadius: '15px',
+          borderTop: '0.5px solid var(--color-border-tertiary)',
         }}>
           <button
-            style={resultBtnStyle(match.result === 'p1', 'win')}
+            style={{...resultBtnStyle(match.result === 'p1', 'win'), border: '0.5px solid black',
+          borderRadius: '15px',}}
             onClick={() => handleResult('p1')}
           >
             <i className="ti ti-trophy" aria-hidden="true" style={{ fontSize: '12px' }} />
@@ -121,7 +121,8 @@ export function MatchCard({ match }: MatchCardProps) {
           </button>
 
           <button
-            style={resultBtnStyle(match.result === 'draw', 'draw')}
+            style={{...resultBtnStyle(match.result === 'draw', 'draw'), border: '0.5px solid black',
+          borderRadius: '15px',}}
             onClick={() => handleResult('draw')}
           >
             <i className="ti ti-equal" aria-hidden="true" style={{ fontSize: '12px' }} />
@@ -129,7 +130,8 @@ export function MatchCard({ match }: MatchCardProps) {
           </button>
 
           <button
-            style={resultBtnStyle(match.result === 'p2', 'win')}
+            style={{...resultBtnStyle(match.result === 'p2', 'win'), border: '0.5px solid black',
+          borderRadius: '15px',}}
             onClick={() => handleResult('p2')}
           >
             <i className="ti ti-trophy" aria-hidden="true" style={{ fontSize: '12px' }} />
