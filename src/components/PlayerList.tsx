@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTournamentStore } from '../store/tournamentStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import type { Player } from '../types/tournament'
+import { cardStyle } from '../styles/shared'
 
 export function PlayerList() {
   const { players, status, addPlayer, removePlayer } = useTournamentStore()
@@ -35,9 +36,10 @@ export function PlayerList() {
       {/* Formulario de alta — solo visible en configuración */}
       {isSetup && (
         <div style={{
+          ...cardStyle,
           background: 'var(--color-background-primary)',
-          border: '0.5px solid var(--color-border-tertiary)',
-          borderRadius: 'var(--border-radius-lg)',
+          border: '0.5px solid black',
+          borderRadius: '15px',
           padding: '1rem 1.25rem',
           marginBottom: '.75rem',
         }}>
@@ -57,8 +59,8 @@ export function PlayerList() {
                 flex: 1,
                 padding: '8px 10px',
                 fontSize: '13px',
-                border: `0.5px solid ${error ? '#F09595' : 'var(--color-border-tertiary)'}`,
-                borderRadius: 'var(--border-radius-md)',
+                border: '0.5px solid black',
+                borderRadius: '15px',
                 background: 'var(--color-background-primary)',
                 color: 'var(--color-text-primary)',
                 outline: 'none',
@@ -80,8 +82,8 @@ export function PlayerList() {
       {/* Lista */}
       <div style={{
         background: 'var(--color-background-primary)',
-        border: '0.5px solid var(--color-border-tertiary)',
-        borderRadius: 'var(--border-radius-lg)',
+        border: '0.5px solid black',
+        borderRadius: '15px',
         padding: '1rem 1.25rem',
       }}>
         <div style={{

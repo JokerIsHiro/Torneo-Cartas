@@ -79,7 +79,8 @@ export function Setup() {
         <div style={{
           ...cardStyle,
           background: 'var(--color-background-secondary)',
-          border: '0.5px solid var(--color-border-tertiary)',
+          border: '0.5px solid black',
+          borderRadius: '15px',
           marginTop: '.75rem',
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>

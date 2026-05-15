@@ -5,7 +5,7 @@ import { Results } from './pages/Results'
 import { Standings } from './components/Standings'
 
 export default function App() {
-  const { status, name, currentRound, resetTournament } = useTournamentStore()
+  const { status, name, currentRound } = useTournamentStore()
 
   return (
     <div style={{

@@ -1,4 +1,3 @@
-import { useRef } from 'react'
 import { useTournamentStore } from '../store/tournamentStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import { Timer } from '../components/Timer'
@@ -32,7 +31,7 @@ export function Round() {
 
       {/* Cabecera de ronda */}
       <div style={{
-        display: 'flex',--
+        display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: '1rem',

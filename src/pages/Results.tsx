@@ -54,31 +54,3 @@ export function Results() {
     </div>
   )
 }
-
-// ─── Estilos compartidos ──────────────────────────────────────────────────────
-
-const cardStyle: React.CSSProperties = {
-  background: 'var(--color-background-primary)',
-  border: '0.5px solid var(--color-border-tertiary)',
-  borderRadius: 'var(--border-radius-lg)',
-  padding: '1rem 1.25rem',
-  marginBottom: '.75rem',
-}
-
-const cardTitleStyle: React.CSSProperties = {
-  fontSize: '14px',
-  fontWeight: 500,
-  color: 'var(--color-text-primary)',
-  marginBottom: '.75rem',
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 10px',
-  fontSize: '13px',
-  border: '0.5px solid var(--color-border-tertiary)',
-  borderRadius: 'var(--border-radius-md)',
-  background: 'var(--color-background-primary)',
-  color: 'var(--color-text-primary)',
-  outline: 'none',
-}
