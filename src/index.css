@@ -71,3 +71,412 @@ button {
 button:hover:not(:disabled) {
   opacity: 0.85;
 }
+
+.app-shell {
+  min-height: 100vh;
+  background: transparent;
+  font-family: var(--font-sans);
+}
+
+.loading-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background-secondary);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  gap: 8px;
+}
+
+.loading-screen i {
+  font-size: 18px;
+}
+
+.top-bar {
+  background: rgba(5, 7, 12, 0.94);
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(14px);
+}
+
+.brand-block {
+  padding: 7px 16px 7px 4px;
+  border-right: 0.5px solid var(--color-border-tertiary);
+  margin-right: 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.brand-block img {
+  width: 132px;
+  height: 30px;
+  object-fit: contain;
+  display: block;
+}
+
+.mode-switch {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin-right: 8px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-primary);
+  flex-shrink: 0;
+}
+
+.segmented-tabs button,
+.new-tournament-button,
+.projector-open-button,
+.empty-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.mode-switch button {
+  border: 0;
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.mode-switch button.active {
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+}
+
+.top-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 44px;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color .15s;
+  color: var(--color-text-secondary);
+}
+
+.top-tab.active {
+  border-bottom-color: var(--color-accent-primary);
+  color: var(--color-text-primary);
+}
+
+.top-tab > span:not(.status-dot) {
+  font-size: 13px;
+  font-weight: 400;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top-tab.active > span:not(.status-dot) {
+  font-weight: 500;
+}
+
+.top-tab button {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  padding: 0;
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.top-tab.active button {
+  opacity: 1;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.new-tournament-button {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.projector-open-button {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.projector-title {
+  margin-left: auto;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.main-content {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.projector-content {
+  max-width: 1120px;
+}
+
+.tournament-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.tournament-header h2,
+.projector-section-header h2 {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.tournament-header p,
+.projector-section-header p {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin: 2px 0 0;
+}
+
+.status-badge {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: var(--border-radius-md);
+  border: 0.5px solid;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.segmented-tabs {
+  display: flex;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+
+.segmented-tabs button {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13px;
+  background: var(--color-background-primary);
+  border: none;
+  border-right: 0.5px solid var(--color-border-tertiary);
+  color: var(--color-text-secondary);
+}
+
+.segmented-tabs button:last-child {
+  border-right: 0;
+}
+
+.segmented-tabs button.active {
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.projector-tabs {
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.projector-pairings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+  gap: 1rem;
+}
+
+.projector-section {
+  min-width: 0;
+}
+
+.projector-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.projector-section-header span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  padding: 4px 10px;
+  background: var(--color-background-primary);
+  flex-shrink: 0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.empty-state i {
+  display: block;
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.empty-action-button {
+  margin: 1rem auto 0;
+  padding: 8px 14px;
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  font-size: 13px;
+}
+
+@media (max-width: 680px) {
+  .top-bar {
+    padding: 0.5rem;
+    gap: 6px;
+    align-items: stretch;
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .brand-block {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    margin: 0;
+    padding: 4px 0 8px;
+    justify-content: center;
+  }
+
+  .mode-switch {
+    width: 100%;
+    margin: 0;
+  }
+
+  .mode-switch button {
+    flex: 1;
+  }
+
+  .top-tab {
+    height: 40px;
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-md);
+    background: var(--color-background-primary);
+  }
+
+  .top-tab.active {
+    border-color: var(--color-border-primary);
+  }
+
+  .new-tournament-button {
+    margin-left: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    min-height: 40px;
+  }
+
+  .projector-open-button {
+    margin-left: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    min-height: 40px;
+  }
+
+  .projector-title {
+    width: 100%;
+    margin-left: 0;
+    justify-content: center;
+    min-height: 38px;
+  }
+
+  .main-content {
+    padding: 1rem 0.75rem;
+  }
+
+  .tournament-header,
+  .projector-section-header {
+    align-items: flex-start;
+  }
+
+  .segmented-tabs button {
+    min-height: 40px;
+  }
+
+  .match-players {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    text-align: left;
+  }
+
+  .match-players > span {
+    display: none;
+  }
+
+  .match-players > div {
+    text-align: left !important;
+    padding: 8px 10px;
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-md);
+    background: var(--color-background-secondary);
+  }
+
+  .match-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .match-actions button {
+    min-height: 38px;
+  }
+}

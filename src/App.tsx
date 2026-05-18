@@ -1,32 +1,52 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTournamentsStore } from './store/tournamentsStore'
 import { useTimerStore } from './store/timerStore'
 import { Setup } from './pages/Setup'
 import { Round } from './pages/Round'
 import { Results } from './pages/Results'
 import { Standings } from './components/Standings'
-import { TimersView } from './components/TimersView'
+import { ProjectorView } from './components/ProjectorView'
 import type { Tournament } from './types/tournament'
 
-type GlobalTab = 'timers' | string
+type AppRoute = 'admin' | 'proyeccion'
+type AdminTab = string
+
+function getRouteFromHash(): AppRoute {
+  return window.location.hash === '#/proyeccion' ? 'proyeccion' : 'admin'
+}
+
+function setRoute(route: AppRoute) {
+  window.location.hash = route === 'admin' ? '#/admin' : '#/proyeccion'
+}
 
 export default function App() {
-
   const [hydrated, setHydrated] = useState(false)
+  const [route, setRouteState] = useState<AppRoute>(getRouteFromHash)
+  const [activeTab, setActiveTab] = useState<AdminTab>('')
+  const [innerTab, setInnerTab] = useState<Record<string, 'ronda' | 'clasificacion'>>({})
 
   const tournaments = useTournamentsStore(s => s.tournaments)
   const createTournament = useTournamentsStore(s => s.createTournament)
   const deleteTournament = useTournamentsStore(s => s.deleteTournament)
   const initTimer = useTimerStore(s => s.initTimer)
 
-  const [activeTab, setActiveTab] = useState<GlobalTab>('timers')
-  const [innerTab, setInnerTab] = useState<Record<string, 'ronda' | 'clasificacion'>>({})
+  useEffect(() => {
+    if (!window.location.hash) setRoute('admin')
+
+    function handleHashChange() {
+      setRouteState(getRouteFromHash())
+    }
+
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
 
   useEffect(() => {
     if (useTournamentsStore.persist.hasHydrated()) {
       const id = setTimeout(() => setHydrated(true), 0)
       return () => clearTimeout(id)
     }
+
     const unsub = useTournamentsStore.persist.onFinishHydration(() => {
       setHydrated(true)
       unsub()
@@ -36,17 +56,8 @@ export default function App() {
 
   if (!hydrated) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--color-background-secondary)',
-        color: 'var(--color-text-secondary)',
-        fontSize: '13px',
-        gap: '8px',
-      }}>
-        <i className="ti ti-loader-2" aria-hidden="true" style={{ fontSize: '18px' }} />
+      <div className="loading-screen">
+        <i className="ti ti-loader-2" aria-hidden="true" />
         Cargando...
       </div>
     )
@@ -64,117 +75,100 @@ export default function App() {
     const id = createTournament()
     initTimer(id, 50 * 60)
     setActiveTab(id)
+    setRoute('admin')
   }
 
   function handleDeleteTournament(t: Tournament) {
     if (confirm(`¿Eliminar "${t.name}"?`)) {
       deleteTournament(t.id)
-      if (activeTab === t.id) setActiveTab('timers')
+      if (selectedTab === t.id) {
+        const next = tournaments.find(candidate => candidate.id !== t.id)
+        setActiveTab(next?.id ?? '')
+      }
     }
   }
 
-  const activeTournament = tournaments.find(t => t.id === activeTab)
+  function openProjectionTab() {
+    window.open(`${window.location.pathname}#/proyeccion`, '_blank', 'noopener,noreferrer')
+  }
+
+  const selectedTab = activeTab || tournaments[0]?.id || ''
+  const activeTournament = tournaments.find(t => t.id === selectedTab)
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'transparent',
-      fontFamily: 'var(--font-sans)',
-    }}>
-
-      {/* Barra de pestañas superior */}
-      <div style={{
-        background: 'rgba(5, 7, 12, 0.94)',
-        borderBottom: '0.5px solid var(--color-border-tertiary)',
-        padding: '0 1rem',
-        display: 'flex',
-        alignItems: 'center',
-        overflowX: 'auto',
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
-        backdropFilter: 'blur(14px)',
-      }}>
-
-        {/* Logo */}
-        <div style={{
-          padding: '7px 16px 7px 4px',
-          borderRight: '0.5px solid var(--color-border-tertiary)',
-          marginRight: '8px',
-          flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-        }}>
+    <div className="app-shell">
+      <div className="top-bar">
+        <div className="brand-block">
           <img
             src="/subterra-logo.jpg"
             alt="Subterra TCG - Juegos de mesa"
-            style={{
-              width: '132px',
-              height: '30px',
-              objectFit: 'contain',
-              display: 'block',
-            }}
           />
         </div>
 
-        {/* Pestaña temporizadores */}
-        <TopTab
-          label="⏱ Temporizadores"
-          active={activeTab === 'timers'}
-          onClick={() => setActiveTab('timers')}
-        />
+        {route === 'admin' && (
+          <>
+            {tournaments.map(t => (
+              <TopTab
+                key={t.id}
+                label={t.name}
+                active={selectedTab === t.id}
+                status={t.status}
+                onClick={() => setActiveTab(t.id)}
+                onClose={() => handleDeleteTournament(t)}
+              />
+            ))}
 
-        {/* Una pestaña por torneo */}
-        {tournaments.map(t => (
-          <TopTab
-            key={t.id}
-            label={t.name}
-            active={activeTab === t.id}
-            status={t.status}
-            onClick={() => setActiveTab(t.id)}
-            onClose={() => handleDeleteTournament(t)}
-          />
-        ))}
+            <button
+              onClick={openProjectionTab}
+              className="projector-open-button"
+            >
+              <i className="ti ti-external-link" aria-hidden="true" />
+              Abrir proyección
+            </button>
 
-        {/* Botón nuevo torneo */}
-        <button
-          onClick={handleCreateTournament}
-          style={{
-            marginLeft: 'auto',
-            flexShrink: 0,
-            padding: '6px 12px',
-            fontSize: '12px',
-            border: '0.5px solid var(--color-border-tertiary)',
-            borderRadius: 'var(--border-radius-md)',
-            background: 'transparent',
-            color: 'var(--color-text-secondary)',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            margin: '8px 0 8px 8px',
-          }}
-        >
-          <i className="ti ti-plus" aria-hidden="true" /> Nuevo torneo
-        </button>
+            <button
+              onClick={handleCreateTournament}
+              className="new-tournament-button"
+            >
+              <i className="ti ti-plus" aria-hidden="true" />
+              Nuevo torneo
+            </button>
+          </>
+        )}
+
+        {route === 'proyeccion' && (
+          <div className="projector-title">
+            <i className="ti ti-screen-share" aria-hidden="true" />
+            Vista de proyección
+          </div>
+        )}
       </div>
 
-      {/* Contenido principal */}
-      <div style={{ maxWidth: '720px', margin: '0 auto', padding: '1.5rem 1rem' }}>
-        {activeTab === 'timers' && <TimersView />}
-        {activeTournament && (
+      <main className={route === 'proyeccion' ? 'main-content projector-content' : 'main-content'}>
+        {route === 'proyeccion' && <ProjectorView />}
+
+        {route === 'admin' && activeTournament && (
           <TournamentView
             tournament={activeTournament}
             innerTab={getInnerTab(activeTournament.id)}
             onInnerTabChange={tab => setInnerTabFor(activeTournament.id, tab)}
           />
         )}
-      </div>
+
+        {route === 'admin' && !activeTournament && (
+          <div className="empty-state">
+            <i className="ti ti-trophy-off" aria-hidden="true" />
+            <div>No hay torneos creados</div>
+            <button onClick={handleCreateTournament} className="empty-action-button">
+              <i className="ti ti-plus" aria-hidden="true" />
+              Nuevo torneo
+            </button>
+          </div>
+        )}
+      </main>
     </div>
   )
 }
-
-// ─── Vista de un torneo ───────────────────────────────────────────────────────
 
 interface TournamentViewProps {
   tournament: Tournament
@@ -187,62 +181,28 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
 
   return (
     <div>
-      {/* Cabecera */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: '1.25rem',
-      }}>
+      <div className="tournament-header">
         <div>
-          <h2 style={{ fontSize: '17px', fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>
-            {tournament.name}
-          </h2>
-          <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
-            {status === 'setup'    && 'Configura el torneo antes de iniciar'}
-            {status === 'active'   && `Ronda ${tournament.currentRound} en curso · Swiss`}
+          <h2>{tournament.name}</h2>
+          <p>
+            {status === 'setup' && 'Configura el torneo antes de iniciar'}
+            {status === 'active' && `Ronda ${tournament.currentRound} en curso · Swiss`}
             {status === 'finished' && 'Torneo finalizado'}
           </p>
         </div>
         <StatusBadge status={status} />
       </div>
 
-      {/* Pestañas internas — solo en active */}
       {status === 'active' && (
-        <div style={{
-          display: 'flex',
-          border: '0.5px solid var(--color-border-tertiary)',
-          borderRadius: 'var(--border-radius-md)',
-          overflow: 'hidden',
-          marginBottom: '1.25rem',
-        }}>
+        <div className="segmented-tabs">
           {([
-            { id: 'ronda',         label: 'Ronda',         icon: 'ti-swords' },
+            { id: 'ronda', label: 'Ronda', icon: 'ti-swords' },
             { id: 'clasificacion', label: 'Clasificación', icon: 'ti-trophy' },
-          ] as const).map((t, i) => (
+          ] as const).map(t => (
             <button
               key={t.id}
               onClick={() => onInnerTabChange(t.id)}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                fontSize: '13px',
-                background: innerTab === t.id
-                  ? 'var(--color-background-secondary)'
-                  : 'var(--color-background-primary)',
-                border: 'none',
-                borderRight: i === 0 ? '0.5px solid var(--color-border-tertiary)' : 'none',
-                cursor: 'pointer',
-                color: innerTab === t.id
-                  ? 'var(--color-text-primary)'
-                  : 'var(--color-text-secondary)',
-                fontWeight: innerTab === t.id ? 500 : 400,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                transition: 'all .15s',
-              }}
+              className={innerTab === t.id ? 'active' : ''}
             >
               <i className={`ti ${t.icon}`} aria-hidden="true" />
               {t.label}
@@ -251,16 +211,13 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
         </div>
       )}
 
-      {/* Contenido */}
-      {status === 'setup'    && <Setup tournamentId={id} />}
-      {status === 'active'   && innerTab === 'ronda'         && <Round tournamentId={id} />}
-      {status === 'active'   && innerTab === 'clasificacion' && <Standings tournamentId={id} />}
+      {status === 'setup' && <Setup tournamentId={id} />}
+      {status === 'active' && innerTab === 'ronda' && <Round tournamentId={id} />}
+      {status === 'active' && innerTab === 'clasificacion' && <Standings tournamentId={id} />}
       {status === 'finished' && <Results tournamentId={id} />}
     </div>
   )
 }
-
-// ─── Subcomponentes ───────────────────────────────────────────────────────────
 
 interface TopTabProps {
   label: string
@@ -272,7 +229,7 @@ interface TopTabProps {
 
 function TopTab({ label, active, status, onClick, onClose }: TopTabProps) {
   const dotColor = (() => {
-    if (status === 'active')   return 'var(--color-accent-secondary)'
+    if (status === 'active') return 'var(--color-accent-secondary)'
     if (status === 'finished') return 'var(--color-text-warning)'
     return 'transparent'
   })()
@@ -280,66 +237,14 @@ function TopTab({ label, active, status, onClick, onClose }: TopTabProps) {
   return (
     <div
       onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
-        padding: '0 12px',
-        height: '44px',
-        borderBottom: active
-          ? '2px solid var(--color-accent-primary)'
-          : '2px solid transparent',
-        cursor: 'pointer',
-        flexShrink: 0,
-        transition: 'border-color .15s',
-      }}
+      className={active ? 'top-tab active' : 'top-tab'}
     >
-      {status && (
-        <span style={{
-          width: '6px',
-          height: '6px',
-          borderRadius: '50%',
-          background: dotColor,
-          flexShrink: 0,
-          transition: 'background .2s',
-        }} />
-      )}
-
-      <span style={{
-        fontSize: '13px',
-        fontWeight: active ? 500 : 400,
-        color: active
-          ? 'var(--color-text-primary)'
-          : 'var(--color-text-secondary)',
-        maxWidth: '140px',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-        transition: 'color .15s',
-      }}>
-        {label}
-      </span>
+      {status && <span className="status-dot" style={{ background: dotColor }} />}
+      <span>{label}</span>
 
       {onClose && (
         <button
           onClick={e => { e.stopPropagation(); onClose() }}
-          style={{
-            width: '16px',
-            height: '16px',
-            borderRadius: '50%',
-            border: 'none',
-            background: 'transparent',
-            color: 'var(--color-text-secondary)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '11px',
-            padding: 0,
-            flexShrink: 0,
-            opacity: active ? 1 : 0,
-            transition: 'opacity .15s',
-          }}
           aria-label="Cerrar torneo"
         >
           <i className="ti ti-x" aria-hidden="true" />
@@ -351,20 +256,17 @@ function TopTab({ label, active, status, onClick, onClose }: TopTabProps) {
 
 function StatusBadge({ status }: { status: Tournament['status'] }) {
   const config = {
-    setup:    { label: 'Configuración', bg: 'var(--color-draw-bg)', color: 'var(--color-accent-secondary)', border: 'var(--color-border-primary)' },
-    active:   { label: 'En curso',      bg: 'var(--color-success-bg)', color: 'var(--color-accent-secondary)', border: 'var(--color-border-success)' },
-    finished: { label: 'Finalizado',    bg: 'var(--color-warning-bg)', color: 'var(--color-text-warning)', border: 'var(--color-border-warning)' },
+    setup: { label: 'Configuración', bg: 'var(--color-draw-bg)', color: 'var(--color-accent-secondary)', border: 'var(--color-border-primary)' },
+    active: { label: 'En curso', bg: 'var(--color-success-bg)', color: 'var(--color-accent-secondary)', border: 'var(--color-border-success)' },
+    finished: { label: 'Finalizado', bg: 'var(--color-warning-bg)', color: 'var(--color-text-warning)', border: 'var(--color-border-warning)' },
   }
   const c = config[status]
+
   return (
-    <span style={{
-      fontSize: '11px',
-      padding: '3px 10px',
-      borderRadius: 'var(--border-radius-md)',
+    <span className="status-badge" style={{
       background: c.bg,
       color: c.color,
-      border: `0.5px solid ${c.border}`,
-      fontWeight: 500,
+      borderColor: c.border,
     }}>
       {c.label}
     </span>

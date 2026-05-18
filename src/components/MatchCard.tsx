@@ -5,9 +5,10 @@ import { useSwissPairings } from '../hooks/useSwissPairings'
 interface MatchCardProps {
   match: Match
   tournamentId: string
+  readOnly?: boolean
 }
 
-export function MatchCard({ match, tournamentId }: MatchCardProps) {
+export function MatchCard({ match, tournamentId, readOnly = false }: MatchCardProps) {
   const setMatchResult = useTournamentsStore(s => s.setMatchResult)
   const tcg = useTournamentsStore(
     s => s.tournaments.find(t => t.id === tournamentId)?.tcg ?? 'magic'
@@ -63,7 +64,7 @@ export function MatchCard({ match, tournamentId }: MatchCardProps) {
     }}>
 
       {/* Cabecera */}
-      <div style={{
+      <div className="match-card-header" style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -76,7 +77,7 @@ export function MatchCard({ match, tournamentId }: MatchCardProps) {
       </div>
 
       {/* Jugadores */}
-      <div style={{
+      <div className="match-players" style={{
         display: 'grid',
         gridTemplateColumns: '1fr auto 1fr',
         alignItems: 'center',
@@ -106,8 +107,8 @@ export function MatchCard({ match, tournamentId }: MatchCardProps) {
       </div>
 
       {/* Botones de resultado */}
-      {!isBye && (
-        <div style={{
+      {!isBye && !readOnly && (
+        <div className="match-actions" style={{
           display: 'flex',
           gap: '6px',
           paddingTop: '.625rem',
