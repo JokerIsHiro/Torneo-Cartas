@@ -1,171 +1,193 @@
 import { useEffect } from 'react'
-import { useTimer } from '../hooks/useTimer'
-import { useTournamentStore } from '../store/tournamentsStore'
+import { useTimerStore, useTimerData } from '../store/timerStore'
+import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 
-export function Timer() {
-  const { timerDuration, applyTimeoutToUnfinished, currentRound } = useTournamentStore()
-  const { allResultsIn, unfinishedCount } = useSwissPairings()
+interface TimerProps {
+  tournamentId: string
+}
 
-  const timer = useTimer({
-    durationSeconds: timerDuration,
-    onFinish: () => {
-      applyTimeoutToUnfinished()
-    },
-  })
+export function Timer({ tournamentId }: TimerProps) {
+  const tournament = useTournamentsStore(
+    s => s.tournaments.find(t => t.id === tournamentId)
+  )
+  const { initTimer, startTimer, pauseTimer, resumeTimer, resetTimer } = useTimerStore()
+  const { allResultsIn } = useSwissPairings(tournamentId)
+  const timerData = useTimerData(tournamentId)
 
-  // Cuando cambia la ronda, reiniciar e iniciar automáticamente
+  const duration = tournament?.timerDuration ?? 50 * 60
+  const currentRound = tournament?.currentRound ?? 0
+
+  // Inicializar timer al montar
+  useEffect(() => {
+    initTimer(tournamentId, duration)
+  }, [tournamentId, duration])
+
+  // Arrancar automáticamente al cambiar de ronda
   useEffect(() => {
     if (currentRound > 0) {
-      timer.reset()
-      timer.start()
+      resetTimer(tournamentId, duration)
+      startTimer(tournamentId)
     }
-  }, [currentRound]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentRound])
 
-  // Pausar automáticamente si todos los resultados están introducidos
+  // Pausar cuando todos los resultados están introducidos
   useEffect(() => {
-    if (allResultsIn && timer.status === 'running') {
-      timer.pause()
+    if (allResultsIn && timerData?.status === 'running') {
+      pauseTimer(tournamentId)
     }
-  }, [allResultsIn]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [allResultsIn])
 
-  const statusLabel = (() => {
-    if (timer.status === 'finished') return '¡Tiempo agotado!'
-    if (timer.status === 'idle')     return 'Esperando inicio'
-    if (timer.status === 'paused' && allResultsIn) return 'Todos los resultados introducidos'
-    if (timer.status === 'paused')   return 'Pausado'
-    if (timer.isDanger)              return 'Menos de 5 minutos'
-    if (timer.isWarning)             return 'Menos de 10 minutos'
-    return 'Ronda en curso'
+  if (!timerData) return null
+
+  const { formatted, status, secondsLeft, isWarning, isDanger, isFinished } = timerData
+
+  // Barra invertida: empieza llena y se vacía
+  const progressPercent = (secondsLeft / duration) * 100
+
+  const barColor = (() => {
+    if (isFinished || isDanger) return '#E24B4A'
+    if (isWarning)              return '#EF9F27'
+    return '#1D9E75'
   })()
 
-  const timerColor = (() => {
-    if (timer.status === 'finished') return '#A32D2D'
-    if (timer.isDanger)              return '#A32D2D'
-    if (timer.isWarning)             return '#854F0B'
+  const timeColor = (() => {
+    if (isFinished || isDanger) return '#A32D2D'
+    if (isWarning)              return '#854F0B'
     return 'var(--color-text-primary)'
   })()
 
-  const progressColor = (() => {
-    if (timer.status === 'finished') return '#E24B4A'
-    if (timer.isDanger)              return '#E24B4A'
-    if (timer.isWarning)             return '#EF9F27'
-    return '#1D9E75'
+  const statusLabel = (() => {
+    if (isFinished)                          return '¡Tiempo agotado!'
+    if (status === 'idle')                   return 'Esperando inicio'
+    if (status === 'paused' && allResultsIn) return 'Todos los resultados introducidos'
+    if (status === 'paused')                 return 'Pausado'
+    if (isDanger)                            return 'Menos de 5 minutos'
+    if (isWarning)                           return 'Menos de 10 minutos'
+    return 'Ronda en curso'
   })()
 
   return (
     <div style={{
       background: 'var(--color-background-primary)',
-      border: '0.5px solid var(--color-border-tertiary)',
+      border: `0.5px solid ${isFinished || isDanger ? '#F7C1C1' : 'var(--color-border-tertiary)'}`,
       borderRadius: 'var(--border-radius-lg)',
-      padding: '1.5rem',
+      padding: '1.25rem 1.5rem',
       marginBottom: '1.5rem',
+      transition: 'border-color .3s',
     }}>
-
-      {/* Barra de progreso */}
-      <div style={{
-        height: '4px',
-        background: 'var(--color-background-secondary)',
-        borderRadius: '2px',
-        marginBottom: '1.25rem',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          height: '100%',
-          width: `${timer.progress * 100}%`,
-          background: progressColor,
-          borderRadius: '2px',
-          transition: 'width 1s linear, background 0.3s',
-        }} />
-      </div>
 
       {/* Tiempo */}
       <div style={{
-        fontSize: '56px',
+        fontSize: '52px',
         fontWeight: 500,
-        fontFamily: 'var(--font-mono)',
-        color: timerColor,
+        fontFamily: 'var(--font-mono, monospace)',
+        color: timeColor,
         letterSpacing: '2px',
         lineHeight: 1,
         textAlign: 'center',
-        transition: 'color 0.3s',
+        transition: 'color .3s',
       }}>
-        {timer.formatted}
+        {formatted}
       </div>
 
       {/* Estado */}
       <div style={{
-        fontSize: '13px',
-        color: timerColor === 'var(--color-text-primary)'
-          ? 'var(--color-text-secondary)'
-          : timerColor,
+        fontSize: '12px',
+        color: timeColor === 'var(--color-text-primary)' ? 'var(--color-text-secondary)' : timeColor,
         textAlign: 'center',
         marginTop: '6px',
-        marginBottom: '1.25rem',
-        transition: 'color 0.3s',
+        marginBottom: '1rem',
+        transition: 'color .3s',
       }}>
         {statusLabel}
-        {unfinishedCount > 0 && timer.status === 'running' && (
-          <span style={{ marginLeft: '8px', opacity: 0.7 }}>
-            · {unfinishedCount} {unfinishedCount === 1 ? 'mesa sin resultado' : 'mesas sin resultado'}
-          </span>
-        )}
+      </div>
+
+      {/* Barra de progreso invertida */}
+      <div style={{
+        height: '6px',
+        background: 'var(--color-background-secondary)',
+        borderRadius: '3px',
+        marginBottom: '1rem',
+        overflow: 'hidden',
+        position: 'relative',
+      }}>
+        {/* Fondo completo en color muy suave */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: isFinished || isDanger ? '#FCEBEB' : isWarning ? '#FDF3E3' : '#EAF3DE',
+          transition: 'background .3s',
+        }} />
+        {/* Barra que se vacía de izquierda a derecha */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          height: '100%',
+          width: `${progressPercent}%`,
+          background: barColor,
+          borderRadius: '3px',
+          transition: 'width 1s linear, background .3s',
+        }} />
       </div>
 
       {/* Controles */}
       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
 
-        {timer.status === 'idle' && (
-          <button onClick={timer.start} style={btnStyle}>
-            <i className="ti ti-player-play" aria-hidden="true" /> Iniciar
-          </button>
+        {status === 'idle' && (
+          <ControlBtn onClick={() => startTimer(tournamentId)} icon="ti-player-play" label="Iniciar" />
+        )}
+        {status === 'running' && (
+          <ControlBtn onClick={() => pauseTimer(tournamentId)} icon="ti-player-pause" label="Pausar" />
+        )}
+        {status === 'paused' && (
+          <ControlBtn onClick={() => resumeTimer(tournamentId)} icon="ti-player-play" label="Continuar" />
+        )}
+        {isFinished && (
+          <ControlBtn onClick={() => {}} icon="ti-clock-off" label="Tiempo agotado" disabled color="#A32D2D" />
         )}
 
-        {timer.status === 'running' && (
-          <button onClick={timer.pause} style={btnStyle}>
-            <i className="ti ti-player-pause" aria-hidden="true" /> Pausar
-          </button>
-        )}
-
-        {timer.status === 'paused' && (
-          <button onClick={timer.resume} style={btnStyle}>
-            <i className="ti ti-player-play" aria-hidden="true" /> Continuar
-          </button>
-        )}
-
-        {timer.status === 'finished' && (
-          <button style={{ ...btnStyle, color: '#A32D2D', borderColor: '#F09595' }} disabled>
-            <i className="ti ti-clock-off" aria-hidden="true" /> Tiempo agotado
-          </button>
-        )}
-
-        <button
-          onClick={timer.reset}
-          disabled={timer.status === 'idle'}
-          style={{
-            ...btnStyle,
-            opacity: timer.status === 'idle' ? 0.4 : 1,
-            cursor: timer.status === 'idle' ? 'not-allowed' : 'pointer',
-          }}
-        >
-          <i className="ti ti-rotate" aria-hidden="true" /> Reiniciar
-        </button>
-
+        <ControlBtn
+          onClick={() => resetTimer(tournamentId, duration)}
+          icon="ti-rotate"
+          label="Reiniciar"
+          disabled={status === 'idle'}
+        />
       </div>
     </div>
   )
 }
 
-// Estilo base de botones extraído para no repetirlo
-const btnStyle: React.CSSProperties = {
-  padding: '8px 16px',
-  fontSize: '13px',
-  border: '0.5px solid var(--color-border-secondary)',
-  borderRadius: 'var(--border-radius-md)',
-  background: 'var(--color-background-primary)',
-  color: 'var(--color-text-primary)',
-  cursor: 'pointer',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '6px',
+interface ControlBtnProps {
+  onClick: () => void
+  icon: string
+  label: string
+  disabled?: boolean
+  color?: string
+}
+
+function ControlBtn({ onClick, icon, label, disabled, color }: ControlBtnProps) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        padding: '7px 14px',
+        fontSize: '13px',
+        border: '0.5px solid var(--color-border-secondary)',
+        borderRadius: 'var(--border-radius-md)',
+        background: 'var(--color-background-primary)',
+        color: color ?? 'var(--color-text-primary)',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.4 : 1,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+      } as React.CSSProperties}
+    >
+      <i className={`ti ${icon}`} aria-hidden="true" />
+      {label}
+    </button>
+  )
 }

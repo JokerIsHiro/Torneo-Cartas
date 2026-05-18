@@ -1,24 +1,31 @@
 import { useState } from 'react'
-import { useTournamentStore } from '../store/tournamentsStore'
+import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import type { Player } from '../types/tournament'
 
-export function PlayerList() {
-  const { players, status, addPlayer, removePlayer } = useTournamentStore()
-  const { standings, totalRounds } = useSwissPairings()
+interface PlayerListProps {
+  tournamentId: string
+}
+
+export function PlayerList({ tournamentId }: PlayerListProps) {
+  const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
+  const { addPlayer, removePlayer } = useTournamentsStore()
+  const { standings, totalRounds } = useSwissPairings(tournamentId)
   const [input, setInput] = useState('')
   const [error, setError] = useState('')
+
+  const players = tournament?.players ?? []
+  const status = tournament?.status ?? 'setup'
+  const isSetup = status === 'setup'
 
   function handleAdd() {
     const name = input.trim()
     if (!name) return
-
     if (players.find(p => p.name.toLowerCase() === name.toLowerCase())) {
       setError('Ya existe un jugador con ese nombre')
       return
     }
-
-    addPlayer(name)
+    addPlayer(tournamentId, name)
     setInput('')
     setError('')
   }
@@ -28,23 +35,14 @@ export function PlayerList() {
     if (e.key === 'Escape') { setInput(''); setError('') }
   }
 
-  const isSetup = status === 'setup'
-
   return (
     <div>
-      {/* Formulario de alta — solo visible en configuración */}
+      {/* Formulario — solo en setup */}
       {isSetup && (
-        <div style={{
-          background: 'var(--color-background-primary)',
-          border: '0.5px solid var(--color-border-tertiary)',
-          borderRadius: 'var(--border-radius-lg)',
-          padding: '1rem 1.25rem',
-          marginBottom: '.75rem',
-        }}>
-          <div style={{ fontSize: '14px', fontWeight: 500, marginBottom: '.75rem', color: 'var(--color-text-primary)' }}>
+        <div style={cardStyle}>
+          <div style={cardTitleStyle}>
             <i className="ti ti-user-plus" aria-hidden="true" /> Añadir jugadores
           </div>
-
           <div style={{ display: 'flex', gap: '8px' }}>
             <input
               type="text"
@@ -68,7 +66,6 @@ export function PlayerList() {
               <i className="ti ti-plus" aria-hidden="true" /> Añadir
             </button>
           </div>
-
           {error && (
             <div style={{ fontSize: '12px', color: '#A32D2D', marginTop: '6px' }}>
               <i className="ti ti-alert-circle" aria-hidden="true" /> {error}
@@ -78,19 +75,14 @@ export function PlayerList() {
       )}
 
       {/* Lista */}
-      <div style={{
-        background: 'var(--color-background-primary)',
-        border: '0.5px solid var(--color-border-tertiary)',
-        borderRadius: 'var(--border-radius-lg)',
-        padding: '1rem 1.25rem',
-      }}>
+      <div style={cardStyle}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: '.75rem',
         }}>
-          <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
+          <span style={cardTitleStyle}>
             <i className="ti ti-users" aria-hidden="true" /> Participantes
           </span>
           <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
@@ -104,19 +96,17 @@ export function PlayerList() {
             <div style={{ marginTop: '6px' }}>Sin jugadores aún</div>
           </div>
         ) : isSetup ? (
-          // Vista de configuración: lista simple con botón de eliminar
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {players.map((p, i) => (
               <SetupPlayerRow
                 key={p.id}
                 player={p}
                 index={i + 1}
-                onRemove={() => removePlayer(p.id)}
+                onRemove={() => removePlayer(tournamentId, p.id)}
               />
             ))}
           </div>
         ) : (
-          // Vista de torneo activo: clasificación con stats
           <div>
             <StandingsHeader />
             {standings.map(row => (
@@ -136,13 +126,7 @@ export function PlayerList() {
 
 // ─── Subcomponentes ───────────────────────────────────────────────────────────
 
-interface SetupPlayerRowProps {
-  player: Player
-  index: number
-  onRemove: () => void
-}
-
-function SetupPlayerRow({ player, index, onRemove }: SetupPlayerRowProps) {
+function SetupPlayerRow({ player, index, onRemove }: { player: Player; index: number; onRemove: () => void }) {
   return (
     <div style={{
       display: 'flex',
@@ -178,16 +162,17 @@ function SetupPlayerRow({ player, index, onRemove }: SetupPlayerRowProps) {
 }
 
 function StandingsHeader() {
-  const cellStyle: React.CSSProperties = {
-    fontSize: '11px',
-    color: 'var(--color-text-secondary)',
-    fontWeight: 500,
-    padding: '4px 10px',
-  }
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 44px 44px 44px 44px', gap: '4px', ...cellStyle }}>
-      <span>#</span>
-      <span>Jugador</span>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: '28px 1fr 44px 44px 44px 44px',
+      gap: '4px',
+      padding: '4px 10px',
+      fontSize: '11px',
+      fontWeight: 500,
+      color: 'var(--color-text-secondary)',
+    }}>
+      <span>#</span><span>Jugador</span>
       <span style={{ textAlign: 'center' }}>Pts</span>
       <span style={{ textAlign: 'center' }}>V</span>
       <span style={{ textAlign: 'center' }}>E</span>
@@ -196,13 +181,7 @@ function StandingsHeader() {
   )
 }
 
-interface ActivePlayerRowProps {
-  player: Player
-  position: number
-  isEliminated: boolean
-}
-
-function ActivePlayerRow({ player, position, isEliminated }: ActivePlayerRowProps) {
+function ActivePlayerRow({ player, position, isEliminated }: { player: Player; position: number; isEliminated: boolean }) {
   const medals: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
   return (
@@ -215,90 +194,57 @@ function ActivePlayerRow({ player, position, isEliminated }: ActivePlayerRowProp
       borderRadius: 'var(--border-radius-md)',
       background: position % 2 === 0 ? 'var(--color-background-secondary)' : 'transparent',
       opacity: isEliminated ? 0.5 : 1,
-      transition: 'opacity .2s',
     }}>
-
-      {/* Posición */}
       <span style={{ fontSize: '13px', textAlign: 'center' }}>
-        {medals[position] ?? (
-          <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{position}</span>
-        )}
+        {medals[position] ?? <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{position}</span>}
       </span>
-
-      {/* Nombre + badges */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
         <span style={{
-          fontSize: '13px',
-          fontWeight: 500,
-          color: 'var(--color-text-primary)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
+          fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
           {player.name}
         </span>
-        {isEliminated && (
-          <span style={{
-            fontSize: '10px',
-            padding: '1px 6px',
-            borderRadius: 'var(--border-radius-md)',
-            background: '#FCEBEB',
-            color: '#791F1F',
-            border: '0.5px solid #F7C1C1',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
-          }}>
-            eliminado
-          </span>
-        )}
-        {player.timeoutLosses > 0 && (
-          <span style={{
-            fontSize: '10px',
-            padding: '1px 6px',
-            borderRadius: 'var(--border-radius-md)',
-            background: '#FAEEDA',
-            color: '#633806',
-            border: '0.5px solid #FAC775',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
-          }}
-          title={`${player.timeoutLosses} ${player.timeoutLosses === 1 ? 'derrota' : 'derrotas'} por tiempo`}
-          >
-            <i className="ti ti-clock-off" aria-hidden="true" style={{ fontSize: '10px' }} />
-            {' '}{player.timeoutLosses}
-          </span>
-        )}
-        {player.byes > 0 && (
-          <span style={{
-            fontSize: '10px',
-            padding: '1px 6px',
-            borderRadius: 'var(--border-radius-md)',
-            background: '#E6F1FB',
-            color: '#0C447C',
-            border: '0.5px solid #B5D4F4',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
-          }}>
-            bye
-          </span>
-        )}
+        {isEliminated && <Badge label="eliminado" bg="#FCEBEB" color="#791F1F" border="#F7C1C1" />}
+        {player.timeoutLosses > 0 && <Badge label={`⏱ ${player.timeoutLosses}`} bg="#FAEEDA" color="#633806" border="#FAC775" />}
+        {player.byes > 0 && <Badge label="bye" bg="#E6F1FB" color="#0C447C" border="#B5D4F4" />}
       </div>
-
-      {/* Stats */}
-      <span style={{ fontSize: '13px', fontWeight: 500, textAlign: 'center', color: 'var(--color-text-primary)' }}>
-        {player.points}
-      </span>
-      <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-        {player.wins}
-      </span>
-      <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-        {player.draws}
-      </span>
-      <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-        {player.losses}
-      </span>
+      <span style={{ fontSize: '13px', fontWeight: 500, textAlign: 'center' }}>{player.points}</span>
+      <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{player.wins}</span>
+      <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{player.draws}</span>
+      <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{player.losses}</span>
     </div>
   )
+}
+
+function Badge({ label, bg, color, border }: { label: string; bg: string; color: string; border: string }) {
+  return (
+    <span style={{
+      fontSize: '10px', padding: '1px 6px',
+      borderRadius: 'var(--border-radius-md)',
+      background: bg, color, border: `0.5px solid ${border}`,
+      whiteSpace: 'nowrap', flexShrink: 0,
+    }}>
+      {label}
+    </span>
+  )
+}
+
+// ─── Estilos compartidos ──────────────────────────────────────────────────────
+
+const cardStyle: React.CSSProperties = {
+  background: 'var(--color-background-primary)',
+  border: '0.5px solid var(--color-border-tertiary)',
+  borderRadius: 'var(--border-radius-lg)',
+  padding: '1rem 1.25rem',
+  marginBottom: '.75rem',
+}
+
+const cardTitleStyle: React.CSSProperties = {
+  fontSize: '14px',
+  fontWeight: 500,
+  color: 'var(--color-text-primary)',
+  marginBottom: '.75rem',
 }
 
 const btnStyle: React.CSSProperties = {
@@ -312,5 +258,4 @@ const btnStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   gap: '6px',
-  whiteSpace: 'nowrap',
 }

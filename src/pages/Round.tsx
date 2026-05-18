@@ -1,13 +1,17 @@
-import { useRef } from 'react'
-import { useTournamentStore } from '../store/tournamentsStore'
+import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import { Timer } from '../components/Timer'
 import { MatchCard } from '../components/MatchCard'
 import { RoundExport } from '../components/RoundExport'
 import { useExportImage } from '../hooks/useExportImage'
 
-export function Round() {
-  const { nextRound, finishTournament, currentRound } = useTournamentStore()
+interface RoundProps {
+  tournamentId: string
+}
+
+export function Round({ tournamentId }: RoundProps) {
+  const { nextRound, finishTournament } = useTournamentsStore()
+  const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
   const {
     currentMatches,
     allResultsIn,
@@ -15,22 +19,22 @@ export function Round() {
     isFinalRound,
     shouldFinish,
     roundSummaries,
-  } = useSwissPairings()
+  } = useSwissPairings(tournamentId)
 
   const { ref: exportRef, exportImage } = useExportImage()
-
+  const currentRound = tournament?.currentRound ?? 0
   const currentSummary = roundSummaries.find(r => r.number === currentRound)
 
   return (
     <div>
-      {/* Componente oculto que html2canvas capturará */}
+      {/* Nodo oculto para exportar */}
       <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
-        <RoundExport ref={exportRef} />
+        <RoundExport ref={exportRef} tournamentId={tournamentId} />
       </div>
 
-      <Timer />
+      <Timer tournamentId={tournamentId} />
 
-      {/* Cabecera de ronda */}
+      {/* Cabecera */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -43,12 +47,9 @@ export function Round() {
           </span>
           {isFinalRound && (
             <span style={{
-              fontSize: '11px',
-              padding: '2px 8px',
+              fontSize: '11px', padding: '2px 8px',
               borderRadius: 'var(--border-radius-md)',
-              background: '#EEEDFE',
-              color: '#3C3489',
-              border: '0.5px solid #AFA9EC',
+              background: '#EEEDFE', color: '#3C3489', border: '0.5px solid #AFA9EC',
             }}>
               ronda final
             </span>
@@ -59,8 +60,6 @@ export function Round() {
           <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
             {currentSummary?.matchesDone ?? 0}/{currentSummary?.matchesTotal ?? 0} resultados
           </span>
-
-          {/* Botón exportar */}
           <button
             onClick={() => exportImage(`ronda-${currentRound}`)}
             style={{
@@ -77,34 +76,32 @@ export function Round() {
               transition: 'all .15s',
             }}
           >
-            <i className="ti ti-download" aria-hidden="true" /> Exportar imagen
+            <i className="ti ti-download" aria-hidden="true" /> Exportar
           </button>
         </div>
       </div>
 
       {/* Partidas */}
       {currentMatches.map(match => (
-        <MatchCard key={match.id} match={match} />
+        <MatchCard key={match.id} match={match} tournamentId={tournamentId} />
       ))}
 
-      {/* Avanzar ronda / finalizar */}
+      {/* Avanzar / finalizar */}
       {allResultsIn && (
         <div style={{ marginTop: '1rem' }}>
           {shouldFinish ? (
-            <button onClick={finishTournament} style={actionBtnStyle('#3B6D11', '#C0DD97')}>
-              <i className="ti ti-trophy" aria-hidden="true" />
-              Finalizar torneo
+            <button onClick={() => finishTournament(tournamentId)} style={actionBtnStyle('#3B6D11', '#C0DD97')}>
+              <i className="ti ti-trophy" aria-hidden="true" /> Finalizar torneo
             </button>
           ) : (
-            <button onClick={nextRound} style={actionBtnStyle()}>
-              <i className="ti ti-arrow-right" aria-hidden="true" />
-              Nueva ronda →
+            <button onClick={() => nextRound(tournamentId)} style={actionBtnStyle()}>
+              <i className="ti ti-arrow-right" aria-hidden="true" /> Nueva ronda →
             </button>
           )}
         </div>
       )}
 
-      {/* Aviso si faltan resultados */}
+      {/* Aviso resultados pendientes */}
       {!allResultsIn && unfinishedCount > 0 && (
         <div style={{
           marginTop: '1rem',

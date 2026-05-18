@@ -1,12 +1,19 @@
-import { useTournamentStore } from '../store/tournamentsStore'
+import { useTournamentsStore } from '../store/tournamentsStore'
 import { Standings } from '../components/Standings'
 
-export function Results() {
-  const { resetTournament, name } = useTournamentStore()
+interface ResultsProps {
+  tournamentId: string
+}
+
+export function Results({ tournamentId }: ResultsProps) {
+  const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
+  const { deleteTournament } = useTournamentsStore()
+
+  if (!tournament) return null
 
   return (
     <div>
-      {/* Cabecera de fin de torneo */}
+      {/* Cabecera fin de torneo */}
       <div style={{
         textAlign: 'center',
         padding: '1.5rem 1rem',
@@ -17,19 +24,19 @@ export function Results() {
       }}>
         <div style={{ fontSize: '32px', marginBottom: '8px' }}>🏆</div>
         <div style={{ fontSize: '18px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
-          {name}
+          {tournament.name}
         </div>
         <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
           Torneo finalizado
         </div>
       </div>
 
-      <Standings />
+      <Standings tournamentId={tournamentId} />
 
       <button
         onClick={() => {
-          if (confirm('¿Seguro que quieres reiniciar? Se perderán todos los datos del torneo.')) {
-            resetTournament()
+          if (confirm('¿Seguro que quieres eliminar este torneo?')) {
+            deleteTournament(tournamentId)
           }
         }}
         style={{
@@ -48,37 +55,8 @@ export function Results() {
           gap: '8px',
         }}
       >
-        <i className="ti ti-refresh" aria-hidden="true" />
-        Nuevo torneo
+        <i className="ti ti-trash" aria-hidden="true" /> Eliminar torneo
       </button>
     </div>
   )
-}
-
-// ─── Estilos compartidos ──────────────────────────────────────────────────────
-
-const cardStyle: React.CSSProperties = {
-  background: 'var(--color-background-primary)',
-  border: '0.5px solid var(--color-border-tertiary)',
-  borderRadius: 'var(--border-radius-lg)',
-  padding: '1rem 1.25rem',
-  marginBottom: '.75rem',
-}
-
-const cardTitleStyle: React.CSSProperties = {
-  fontSize: '14px',
-  fontWeight: 500,
-  color: 'var(--color-text-primary)',
-  marginBottom: '.75rem',
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 10px',
-  fontSize: '13px',
-  border: '0.5px solid var(--color-border-tertiary)',
-  borderRadius: 'var(--border-radius-md)',
-  background: 'var(--color-background-primary)',
-  color: 'var(--color-text-primary)',
-  outline: 'none',
 }

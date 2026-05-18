@@ -1,30 +1,34 @@
 import { useState } from 'react'
-import { useTournamentStore } from '../store/tournamentsStore'
+import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import { PlayerList } from '../components/PlayerList'
-import { cardStyle, cardTitleStyle, inputStyle } from '../styles/shared'
 
-export function Setup() {
-  const { name, setTournamentName, startTournament, players, timerDuration, setTimerDuration } = useTournamentStore()
-  const { totalRounds } = useSwissPairings()
-  const [nameInput, setNameInput] = useState(name)
+interface SetupProps {
+  tournamentId: string
+}
+
+const timerOptions = [
+  { label: '30 min', value: 30 * 60 },
+  { label: '40 min', value: 40 * 60 },
+  { label: '50 min', value: 50 * 60 },
+  { label: '60 min', value: 60 * 60 },
+  { label: '75 min', value: 75 * 60 },
+]
+
+export function Setup({ tournamentId }: SetupProps) {
+  const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
+  const { updateTournamentName, setTimerDuration, startTournament } = useTournamentsStore()
+  const { totalRounds } = useSwissPairings(tournamentId)
   const [error, setError] = useState('')
 
-  const timerOptions = [
-    { label: '30 min', value: 30 * 60 },
-    { label: '40 min', value: 40 * 60 },
-    { label: '50 min', value: 50 * 60 },
-    { label: '60 min', value: 60 * 60 },
-    { label: '75 min', value: 75 * 60 },
-  ]
+  if (!tournament) return null
 
   function handleStart() {
-    if (players.length < 2) {
+    if (tournament!.players.length < 2) {
       setError('Necesitas al menos 2 jugadores para iniciar')
       return
     }
-    setTournamentName(nameInput.trim() || 'Mi Torneo')
-    startTournament()
+    startTournament(tournamentId)
   }
 
   return (
@@ -36,8 +40,8 @@ export function Setup() {
         </div>
         <input
           type="text"
-          value={nameInput}
-          onChange={e => setNameInput(e.target.value)}
+          value={tournament.name}
+          onChange={e => updateTournamentName(tournamentId, e.target.value)}
           placeholder="Mi Torneo"
           style={inputStyle}
         />
@@ -52,16 +56,22 @@ export function Setup() {
           {timerOptions.map(opt => (
             <button
               key={opt.value}
-              onClick={() => setTimerDuration(opt.value)}
+              onClick={() => setTimerDuration(tournamentId, opt.value)}
               style={{
                 padding: '6px 14px',
                 fontSize: '13px',
-                border: `0.5px solid ${timerDuration === opt.value ? 'var(--color-border-primary)' : 'var(--color-border-tertiary)'}`,
+                border: `0.5px solid ${tournament.timerDuration === opt.value
+                  ? 'var(--color-border-primary)'
+                  : 'var(--color-border-tertiary)'}`,
                 borderRadius: 'var(--border-radius-md)',
-                background: timerDuration === opt.value ? 'var(--color-background-secondary)' : 'var(--color-background-primary)',
-                color: timerDuration === opt.value ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                background: tournament.timerDuration === opt.value
+                  ? 'var(--color-background-secondary)'
+                  : 'var(--color-background-primary)',
+                color: tournament.timerDuration === opt.value
+                  ? 'var(--color-text-primary)'
+                  : 'var(--color-text-secondary)',
                 cursor: 'pointer',
-                fontWeight: timerDuration === opt.value ? 500 : 400,
+                fontWeight: tournament.timerDuration === opt.value ? 500 : 400,
                 transition: 'all .15s',
               }}
             >
@@ -72,20 +82,24 @@ export function Setup() {
       </div>
 
       {/* Jugadores */}
-      <PlayerList />
+      <PlayerList tournamentId={tournamentId} />
 
-      {/* Resumen antes de iniciar */}
-      {players.length >= 2 && (
+      {/* Resumen */}
+      {tournament.players.length >= 2 && (
         <div style={{
           ...cardStyle,
           background: 'var(--color-background-secondary)',
-          border: '0.5px solid var(--color-border-tertiary)',
           marginTop: '.75rem',
         }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>
-            <SummaryCell label="Jugadores" value={players.length} />
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '8px',
+            textAlign: 'center',
+          }}>
+            <SummaryCell label="Jugadores"        value={tournament.players.length} />
             <SummaryCell label="Rondas estimadas" value={totalRounds} />
-            <SummaryCell label="Tiempo por ronda" value={`${Math.floor(timerDuration / 60)} min`} />
+            <SummaryCell label="Tiempo por ronda" value={`${Math.floor(tournament.timerDuration / 60)} min`} />
           </div>
         </div>
       )}
@@ -100,7 +114,7 @@ export function Setup() {
       {/* Botón iniciar */}
       <button
         onClick={handleStart}
-        disabled={players.length < 2}
+        disabled={tournament.players.length < 2}
         style={{
           width: '100%',
           padding: '10px',
@@ -108,10 +122,14 @@ export function Setup() {
           fontWeight: 500,
           border: '0.5px solid var(--color-border-secondary)',
           borderRadius: 'var(--border-radius-md)',
-          background: players.length >= 2 ? 'var(--color-background-secondary)' : 'var(--color-background-primary)',
-          color: players.length >= 2 ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-          cursor: players.length >= 2 ? 'pointer' : 'not-allowed',
-          opacity: players.length < 2 ? 0.5 : 1,
+          background: tournament.players.length >= 2
+            ? 'var(--color-background-secondary)'
+            : 'var(--color-background-primary)',
+          color: tournament.players.length >= 2
+            ? 'var(--color-text-primary)'
+            : 'var(--color-text-secondary)',
+          cursor: tournament.players.length >= 2 ? 'pointer' : 'not-allowed',
+          opacity: tournament.players.length < 2 ? 0.5 : 1,
           marginTop: '.75rem',
           display: 'flex',
           alignItems: 'center',
@@ -134,4 +152,30 @@ function SummaryCell({ label, value }: { label: string; value: string | number }
       <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>{label}</div>
     </div>
   )
+}
+
+const cardStyle: React.CSSProperties = {
+  background: 'var(--color-background-primary)',
+  border: '0.5px solid var(--color-border-tertiary)',
+  borderRadius: 'var(--border-radius-lg)',
+  padding: '1rem 1.25rem',
+  marginBottom: '.75rem',
+}
+
+const cardTitleStyle: React.CSSProperties = {
+  fontSize: '14px',
+  fontWeight: 500,
+  color: 'var(--color-text-primary)',
+  marginBottom: '.75rem',
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '8px 10px',
+  fontSize: '13px',
+  border: '0.5px solid var(--color-border-tertiary)',
+  borderRadius: 'var(--border-radius-md)',
+  background: 'var(--color-background-primary)',
+  color: 'var(--color-text-primary)',
+  outline: 'none',
 }

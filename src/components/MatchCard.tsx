@@ -1,14 +1,15 @@
 import type { Match, MatchResult } from '../types/tournament'
-import { useTournamentStore } from '../store/tournamentsStore'
+import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 
 interface MatchCardProps {
   match: Match
+  tournamentId: string
 }
 
-export function MatchCard({ match }: MatchCardProps) {
-  const { setMatchResult } = useTournamentStore()
-  const { getPlayerName, getPlayerById } = useSwissPairings()
+export function MatchCard({ match, tournamentId }: MatchCardProps) {
+  const setMatchResult = useTournamentsStore(s => s.setMatchResult)
+  const { getPlayerName, getPlayerById } = useSwissPairings(tournamentId)
 
   const p1 = getPlayerById(match.p1Id)
   const p2Name = match.p2Id === 'BYE' ? 'BYE' : getPlayerName(match.p2Id)
@@ -19,14 +20,11 @@ export function MatchCard({ match }: MatchCardProps) {
   const isDone    = match.result !== null
 
   function handleResult(result: MatchResult) {
-    // Permitir cambiar resultado salvo en byes
     if (isBye) return
-    // Si ya tiene ese resultado, no hacer nada
     if (match.result === result) return
-    setMatchResult(match.id, result)
+    setMatchResult(tournamentId, match.id, result)
   }
 
-  // Estilo base de los botones de resultado
   function resultBtnStyle(active: boolean, variant: 'win' | 'draw' | 'timeout'): React.CSSProperties {
     const colors = {
       win:     { bg: '#EAF3DE', border: '#3B6D11', color: '#27500A' },
@@ -170,13 +168,10 @@ function PlayerCell({ name, points, losses, align, isWinner, isLoser, isBye }: P
 
   return (
     <div style={{ textAlign: align }}>
-      <div style={{
-        fontSize: '13px',
-        fontWeight: 500,
-        color,
-        transition: 'color .2s',
-      }}>
-        {isWinner && <i className="ti ti-crown" aria-hidden="true" style={{ fontSize: '12px', marginRight: '4px' }} />}
+      <div style={{ fontSize: '13px', fontWeight: 500, color, transition: 'color .2s' }}>
+        {isWinner && (
+          <i className="ti ti-crown" aria-hidden="true" style={{ fontSize: '12px', marginRight: '4px' }} />
+        )}
         {name}
       </div>
       {!isBye && (
@@ -188,11 +183,7 @@ function PlayerCell({ name, points, losses, align, isWinner, isLoser, isBye }: P
   )
 }
 
-interface ResultBadgeProps {
-  result: MatchResult
-}
-
-function ResultBadge({ result }: ResultBadgeProps) {
+function ResultBadge({ result }: { result: MatchResult }) {
   if (!result) return null
 
   const config = {
@@ -204,7 +195,6 @@ function ResultBadge({ result }: ResultBadgeProps) {
   }
 
   const c = config[result]
-
   return (
     <span style={{
       fontSize: '11px',
