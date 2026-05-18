@@ -1,4 +1,5 @@
 import { useMemo, useCallback } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import type { Player, Match } from '../types/tournament'
 
@@ -41,15 +42,20 @@ function calcTotalRounds(playerCount: number): number {
 }
 
 export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
-  // Suscripción selectiva: solo el torneo que nos importa
-  const tournament = useTournamentsStore(
-    s => s.tournaments.find(t => t.id === tournamentId)
+  // ✅ useShallow evita re-renders cuando el contenido no cambia.
+  // Extraemos solo los campos primitivos y arrays que necesitamos,
+  // no el objeto torneo entero (que .find() recrea en cada render).
+  const { players, rounds, currentRound, status } = useTournamentsStore(
+    useShallow(s => {
+      const t = s.tournaments.find(t => t.id === tournamentId)
+      return {
+        players:      t?.players      ?? ([] as Player[]),
+        rounds:       t?.rounds       ?? [],
+        currentRound: t?.currentRound ?? 0,
+        status:       t?.status       ?? 'setup',
+      }
+    })
   )
-
-  const players = tournament?.players ?? []
-  const rounds = tournament?.rounds ?? []
-  const currentRound = tournament?.currentRound ?? 0
-  const status = tournament?.status ?? 'setup'
 
   const totalRounds = useMemo(() => calcTotalRounds(players.length), [players.length])
 
