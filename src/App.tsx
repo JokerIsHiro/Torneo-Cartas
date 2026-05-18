@@ -6,17 +6,20 @@ import { Round } from './pages/Round'
 import { Results } from './pages/Results'
 import { Standings } from './components/Standings'
 import { ProjectorView } from './components/ProjectorView'
+import { TimersView } from './components/TimersView'
 import type { Tournament } from './types/tournament'
 
-type AppRoute = 'admin' | 'proyeccion'
+type AppRoute = 'admin' | 'proyeccion' | 'temporizadores'
 type AdminTab = string
 
 function getRouteFromHash(): AppRoute {
-  return window.location.hash === '#/proyeccion' ? 'proyeccion' : 'admin'
+  if (window.location.hash === '#/proyeccion') return 'proyeccion'
+  if (window.location.hash === '#/temporizadores') return 'temporizadores'
+  return 'admin'
 }
 
 function setRoute(route: AppRoute) {
-  window.location.hash = route === 'admin' ? '#/admin' : '#/proyeccion'
+  window.location.hash = `#/${route}`
 }
 
 export default function App() {
@@ -79,7 +82,7 @@ export default function App() {
   }
 
   function handleDeleteTournament(t: Tournament) {
-    if (confirm(`¿Eliminar "${t.name}"?`)) {
+    if (confirm(`Eliminar "${t.name}"?`)) {
       deleteTournament(t.id)
       if (selectedTab === t.id) {
         const next = tournaments.find(candidate => candidate.id !== t.id)
@@ -88,8 +91,8 @@ export default function App() {
     }
   }
 
-  function openProjectionTab() {
-    window.open(`${window.location.pathname}#/proyeccion`, '_blank', 'noopener,noreferrer')
+  function openPublicTab(target: 'proyeccion' | 'temporizadores') {
+    window.open(`${window.location.pathname}#/${target}`, '_blank', 'noopener,noreferrer')
   }
 
   const selectedTab = activeTab || tournaments[0]?.id || ''
@@ -119,11 +122,19 @@ export default function App() {
             ))}
 
             <button
-              onClick={openProjectionTab}
+              onClick={() => openPublicTab('proyeccion')}
               className="projector-open-button"
             >
               <i className="ti ti-external-link" aria-hidden="true" />
-              Abrir proyección
+              Emparejamientos
+            </button>
+
+            <button
+              onClick={() => openPublicTab('temporizadores')}
+              className="projector-open-button"
+            >
+              <i className="ti ti-clock" aria-hidden="true" />
+              Temporizadores
             </button>
 
             <button
@@ -136,16 +147,27 @@ export default function App() {
           </>
         )}
 
-        {route === 'proyeccion' && (
-          <div className="projector-title">
-            <i className="ti ti-screen-share" aria-hidden="true" />
-            Vista de proyección
+        {route !== 'admin' && (
+          <div className="public-nav">
+            {route === 'proyeccion' && (
+              <button onClick={() => setRoute('temporizadores')}>
+                <i className="ti ti-clock" aria-hidden="true" />
+                Temporizadores
+              </button>
+            )}
+            {route === 'temporizadores' && (
+              <button onClick={() => setRoute('proyeccion')}>
+                <i className="ti ti-swords" aria-hidden="true" />
+                Emparejamientos
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      <main className={route === 'proyeccion' ? 'main-content projector-content' : 'main-content'}>
+      <main className={route !== 'admin' ? 'main-content projector-content' : 'main-content'}>
         {route === 'proyeccion' && <ProjectorView />}
+        {route === 'temporizadores' && <TimersView />}
 
         {route === 'admin' && activeTournament && (
           <TournamentView

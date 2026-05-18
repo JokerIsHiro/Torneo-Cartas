@@ -1,15 +1,10 @@
-import { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import { MatchCard } from './MatchCard'
-import { TimersView } from './TimersView'
 import type { Tournament } from '../types/tournament'
 
-type ProjectorTab = 'pairings' | 'timers'
-
 export function ProjectorView() {
-  const [tab, setTab] = useState<ProjectorTab>('pairings')
   const tournaments = useTournamentsStore(
     useShallow(s => s.tournaments.filter(t => t.status === 'active'))
   )
@@ -17,40 +12,17 @@ export function ProjectorView() {
   if (!tournaments.length) {
     return (
       <div className="empty-state">
-        <i className="ti ti-screen-share-off" aria-hidden="true" />
-        <div>No hay torneos activos para proyectar</div>
+        <i className="ti ti-swords" aria-hidden="true" />
+        <div>No hay torneos activos</div>
       </div>
     )
   }
 
   return (
-    <div>
-      <div className="segmented-tabs projector-tabs">
-        <button
-          onClick={() => setTab('pairings')}
-          className={tab === 'pairings' ? 'active' : ''}
-        >
-          <i className="ti ti-swords" aria-hidden="true" />
-          Emparejamientos
-        </button>
-        <button
-          onClick={() => setTab('timers')}
-          className={tab === 'timers' ? 'active' : ''}
-        >
-          <i className="ti ti-clock" aria-hidden="true" />
-          Temporizadores
-        </button>
-      </div>
-
-      {tab === 'pairings' && (
-        <div className="projector-pairings">
-          {tournaments.map(tournament => (
-            <ProjectedTournament key={tournament.id} tournament={tournament} />
-          ))}
-        </div>
-      )}
-
-      {tab === 'timers' && <TimersView />}
+    <div className="projector-pairings">
+      {tournaments.map(tournament => (
+        <ProjectedTournament key={tournament.id} tournament={tournament} />
+      ))}
     </div>
   )
 }

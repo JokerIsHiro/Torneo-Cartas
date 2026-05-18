@@ -122,40 +122,16 @@ button:hover:not(:disabled) {
   display: block;
 }
 
-.mode-switch {
-  display: inline-flex;
-  gap: 4px;
-  padding: 4px;
-  margin-right: 8px;
-  border: 0.5px solid var(--color-border-tertiary);
-  border-radius: var(--border-radius-md);
-  background: var(--color-background-primary);
-  flex-shrink: 0;
-}
-
 .segmented-tabs button,
 .new-tournament-button,
 .projector-open-button,
-.empty-action-button {
+.empty-action-button,
+.public-nav button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   cursor: pointer;
-}
-
-.mode-switch button {
-  border: 0;
-  border-radius: var(--border-radius-md);
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  padding: 6px 10px;
-}
-
-.mode-switch button.active {
-  background: var(--color-background-secondary);
-  color: var(--color-text-primary);
 }
 
 .top-tab {
@@ -231,7 +207,6 @@ button:hover:not(:disabled) {
 }
 
 .projector-open-button {
-  margin-left: auto;
   flex-shrink: 0;
   padding: 6px 12px;
   font-size: 12px;
@@ -243,14 +218,30 @@ button:hover:not(:disabled) {
   margin-bottom: 8px;
 }
 
-.projector-title {
+.projector-open-button:first-of-type {
   margin-left: auto;
-  color: var(--color-text-secondary);
-  font-size: 13px;
+}
+
+.projector-open-button + .projector-open-button,
+.projector-open-button + .new-tournament-button {
+  margin-left: 0;
+}
+
+.public-nav {
+  margin-left: auto;
   display: inline-flex;
-  align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.public-nav button {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-primary);
+  color: var(--color-text-secondary);
+  font-size: 12px;
 }
 
 .main-content {
@@ -324,12 +315,6 @@ button:hover:not(:disabled) {
   font-weight: 500;
 }
 
-.projector-tabs {
-  max-width: 520px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
 .projector-pairings {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
@@ -399,15 +384,6 @@ button:hover:not(:disabled) {
     justify-content: center;
   }
 
-  .mode-switch {
-    width: 100%;
-    margin: 0;
-  }
-
-  .mode-switch button {
-    flex: 1;
-  }
-
   .top-tab {
     height: 40px;
     border: 0.5px solid var(--color-border-tertiary);
@@ -433,10 +409,18 @@ button:hover:not(:disabled) {
     min-height: 40px;
   }
 
-  .projector-title {
+  .projector-open-button:first-of-type {
+    margin-left: 0;
+  }
+
+  .public-nav {
     width: 100%;
     margin-left: 0;
     justify-content: center;
+  }
+
+  .public-nav button {
+    flex: 1;
     min-height: 38px;
   }
 
