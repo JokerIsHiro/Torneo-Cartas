@@ -35,7 +35,7 @@ export function Round({ tournamentId }: RoundProps) {
 
   return (
     <div>
-      <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
+      <div style={exportHiddenStyle}>
         <RoundExport ref={roundExportRef} tournamentId={tournamentId} type="round" />
         <RoundExport ref={standingsExportRef} tournamentId={tournamentId} type="standings" />
       </div>
@@ -48,7 +48,7 @@ export function Round({ tournamentId }: RoundProps) {
         alignItems: 'center',
         marginBottom: '1rem',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="round-export-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
             <i className="ti ti-swords" aria-hidden="true" /> Ronda {currentRound}
           </span>
@@ -153,4 +153,12 @@ const exportButtonStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: '6px',
   transition: 'all .15s',
+}
+
+const exportHiddenStyle: React.CSSProperties = {
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  pointerEvents: 'none',
+  transform: 'translateX(-120vw)',
 }

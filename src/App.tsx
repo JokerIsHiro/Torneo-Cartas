@@ -57,6 +57,16 @@ export default function App() {
     return () => unsub()
   }, [])
 
+  useEffect(() => {
+    function handleStorageSync(event: StorageEvent) {
+      if (event.key !== 'torneos-storage') return
+      void useTournamentsStore.persist.rehydrate()
+    }
+
+    window.addEventListener('storage', handleStorageSync)
+    return () => window.removeEventListener('storage', handleStorageSync)
+  }, [])
+
   if (!hydrated) {
     return (
       <div className="loading-screen">
