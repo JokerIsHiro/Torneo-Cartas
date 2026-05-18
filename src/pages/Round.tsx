@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { useTournamentsStore } from '../store/tournamentsStore'
+=======
+import { useTournamentStore } from '../store/tournamentStore'
+>>>>>>> cdd45f98847f1d6a2c9ab3aad03c9f931e8fdaac
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import { Timer } from '../components/Timer'
 import { MatchCard } from '../components/MatchCard'

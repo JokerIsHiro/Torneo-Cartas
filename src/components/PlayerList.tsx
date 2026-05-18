@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import type { Player } from '../types/tournament'
+import { cardStyle } from '../styles/shared'
 
 interface PlayerListProps {
   tournamentId: string
@@ -39,8 +40,20 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
     <div>
       {/* Formulario — solo en setup */}
       {isSetup && (
+<<<<<<< HEAD
         <div style={cardStyle}>
           <div style={cardTitleStyle}>
+=======
+        <div style={{
+          ...cardStyle,
+          background: 'var(--color-background-primary)',
+          border: '0.5px solid black',
+          borderRadius: '15px',
+          padding: '1rem 1.25rem',
+          marginBottom: '.75rem',
+        }}>
+          <div style={{ fontSize: '14px', fontWeight: 500, marginBottom: '.75rem', color: 'var(--color-text-primary)' }}>
+>>>>>>> cdd45f98847f1d6a2c9ab3aad03c9f931e8fdaac
             <i className="ti ti-user-plus" aria-hidden="true" /> Añadir jugadores
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -55,8 +68,8 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
                 flex: 1,
                 padding: '8px 10px',
                 fontSize: '13px',
-                border: `0.5px solid ${error ? '#F09595' : 'var(--color-border-tertiary)'}`,
-                borderRadius: 'var(--border-radius-md)',
+                border: '0.5px solid black',
+                borderRadius: '15px',
                 background: 'var(--color-background-primary)',
                 color: 'var(--color-text-primary)',
                 outline: 'none',
@@ -75,7 +88,16 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
       )}
 
       {/* Lista */}
+<<<<<<< HEAD
       <div style={cardStyle}>
+=======
+      <div style={{
+        background: 'var(--color-background-primary)',
+        border: '0.5px solid black',
+        borderRadius: '15px',
+        padding: '1rem 1.25rem',
+      }}>
+>>>>>>> cdd45f98847f1d6a2c9ab3aad03c9f931e8fdaac
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',

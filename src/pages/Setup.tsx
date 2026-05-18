@@ -89,6 +89,11 @@ export function Setup({ tournamentId }: SetupProps) {
         <div style={{
           ...cardStyle,
           background: 'var(--color-background-secondary)',
+<<<<<<< HEAD
+=======
+          border: '0.5px solid black',
+          borderRadius: '15px',
+>>>>>>> cdd45f98847f1d6a2c9ab3aad03c9f931e8fdaac
           marginTop: '.75rem',
         }}>
           <div style={{
