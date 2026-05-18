@@ -1,15 +1,43 @@
 @import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css');
 
+/* ─── Variables de color ──────────────────────────────────────────────────── */
+:root {
+  --color-background-primary:   #ffffff;
+  --color-background-secondary: #f5f5f5;
+
+  --color-text-primary:         #1a1a1a;
+  --color-text-secondary:       #888888;
+  --color-text-danger:          #A32D2D;
+  --color-text-success:         #27500A;
+
+  --color-border-primary:       #1a1a1a;
+  --color-border-secondary:     #cccccc;
+  --color-border-tertiary:      #e5e5e5;
+  --color-border-danger:        #F09595;
+  --color-border-success:       #C0DD97;
+
+  --border-radius-md:           6px;
+  --border-radius-lg:           10px;
+
+  --font-sans:                  system-ui, -apple-system, sans-serif;
+  --font-mono:                  ui-monospace, 'Cascadia Code', monospace;
+}
+
+/* ─── Reset ───────────────────────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+html, body, #root {
+  height: 100%;
+}
+
 body {
-  font-family: system-ui, -apple-system, sans-serif;
-  background: #ffffff;
-  color: #1a1a1a;
+  font-family: var(--font-sans);
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -21,11 +49,6 @@ button {
   transition: all .15s;
 }
 
-button:hover {
+button:hover:not(:disabled) {
   opacity: 0.85;
-}
-
-.name {
-  border: solid 1px black;
-
 }
