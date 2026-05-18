@@ -154,7 +154,7 @@ function TimerCard({ tournament, large }: { tournament: Tournament; large: boole
           {tournament.name}
         </div>
         <div style={{ fontSize: large ? '13px' : '11px', color: 'var(--color-text-secondary)' }}>
-          Ronda {tournament.currentRound} &middot; Swiss
+          Ronda {tournament.currentRound}
         </div>
       </div>
 
