@@ -29,13 +29,15 @@ export function Round({ tournamentId }: RoundProps) {
     roundSummaries,
   } = useSwissPairings(tournamentId)
 
-  const { ref: exportRef, exportImage } = useExportImage()
+  const { ref: roundExportRef, exportImage: exportRoundImage } = useExportImage()
+  const { ref: standingsExportRef, exportImage: exportStandingsImage } = useExportImage()
   const currentSummary = roundSummaries.find(r => r.number === currentRound)
 
   return (
     <div>
       <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
-        <RoundExport ref={exportRef} tournamentId={tournamentId} />
+        <RoundExport ref={roundExportRef} tournamentId={tournamentId} type="round" />
+        <RoundExport ref={standingsExportRef} tournamentId={tournamentId} type="standings" />
       </div>
 
       <Timer tournamentId={tournamentId} />
@@ -66,22 +68,16 @@ export function Round({ tournamentId }: RoundProps) {
             {currentSummary?.matchesDone ?? 0}/{currentSummary?.matchesTotal ?? 0} resultados
           </span>
           <button
-            onClick={() => exportImage(`ronda-${currentRound}`)}
-            style={{
-              padding: '6px 12px',
-              fontSize: '12px',
-              border: '0.5px solid var(--color-border-tertiary)',
-              borderRadius: 'var(--border-radius-md)',
-              background: 'var(--color-background-primary)',
-              color: 'var(--color-text-secondary)',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all .15s',
-            }}
+            onClick={() => exportRoundImage(`ronda-${currentRound}`)}
+            style={exportButtonStyle}
           >
-            <i className="ti ti-download" aria-hidden="true" /> Exportar
+            <i className="ti ti-download" aria-hidden="true" /> Ronda
+          </button>
+          <button
+            onClick={() => exportStandingsImage(`clasificacion-ronda-${currentRound}`)}
+            style={exportButtonStyle}
+          >
+            <i className="ti ti-trophy" aria-hidden="true" /> Clasificación
           </button>
         </div>
       </div>
@@ -143,4 +139,18 @@ function actionBtnStyle(
     gap: '8px',
     transition: 'all .15s',
   }
+}
+
+const exportButtonStyle: React.CSSProperties = {
+  padding: '6px 12px',
+  fontSize: '12px',
+  border: '0.5px solid var(--color-border-tertiary)',
+  borderRadius: 'var(--border-radius-md)',
+  background: 'var(--color-background-primary)',
+  color: 'var(--color-text-secondary)',
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '6px',
+  transition: 'all .15s',
 }
