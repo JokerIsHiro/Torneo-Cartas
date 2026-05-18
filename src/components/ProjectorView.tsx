@@ -5,8 +5,11 @@ import { MatchCard } from './MatchCard'
 import type { Tournament } from '../types/tournament'
 
 export function ProjectorView() {
+  const targetTournamentId = getTargetTournamentId()
   const tournaments = useTournamentsStore(
-    useShallow(s => s.tournaments.filter(t => t.status === 'active'))
+    useShallow(s => s.tournaments.filter(t =>
+      t.status === 'active' && (!targetTournamentId || t.id === targetTournamentId)
+    ))
   )
 
   if (!tournaments.length) {
@@ -27,6 +30,13 @@ export function ProjectorView() {
       ))}
     </div>
   )
+}
+
+function getTargetTournamentId() {
+  const queryStart = window.location.hash.indexOf('?')
+  if (queryStart === -1) return ''
+  const params = new URLSearchParams(window.location.hash.slice(queryStart + 1))
+  return params.get('torneo') ?? ''
 }
 
 function ProjectedTournament({ tournament }: { tournament: Tournament }) {

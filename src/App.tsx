@@ -13,8 +13,8 @@ type AppRoute = 'admin' | 'proyeccion' | 'temporizadores'
 type AdminTab = string
 
 function getRouteFromHash(): AppRoute {
-  if (window.location.hash === '#/proyeccion') return 'proyeccion'
-  if (window.location.hash === '#/temporizadores') return 'temporizadores'
+  if (window.location.hash.startsWith('#/proyeccion')) return 'proyeccion'
+  if (window.location.hash.startsWith('#/temporizadores')) return 'temporizadores'
   return 'admin'
 }
 

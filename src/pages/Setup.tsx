@@ -44,6 +44,7 @@ export function Setup({ tournamentId }: SetupProps) {
   const startTournament      = useTournamentsStore(s => s.startTournament)
   const { totalRounds }      = useSwissPairings(tournamentId)
   const [error, setError]    = useState('')
+  const [inviteStatus, setInviteStatus] = useState('')
 
   if (!exists) return null
 
@@ -53,6 +54,38 @@ export function Setup({ tournamentId }: SetupProps) {
       return
     }
     startTournament(tournamentId)
+  }
+
+  function getInvitationLink() {
+    const url = new URL(window.location.href)
+    url.hash = `/proyeccion?torneo=${encodeURIComponent(tournamentId)}`
+    return url.toString()
+  }
+
+  function getInvitationText() {
+    const game = tcgOptions.find(opt => opt.value === tcg)?.label ?? 'TCG'
+    return `Invitación a ${name || 'torneo'} (${game}). Consulta la información pública aquí: ${getInvitationLink()}`
+  }
+
+  async function copyInvitation() {
+    await navigator.clipboard.writeText(getInvitationText())
+    setInviteStatus('Invitación copiada')
+    window.setTimeout(() => setInviteStatus(''), 1800)
+  }
+
+  async function shareInvitation() {
+    const invitation = {
+      title: name || 'Torneo',
+      text: getInvitationText(),
+      url: getInvitationLink(),
+    }
+
+    if (navigator.share) {
+      await navigator.share(invitation)
+      return
+    }
+
+    await copyInvitation()
   }
 
   return (
@@ -126,6 +159,39 @@ export function Setup({ tournamentId }: SetupProps) {
               {opt.label}
             </button>
           ))}
+        </div>
+      </div>
+
+      <div style={cardStyle}>
+        <div style={cardTitleStyle}>
+          <i className="ti ti-send" aria-hidden="true" /> Invitación
+        </div>
+        <div className="invite-actions" style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr auto auto',
+          gap: '8px',
+          alignItems: 'center',
+        }}>
+          <input
+            readOnly
+            value={getInvitationLink()}
+            style={inputStyle}
+            aria-label="Enlace de invitación"
+          />
+          <button onClick={copyInvitation} style={buttonStyle}>
+            <i className="ti ti-copy" aria-hidden="true" /> Copiar
+          </button>
+          <button onClick={shareInvitation} style={buttonStyle}>
+            <i className="ti ti-share-3" aria-hidden="true" /> Enviar
+          </button>
+        </div>
+        <div style={{
+          minHeight: '18px',
+          marginTop: '6px',
+          fontSize: '12px',
+          color: inviteStatus ? 'var(--color-accent-secondary)' : 'var(--color-text-secondary)',
+        }}>
+          {inviteStatus || 'Comparte este enlace para que puedan consultar la información pública del torneo.'}
         </div>
       </div>
 
@@ -220,4 +286,18 @@ const inputStyle: React.CSSProperties = {
   background: 'var(--color-background-primary)',
   color: 'var(--color-text-primary)',
   outline: 'none',
+}
+
+const buttonStyle: React.CSSProperties = {
+  padding: '8px 14px',
+  fontSize: '13px',
+  border: '0.5px solid var(--color-border-secondary)',
+  borderRadius: 'var(--border-radius-md)',
+  background: 'var(--color-background-secondary)',
+  color: 'var(--color-text-primary)',
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '6px',
 }

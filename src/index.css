@@ -417,6 +417,14 @@ button:hover:not(:disabled) {
   font-size: 13px;
 }
 
+.invite-actions {
+  min-width: 0;
+}
+
+.invite-actions input {
+  min-width: 0;
+}
+
 @media (max-width: 680px) {
   .top-bar {
     padding: 0.5rem;
@@ -517,6 +525,14 @@ button:hover:not(:disabled) {
   }
 
   .match-actions button {
+    min-height: 38px;
+  }
+
+  .invite-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .invite-actions button {
     min-height: 38px;
   }
 }
