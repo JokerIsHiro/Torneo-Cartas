@@ -22,20 +22,23 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<GlobalTab>('timers')
   const [innerTab, setInnerTab] = useState<Record<string, 'ronda' | 'clasificacion'>>({})
 
-  useEffect(() => {
-    // Esperar a que Zustand rehidrate desde localStorage
-    if (useTournamentsStore.persist.hasHydrated()) {
-      return
-    }
+ const [hydrated, setHydrated] = useState(false)
 
-    const unsub = useTournamentsStore.persist.onFinishHydration(() => {
-      setHydrated(true)
-    })
+useEffect(() => {
+  // Comprueba si ya se hidrató antes de montar
+  if (useTournamentsStore.persist.hasHydrated()) {
+    setHydrated(true)
+    return
+  }
 
-    return () => {
-      unsub()
-    }
-  }, [])
+  // Si no, espera el evento
+  const unsub = useTournamentsStore.persist.onFinishHydration(() => {
+    setHydrated(true)
+    unsub()  // ← des-suscribirse manualmente también
+  })
+
+  return () => unsub()
+}, [])
 
     if(!hydrated) {
       return (
