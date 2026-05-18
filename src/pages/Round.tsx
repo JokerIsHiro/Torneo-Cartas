@@ -32,7 +32,7 @@ export function Round() {
 
       {/* Cabecera de ronda */}
       <div style={{
-        display: 'flex',--
+        display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: '1rem',
