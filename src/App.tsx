@@ -12,7 +12,7 @@ type GlobalTab = 'timers' | string
 
 export default function App() {
 
-  const [hydrated, setHydrated] = useState(() => useTournamentsStore.persist.hasHydrated())
+  const [hydrated, setHydrated] = useState(false)
 
   const tournaments = useTournamentsStore(s => s.tournaments)
   const createTournament = useTournamentsStore(s => s.createTournament)
