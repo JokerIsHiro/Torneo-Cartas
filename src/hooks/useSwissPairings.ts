@@ -1,11 +1,11 @@
-import { useCallback, useMemo } from 'react'
-import { useTournamentStore } from '../store/tournamentStore'
+import { useMemo, useCallback } from 'react'
+import { useTournamentsStore } from '../store/tournamentsStore'
 import type { Player, Match } from '../types/tournament'
 
 interface StandingsRow {
   player: Player
   position: number
-  isEliminated: boolean    // true si tiene 2 derrotas (doble derrota)
+  isEliminated: boolean
 }
 
 interface RoundSummary {
@@ -16,47 +16,42 @@ interface RoundSummary {
 }
 
 interface UseSwissPairingsReturn {
-  // Metadatos del torneo
-  totalRounds: number           // rondas estimadas según nº de jugadores
+  totalRounds: number
   roundsLeft: number
   isFinalRound: boolean
-  shouldFinish: boolean         // todas las rondas jugadas
-
-  // Ronda actual
+  shouldFinish: boolean
   currentMatches: Match[]
-  allResultsIn: boolean         // true si todas las partidas tienen resultado
-  unfinishedCount: number       // partidas sin resultado en la ronda actual
-
-  // Clasificación ordenada
+  allResultsIn: boolean
+  unfinishedCount: number
   standings: StandingsRow[]
-
-  // Historial de rondas
   roundSummaries: RoundSummary[]
-
-  // Helpers de jugadores
   getPlayerById: (id: string) => Player | undefined
   getPlayerName: (id: string) => string
 }
 
-// Número de rondas Swiss recomendado según jugadores
 function calcTotalRounds(playerCount: number): number {
-  if (playerCount <= 0) return 0
+  if (playerCount <= 0)  return 0
   if (playerCount <= 2)  return 1
   if (playerCount <= 4)  return 2
   if (playerCount <= 8)  return 3
   if (playerCount <= 16) return 4
   if (playerCount <= 32) return 5
   if (playerCount <= 64) return 6
-  return 7  // hasta 128 jugadores
+  return 7
 }
 
-export function useSwissPairings(): UseSwissPairingsReturn {
-  const { players, rounds, currentRound, status } = useTournamentStore()
-
-  const totalRounds = useMemo(
-    () => calcTotalRounds(players.length),
-    [players.length]
+export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
+  // Suscripción selectiva: solo el torneo que nos importa
+  const tournament = useTournamentsStore(
+    s => s.tournaments.find(t => t.id === tournamentId)
   )
+
+  const players = tournament?.players ?? []
+  const rounds = tournament?.rounds ?? []
+  const currentRound = tournament?.currentRound ?? 0
+  const status = tournament?.status ?? 'setup'
+
+  const totalRounds = useMemo(() => calcTotalRounds(players.length), [players.length])
 
   const roundsLeft = useMemo(
     () => Math.max(0, totalRounds - (currentRound > 0 ? currentRound - 1 : 0)),
@@ -73,8 +68,6 @@ export function useSwissPairings(): UseSwissPairingsReturn {
     return round.matches.every(m => m.result !== null)
   }, [status, currentRound, totalRounds, rounds])
 
-  // ─── Ronda actual ─────────────────────────────────────────────────────────
-
   const currentMatches = useMemo<Match[]>(() => {
     if (!currentRound || !rounds[currentRound - 1]) return []
     return rounds[currentRound - 1].matches
@@ -87,29 +80,20 @@ export function useSwissPairings(): UseSwissPairingsReturn {
 
   const allResultsIn = unfinishedCount === 0 && currentMatches.length > 0
 
-  // ─── Clasificación ────────────────────────────────────────────────────────
-
   const standings = useMemo<StandingsRow[]>(() => {
     const sorted = [...players].sort((a, b) => {
-      // 1. Puntos
-      if (b.points !== a.points) return b.points - a.points
-      // 2. Victorias como desempate
-      if (b.wins !== a.wins) return b.wins - a.wins
-      // 3. Menos derrotas por timeout
+      if (b.points !== a.points)               return b.points - a.points
+      if (b.wins !== a.wins)                   return b.wins - a.wins
       if (a.timeoutLosses !== b.timeoutLosses) return a.timeoutLosses - b.timeoutLosses
-      // 4. Alfabético
       return a.name.localeCompare(b.name)
     })
 
     return sorted.map((player, index) => ({
       player,
       position: index + 1,
-      // Eliminado si tiene 2 o más derrotas (contando timeouts)
-      isEliminated: (player.losses) >= 2,
+      isEliminated: player.losses >= 2,
     }))
   }, [players])
-
-  // ─── Historial de rondas ──────────────────────────────────────────────────
 
   const roundSummaries = useMemo<RoundSummary[]>(() => {
     return rounds.map(round => {
@@ -123,8 +107,6 @@ export function useSwissPairings(): UseSwissPairingsReturn {
       }
     })
   }, [rounds])
-
-  // ─── Helpers de jugadores ─────────────────────────────────────────────────
 
   const getPlayerById = useCallback(
     (id: string) => players.find(p => p.id === id),

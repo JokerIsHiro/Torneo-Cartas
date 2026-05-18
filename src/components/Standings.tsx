@@ -1,4 +1,4 @@
-import { useTournamentStore } from '../store/tournamentStore'
+import { useTournamentStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import type { Player } from '../types/tournament'
 

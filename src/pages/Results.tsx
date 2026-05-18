@@ -1,4 +1,4 @@
-import { useTournamentStore } from '../store/tournamentStore'
+import { useTournamentStore } from '../store/tournamentsStore'
 import { Standings } from '../components/Standings'
 
 export function Results() {

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useTimer } from '../hooks/useTimer'
-import { useTournamentStore } from '../store/tournamentStore'
+import { useTournamentStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 
 export function Timer() {

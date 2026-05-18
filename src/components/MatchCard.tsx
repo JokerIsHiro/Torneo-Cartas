@@ -1,5 +1,5 @@
 import type { Match, MatchResult } from '../types/tournament'
-import { useTournamentStore } from '../store/tournamentStore'
+import { useTournamentStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 
 interface MatchCardProps {

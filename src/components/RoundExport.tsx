@@ -1,5 +1,5 @@
 import { forwardRef } from 'react'
-import { useTournamentStore } from '../store/tournamentStore'
+import { useTournamentStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 
 export const RoundExport = forwardRef<HTMLDivElement, object>((_, ref) => {

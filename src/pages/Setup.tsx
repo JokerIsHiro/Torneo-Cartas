@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useTournamentStore } from '../store/tournamentStore'
+import { useTournamentStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import { PlayerList } from '../components/PlayerList'
 import { cardStyle, cardTitleStyle, inputStyle } from '../styles/shared'

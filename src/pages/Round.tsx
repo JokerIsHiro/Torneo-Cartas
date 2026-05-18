@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { useTournamentStore } from '../store/tournamentStore'
+import { useTournamentStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import { Timer } from '../components/Timer'
 import { MatchCard } from '../components/MatchCard'

@@ -1,4 +1,4 @@
-import { useTournamentStore } from './store/tournamentStore'
+import { useTournamentStore } from './store/tournamentsStore'
 import { Setup } from './pages/Setup'
 import { Round } from './pages/Round'
 import { Results } from './pages/Results'
