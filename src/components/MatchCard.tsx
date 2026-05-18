@@ -53,7 +53,7 @@ export function MatchCard({ match, tournamentId, readOnly = false }: MatchCardPr
   }
 
   return (
-    <div style={{
+    <div className={readOnly ? 'match-card projector-match-card' : 'match-card'} style={{
       background: 'var(--color-background-primary)',
       border: '0.5px solid var(--color-border-tertiary)',
       borderRadius: 'var(--border-radius-lg)',
@@ -174,15 +174,15 @@ function PlayerCell({ name, points, losses, align, isWinner, isLoser, isBye }: P
   })()
 
   return (
-    <div style={{ textAlign: align }}>
-      <div style={{ fontSize: '13px', fontWeight: 500, color, transition: 'color .2s' }}>
+    <div className="player-cell" style={{ textAlign: align }}>
+      <div className="player-name" style={{ fontSize: '13px', fontWeight: 500, color, transition: 'color .2s' }}>
         {isWinner && (
           <i className="ti ti-crown" aria-hidden="true" style={{ fontSize: '12px', marginRight: '4px' }} />
         )}
         {name}
       </div>
       {!isBye && (
-        <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+        <div className="player-meta" style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
           {points} pts · {losses} {losses === 1 ? 'derrota' : 'derrotas'}
         </div>
       )}

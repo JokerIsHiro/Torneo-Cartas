@@ -18,8 +18,10 @@ export function ProjectorView() {
     )
   }
 
+  const density = tournaments.length >= 3 ? 'many' : tournaments.length === 2 ? 'two' : 'single'
+
   return (
-    <div className="projector-pairings">
+    <div className={`projector-pairings ${density}`}>
       {tournaments.map(tournament => (
         <ProjectedTournament key={tournament.id} tournament={tournament} />
       ))}

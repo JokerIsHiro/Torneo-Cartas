@@ -252,7 +252,9 @@ button:hover:not(:disabled) {
 }
 
 .projector-content {
-  max-width: 1120px;
+  max-width: min(1680px, 100vw);
+  padding-left: clamp(0.75rem, 2vw, 2rem);
+  padding-right: clamp(0.75rem, 2vw, 2rem);
 }
 
 .tournament-header {
@@ -317,12 +319,25 @@ button:hover:not(:disabled) {
 
 .projector-pairings {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(1rem, 1.6vw, 1.5rem);
+  align-items: start;
+}
+
+.projector-pairings.two {
+  grid-template-columns: repeat(2, minmax(420px, 1fr));
+}
+
+.projector-pairings.many {
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
 }
 
 .projector-section {
   min-width: 0;
+  background: rgba(5, 7, 12, 0.68);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  padding: clamp(1rem, 1.6vw, 1.375rem);
 }
 
 .projector-section-header {
@@ -330,7 +345,7 @@ button:hover:not(:disabled) {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.125rem;
 }
 
 .projector-section-header span {
@@ -341,6 +356,42 @@ button:hover:not(:disabled) {
   padding: 4px 10px;
   background: var(--color-background-primary);
   flex-shrink: 0;
+}
+
+.projector-match-card {
+  padding: 1.125rem 1.25rem !important;
+  margin-bottom: 0.875rem !important;
+}
+
+.projector-match-card .match-card-header {
+  margin-bottom: 0.875rem !important;
+}
+
+.projector-match-card .match-card-header > span:first-child {
+  font-size: 13px !important;
+  color: var(--color-accent-secondary) !important;
+  font-weight: 600;
+}
+
+.projector-match-card .match-players {
+  gap: clamp(0.75rem, 1.4vw, 1.25rem) !important;
+  margin-bottom: 0 !important;
+}
+
+.projector-match-card .match-players > span {
+  font-size: 13px !important;
+  color: var(--color-text-muted) !important;
+}
+
+.projector-match-card .player-name {
+  font-size: clamp(17px, 1.45vw, 24px) !important;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.projector-match-card .player-meta {
+  font-size: clamp(12px, 0.9vw, 14px) !important;
+  margin-top: 5px !important;
 }
 
 .empty-state {
@@ -467,5 +518,27 @@ button:hover:not(:disabled) {
 
   .match-actions button {
     min-height: 38px;
+  }
+}
+
+@media (max-width: 960px) {
+  .projector-pairings.two {
+    grid-template-columns: 1fr;
+  }
+
+  .projector-pairings.many {
+    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  }
+}
+
+@media (min-width: 1400px) {
+  .projector-pairings.single {
+    max-width: 1180px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .projector-pairings.many {
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
   }
 }
