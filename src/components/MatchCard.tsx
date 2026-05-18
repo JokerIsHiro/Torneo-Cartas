@@ -9,6 +9,9 @@ interface MatchCardProps {
 
 export function MatchCard({ match, tournamentId }: MatchCardProps) {
   const setMatchResult = useTournamentsStore(s => s.setMatchResult)
+  const tcg = useTournamentsStore(
+    s => s.tournaments.find(t => t.id === tournamentId)?.tcg ?? 'magic'
+  )
   const { getPlayerName, getPlayerById } = useSwissPairings(tournamentId)
 
   const p1 = getPlayerById(match.p1Id)
@@ -18,6 +21,7 @@ export function MatchCard({ match, tournamentId }: MatchCardProps) {
   const isBye     = match.p2Id === 'BYE'
   const isTimeout = match.result === 'timeout'
   const isDone    = match.result !== null
+  const allowsDraw = tcg !== 'yugioh'
 
   function handleResult(result: MatchResult) {
     if (isBye) return
@@ -27,9 +31,9 @@ export function MatchCard({ match, tournamentId }: MatchCardProps) {
 
   function resultBtnStyle(active: boolean, variant: 'win' | 'draw' | 'timeout'): React.CSSProperties {
     const colors = {
-      win:     { bg: '#EAF3DE', border: '#3B6D11', color: '#27500A' },
-      draw:    { bg: '#E6F1FB', border: '#185FA5', color: '#0C447C' },
-      timeout: { bg: '#FCEBEB', border: '#A32D2D', color: '#791F1F' },
+      win:     { bg: 'var(--color-success-bg)', border: 'var(--color-border-success)', color: 'var(--color-accent-secondary)' },
+      draw:    { bg: 'var(--color-draw-bg)', border: 'var(--color-border-primary)', color: 'var(--color-accent-primary)' },
+      timeout: { bg: 'var(--color-danger-bg)', border: 'var(--color-border-danger)', color: 'var(--color-text-danger)' },
     }
     const c = colors[variant]
     return {
@@ -50,8 +54,8 @@ export function MatchCard({ match, tournamentId }: MatchCardProps) {
   return (
     <div style={{
       background: 'var(--color-background-primary)',
-      border: '0.5px solid black',
-      borderRadius: '15px',
+      border: '0.5px solid var(--color-border-tertiary)',
+      borderRadius: 'var(--border-radius-lg)',
       padding: '.875rem 1rem',
       marginBottom: '.625rem',
       opacity: isDone && !isTimeout ? 0.75 : 1,
@@ -110,26 +114,25 @@ export function MatchCard({ match, tournamentId }: MatchCardProps) {
           borderTop: '0.5px solid var(--color-border-tertiary)',
         }}>
           <button
-            style={{...resultBtnStyle(match.result === 'p1', 'win'), border: '0.5px solid black',
-          borderRadius: '15px',}}
+            style={{...resultBtnStyle(match.result === 'p1', 'win'), borderRadius: 'var(--border-radius-md)'}}
             onClick={() => handleResult('p1')}
           >
             <i className="ti ti-trophy" aria-hidden="true" style={{ fontSize: '12px' }} />
             {' '}{getPlayerName(match.p1Id)}
           </button>
 
-          <button
-            style={{...resultBtnStyle(match.result === 'draw', 'draw'), border: '0.5px solid black',
-          borderRadius: '15px',}}
-            onClick={() => handleResult('draw')}
-          >
-            <i className="ti ti-equal" aria-hidden="true" style={{ fontSize: '12px' }} />
-            {' '}Empate
-          </button>
+          {allowsDraw && (
+            <button
+              style={{...resultBtnStyle(match.result === 'draw', 'draw'), borderRadius: 'var(--border-radius-md)'}}
+              onClick={() => handleResult('draw')}
+            >
+              <i className="ti ti-equal" aria-hidden="true" style={{ fontSize: '12px' }} />
+              {' '}Empate
+            </button>
+          )}
 
           <button
-            style={{...resultBtnStyle(match.result === 'p2', 'win'), border: '0.5px solid black',
-          borderRadius: '15px',}}
+            style={{...resultBtnStyle(match.result === 'p2', 'win'), borderRadius: 'var(--border-radius-md)'}}
             onClick={() => handleResult('p2')}
           >
             <i className="ti ti-trophy" aria-hidden="true" style={{ fontSize: '12px' }} />
@@ -164,8 +167,8 @@ interface PlayerCellProps {
 
 function PlayerCell({ name, points, losses, align, isWinner, isLoser, isBye }: PlayerCellProps) {
   const color = (() => {
-    if (isWinner) return '#27500A'
-    if (isLoser)  return '#791F1F'
+    if (isWinner) return 'var(--color-accent-secondary)'
+    if (isLoser)  return 'var(--color-text-danger)'
     return 'var(--color-text-primary)'
   })()
 
@@ -190,11 +193,11 @@ function ResultBadge({ result }: { result: MatchResult }) {
   if (!result) return null
 
   const config = {
-    p1:      { label: 'Resultado registrado', bg: '#EAF3DE', color: '#27500A', border: '#C0DD97' },
-    p2:      { label: 'Resultado registrado', bg: '#EAF3DE', color: '#27500A', border: '#C0DD97' },
-    draw:    { label: 'Empate',               bg: '#E6F1FB', color: '#0C447C', border: '#B5D4F4' },
-    timeout: { label: 'Tiempo agotado',       bg: '#FCEBEB', color: '#791F1F', border: '#F7C1C1' },
-    bye:     { label: 'BYE · +3 pts',         bg: '#FAEEDA', color: '#633806', border: '#FAC775' },
+    p1:      { label: 'Resultado registrado', bg: 'var(--color-success-bg)', color: 'var(--color-accent-secondary)', border: 'var(--color-border-success)' },
+    p2:      { label: 'Resultado registrado', bg: 'var(--color-success-bg)', color: 'var(--color-accent-secondary)', border: 'var(--color-border-success)' },
+    draw:    { label: 'Empate',               bg: 'var(--color-draw-bg)', color: 'var(--color-accent-primary)', border: 'var(--color-border-primary)' },
+    timeout: { label: 'Tiempo agotado',       bg: 'var(--color-danger-bg)', color: 'var(--color-text-danger)', border: 'var(--color-border-danger)' },
+    bye:     { label: 'BYE · +3 pts',         bg: 'var(--color-warning-bg)', color: 'var(--color-text-warning)', border: 'var(--color-border-warning)' },
   }
 
   const c = config[result]

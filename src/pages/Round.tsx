@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import { Timer } from '../components/Timer'
@@ -10,8 +11,15 @@ interface RoundProps {
 }
 
 export function Round({ tournamentId }: RoundProps) {
-  const { nextRound, finishTournament } = useTournamentsStore()
-  const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
+  const nextRound       = useTournamentsStore(s => s.nextRound)
+  const finishTournament = useTournamentsStore(s => s.finishTournament)
+  const { currentRound } = useTournamentsStore(
+    useShallow(s => {
+      const t = s.tournaments.find(t => t.id === tournamentId)
+      return { currentRound: t?.currentRound ?? 0 }
+    })
+  )
+
   const {
     currentMatches,
     allResultsIn,
@@ -22,19 +30,16 @@ export function Round({ tournamentId }: RoundProps) {
   } = useSwissPairings(tournamentId)
 
   const { ref: exportRef, exportImage } = useExportImage()
-  const currentRound = tournament?.currentRound ?? 0
   const currentSummary = roundSummaries.find(r => r.number === currentRound)
 
   return (
     <div>
-      {/* Nodo oculto para exportar */}
       <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
         <RoundExport ref={exportRef} tournamentId={tournamentId} />
       </div>
 
       <Timer tournamentId={tournamentId} />
 
-      {/* Cabecera */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -49,7 +54,7 @@ export function Round({ tournamentId }: RoundProps) {
             <span style={{
               fontSize: '11px', padding: '2px 8px',
               borderRadius: 'var(--border-radius-md)',
-              background: '#EEEDFE', color: '#3C3489', border: '0.5px solid #AFA9EC',
+              background: 'var(--color-draw-bg)', color: 'var(--color-accent-secondary)', border: '0.5px solid var(--color-border-primary)',
             }}>
               ronda final
             </span>
@@ -81,16 +86,14 @@ export function Round({ tournamentId }: RoundProps) {
         </div>
       </div>
 
-      {/* Partidas */}
       {currentMatches.map(match => (
         <MatchCard key={match.id} match={match} tournamentId={tournamentId} />
       ))}
 
-      {/* Avanzar / finalizar */}
       {allResultsIn && (
         <div style={{ marginTop: '1rem' }}>
           {shouldFinish ? (
-            <button onClick={() => finishTournament(tournamentId)} style={actionBtnStyle('#3B6D11', '#C0DD97')}>
+            <button onClick={() => finishTournament(tournamentId)} style={actionBtnStyle('var(--color-accent-secondary)', 'var(--color-border-success)')}>
               <i className="ti ti-trophy" aria-hidden="true" /> Finalizar torneo
             </button>
           ) : (
@@ -101,7 +104,6 @@ export function Round({ tournamentId }: RoundProps) {
         </div>
       )}
 
-      {/* Aviso resultados pendientes */}
       {!allResultsIn && unfinishedCount > 0 && (
         <div style={{
           marginTop: '1rem',

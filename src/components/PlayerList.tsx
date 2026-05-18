@@ -55,7 +55,7 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
                 flex: 1,
                 padding: '8px 10px',
                 fontSize: '13px',
-                border: `0.5px solid ${error ? '#F09595' : 'var(--color-border-tertiary)'}`,
+                border: `0.5px solid ${error ? 'var(--color-border-danger)' : 'var(--color-border-tertiary)'}`,
                 borderRadius: 'var(--border-radius-md)',
                 background: 'var(--color-background-primary)',
                 color: 'var(--color-text-primary)',
@@ -67,7 +67,7 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
             </button>
           </div>
           {error && (
-            <div style={{ fontSize: '12px', color: '#A32D2D', marginTop: '6px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-danger)', marginTop: '6px' }}>
               <i className="ti ti-alert-circle" aria-hidden="true" /> {error}
             </div>
           )}
@@ -205,9 +205,9 @@ function ActivePlayerRow({ player, position, isEliminated }: { player: Player; p
         }}>
           {player.name}
         </span>
-        {isEliminated && <Badge label="eliminado" bg="#FCEBEB" color="#791F1F" border="#F7C1C1" />}
-        {player.timeoutLosses > 0 && <Badge label={`⏱ ${player.timeoutLosses}`} bg="#FAEEDA" color="#633806" border="#FAC775" />}
-        {player.byes > 0 && <Badge label="bye" bg="#E6F1FB" color="#0C447C" border="#B5D4F4" />}
+        {isEliminated && <Badge label="eliminado" bg="var(--color-danger-bg)" color="var(--color-text-danger)" border="var(--color-border-danger)" />}
+        {player.timeoutLosses > 0 && <Badge label={`⏱ ${player.timeoutLosses}`} bg="var(--color-warning-bg)" color="var(--color-text-warning)" border="var(--color-border-warning)" />}
+        {player.byes > 0 && <Badge label="bye" bg="var(--color-draw-bg)" color="var(--color-accent-secondary)" border="var(--color-border-primary)" />}
       </div>
       <span style={{ fontSize: '13px', fontWeight: 500, textAlign: 'center' }}>{player.points}</span>
       <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{player.wins}</span>

@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import type { Player } from '../types/tournament'
@@ -7,10 +8,19 @@ interface StandingsProps {
 }
 
 export function Standings({ tournamentId }: StandingsProps) {
-  const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
+  const { status, rounds, exists } = useTournamentsStore(
+    useShallow(s => {
+      const t = s.tournaments.find(t => t.id === tournamentId)
+      return {
+        exists:       !!t,
+        status:       t?.status       ?? 'setup',
+        rounds:       t?.rounds       ?? [],
+      }
+    })
+  )
   const { standings, roundSummaries, totalRounds, getPlayerName } = useSwissPairings(tournamentId)
 
-  if (!tournament || tournament.status === 'setup') {
+  if (!exists || status === 'setup') {
     return (
       <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
         <i className="ti ti-trophy-off" aria-hidden="true" style={{ fontSize: '24px' }} />
@@ -21,7 +31,6 @@ export function Standings({ tournamentId }: StandingsProps) {
 
   return (
     <div>
-      {/* Podio */}
       {standings.length >= 3 && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '1rem' }}>
           <PodiumCard player={standings[1].player} medal="🥈" position={2} />
@@ -30,7 +39,6 @@ export function Standings({ tournamentId }: StandingsProps) {
         </div>
       )}
 
-      {/* Tabla */}
       <div style={{
         background: 'var(--color-background-primary)',
         border: '0.5px solid var(--color-border-tertiary)',
@@ -63,10 +71,10 @@ export function Standings({ tournamentId }: StandingsProps) {
             padding: '7px 10px',
             borderRadius: 'var(--border-radius-md)',
             background: row.position % 2 === 0 ? 'var(--color-background-secondary)' : 'transparent',
-            opacity: row.isEliminated && tournament.status !== 'finished' ? 0.5 : 1,
+            opacity: row.isEliminated && status !== 'finished' ? 0.5 : 1,
           }}>
             <span style={{ fontSize: '13px', textAlign: 'center' }}>
-              {({ 1: '🥇', 2: '🥈', 3: '🥉' } as Record<number,string>)[row.position]
+              {({ 1: '🥇', 2: '🥈', 3: '🥉' } as Record<number, string>)[row.position]
                 ?? <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{row.position}</span>}
             </span>
             <span style={{
@@ -81,7 +89,7 @@ export function Standings({ tournamentId }: StandingsProps) {
             <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{row.player.losses}</span>
             <span style={{
               fontSize: '12px', textAlign: 'center',
-              color: row.player.timeoutLosses > 0 ? '#854F0B' : 'var(--color-text-secondary)',
+              color: row.player.timeoutLosses > 0 ? 'var(--color-text-warning)' : 'var(--color-text-secondary)',
               fontWeight: row.player.timeoutLosses > 0 ? 500 : 400,
             }}>
               {row.player.timeoutLosses > 0 ? `${row.player.timeoutLosses} ⏱` : '—'}
@@ -90,7 +98,6 @@ export function Standings({ tournamentId }: StandingsProps) {
         ))}
       </div>
 
-      {/* Historial de rondas */}
       <div style={{
         background: 'var(--color-background-primary)',
         border: '0.5px solid var(--color-border-tertiary)',
@@ -102,7 +109,7 @@ export function Standings({ tournamentId }: StandingsProps) {
         </div>
 
         {roundSummaries.map(summary => {
-          const round = tournament.rounds[summary.number - 1]
+          const round = rounds[summary.number - 1]
           return (
             <div key={summary.number} style={{ marginBottom: '.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
@@ -112,14 +119,14 @@ export function Standings({ tournamentId }: StandingsProps) {
                     <span style={{
                       marginLeft: '6px', fontSize: '10px', padding: '1px 6px',
                       borderRadius: 'var(--border-radius-md)',
-                      background: '#EEEDFE', color: '#3C3489', border: '0.5px solid #AFA9EC',
+                      background: 'var(--color-draw-bg)', color: 'var(--color-accent-secondary)', border: '0.5px solid var(--color-border-primary)',
                     }}>final</span>
                   )}
                 </span>
                 <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                   {summary.matchesDone}/{summary.matchesTotal} resultados
                   {summary.isComplete && (
-                    <i className="ti ti-circle-check" aria-hidden="true" style={{ marginLeft: '6px', color: '#3B6D11' }} />
+                    <i className="ti ti-circle-check" aria-hidden="true" style={{ marginLeft: '6px', color: 'var(--color-accent-secondary)' }} />
                   )}
                 </span>
               </div>
@@ -130,11 +137,11 @@ export function Standings({ tournamentId }: StandingsProps) {
                   const p2Name = match.p2Id === 'BYE' ? 'BYE' : getPlayerName(match.p2Id)
                   const resultLabel = (() => {
                     if (!match.result)              return { text: 'Sin resultado',   color: 'var(--color-text-secondary)' }
-                    if (match.result === 'bye')     return { text: `${p1Name} · BYE`, color: '#854F0B' }
-                    if (match.result === 'draw')    return { text: 'Empate',           color: '#185FA5' }
-                    if (match.result === 'timeout') return { text: 'Tiempo agotado',   color: '#A32D2D' }
-                    if (match.result === 'p1')      return { text: `Gana ${p1Name}`,   color: '#3B6D11' }
-                    if (match.result === 'p2')      return { text: `Gana ${p2Name}`,   color: '#3B6D11' }
+                    if (match.result === 'bye')     return { text: `${p1Name} · BYE`, color: 'var(--color-text-warning)' }
+                    if (match.result === 'draw')    return { text: 'Empate',           color: 'var(--color-accent-primary)' }
+                    if (match.result === 'timeout') return { text: 'Tiempo agotado',   color: 'var(--color-text-danger)' }
+                    if (match.result === 'p1')      return { text: `Gana ${p1Name}`,   color: 'var(--color-accent-secondary)' }
+                    if (match.result === 'p2')      return { text: `Gana ${p2Name}`,   color: 'var(--color-accent-secondary)' }
                     return { text: '—', color: 'var(--color-text-secondary)' }
                   })()
 
@@ -171,9 +178,9 @@ export function Standings({ tournamentId }: StandingsProps) {
 
 function PodiumCard({ player, medal, position }: { player: Player; medal: string; position: number }) {
   const accents: Record<number, { border: string }> = {
-    1: { border: '#FAC775' },
-    2: { border: '#D3D1C7' },
-    3: { border: '#F5C4B3' },
+    1: { border: 'var(--color-podium-gold)' },
+    2: { border: 'var(--color-podium-silver)' },
+    3: { border: 'var(--color-podium-bronze)' },
   }
   return (
     <div style={{

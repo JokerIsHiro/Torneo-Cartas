@@ -6,6 +6,7 @@ import type {
   Match,
   Round,
   MatchResult,
+  TournamentTCG,
 } from '../types/tournament'
 
 // ─── Helpers de emparejamiento Swiss ─────────────────────────────────────────
@@ -139,6 +140,7 @@ interface TournamentsStore {
   createTournament: () => string                          // devuelve el id
   deleteTournament: (id: string) => void
   updateTournamentName: (id: string, name: string) => void
+  setTournamentTCG: (id: string, tcg: TournamentTCG) => void
   setTimerDuration: (id: string, seconds: number) => void
 
   // Jugadores
@@ -163,6 +165,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const newTournament: Tournament = {
           id,
           name: 'Nuevo torneo',
+          tcg: 'magic',
           players: [],
           rounds: [],
           currentRound: 0,
@@ -181,6 +184,12 @@ export const useTournamentsStore = create<TournamentsStore>()(
       updateTournamentName: (id, name) => {
         set(s => ({
           tournaments: s.tournaments.map(t => t.id === id ? { ...t, name } : t),
+        }))
+      },
+
+      setTournamentTCG: (id, tcg) => {
+        set(s => ({
+          tournaments: s.tournaments.map(t => t.id === id ? { ...t, tcg } : t),
         }))
       },
 
@@ -255,6 +264,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
       setMatchResult: (id, matchId, result) => {
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament) return
+        if ((tournament.tcg ?? 'magic') === 'yugioh' && result === 'draw') return
 
         const round = tournament.rounds[tournament.currentRound - 1]
         const match = round?.matches.find(m => m.id === matchId)

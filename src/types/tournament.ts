@@ -28,10 +28,12 @@ export interface Round {
 }
 
 export type TournamentStatus = 'setup' | 'active' | 'finished'
+export type TournamentTCG = 'magic' | 'riftbound' | 'pokemon' | 'yugioh' | 'one-piece'
 
 export interface Tournament {
   id: string
   name: string
+  tcg: TournamentTCG
   players: Player[]
   rounds: Round[]
   currentRound: number

@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { Standings } from '../components/Standings'
 
@@ -6,25 +7,29 @@ interface ResultsProps {
 }
 
 export function Results({ tournamentId }: ResultsProps) {
-  const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
-  const { deleteTournament } = useTournamentsStore()
+  const { name, exists } = useTournamentsStore(
+    useShallow(s => {
+      const t = s.tournaments.find(t => t.id === tournamentId)
+      return { name: t?.name ?? '', exists: !!t }
+    })
+  )
+  const deleteTournament = useTournamentsStore(s => s.deleteTournament)
 
-  if (!tournament) return null
+  if (!exists) return null
 
   return (
     <div>
-      {/* Cabecera fin de torneo */}
       <div style={{
         textAlign: 'center',
         padding: '1.5rem 1rem',
         marginBottom: '1rem',
         background: 'var(--color-background-primary)',
-        border: '0.5px solid #FAC775',
+        border: '0.5px solid var(--color-podium-gold)',
         borderRadius: 'var(--border-radius-lg)',
       }}>
         <div style={{ fontSize: '32px', marginBottom: '8px' }}>🏆</div>
         <div style={{ fontSize: '18px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
-          {tournament.name}
+          {name}
         </div>
         <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
           Torneo finalizado

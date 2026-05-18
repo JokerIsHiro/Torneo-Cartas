@@ -3,8 +3,8 @@ import type { CSSProperties } from 'react'
 
 export const cardStyle: CSSProperties = {
   background: 'var(--color-background-primary)',
-  border: '0.5px solid black',
-  borderRadius: '15px',
+  border: '0.5px solid var(--color-border-tertiary)',
+  borderRadius: 'var(--border-radius-lg)',
   padding: '1rem 1.25rem',
   marginBottom: '.75rem',
 }

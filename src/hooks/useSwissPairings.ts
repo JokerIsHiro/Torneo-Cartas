@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
-import type { Player, Match } from '../types/tournament'
+import type { Player, Match, Round } from '../types/tournament'
 
 interface StandingsRow {
   player: Player
@@ -30,6 +30,9 @@ interface UseSwissPairingsReturn {
   getPlayerName: (id: string) => string
 }
 
+const EMPTY_PLAYERS: Player[] = []
+const EMPTY_ROUNDS: Round[] = []
+
 function calcTotalRounds(playerCount: number): number {
   if (playerCount <= 0)  return 0
   if (playerCount <= 2)  return 1
@@ -49,8 +52,8 @@ export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
     useShallow(s => {
       const t = s.tournaments.find(t => t.id === tournamentId)
       return {
-        players:      t?.players      ?? ([] as Player[]),
-        rounds:       t?.rounds       ?? [],
+        players:      t?.players      ?? EMPTY_PLAYERS,
+        rounds:       t?.rounds       ?? EMPTY_ROUNDS,
         currentRound: t?.currentRound ?? 0,
         status:       t?.status       ?? 'setup',
       }

@@ -22,41 +22,35 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<GlobalTab>('timers')
   const [innerTab, setInnerTab] = useState<Record<string, 'ronda' | 'clasificacion'>>({})
 
- const [hydrated, setHydrated] = useState(false)
-
-useEffect(() => {
-  // Comprueba si ya se hidrató antes de montar
-  if (useTournamentsStore.persist.hasHydrated()) {
-    setHydrated(true)
-    return
-  }
-
-  // Si no, espera el evento
-  const unsub = useTournamentsStore.persist.onFinishHydration(() => {
-    setHydrated(true)
-    unsub()  // ← des-suscribirse manualmente también
-  })
-
-  return () => unsub()
-}, [])
-
-    if(!hydrated) {
-      return (
-        <div style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'var(--color-background-secondary)',
-          color: 'var(--color-text-secondary)',
-          fontSize: '13px',
-          gap: '8px',
-        }}>
-          <i className="ti ti-loader-2" aria-hidden="true" style={{ fontSize: '18px' }} />
-          Cargando...
-        </div>
-      )
+  useEffect(() => {
+    if (useTournamentsStore.persist.hasHydrated()) {
+      const id = setTimeout(() => setHydrated(true), 0)
+      return () => clearTimeout(id)
     }
+    const unsub = useTournamentsStore.persist.onFinishHydration(() => {
+      setHydrated(true)
+      unsub()
+    })
+    return () => unsub()
+  }, [])
+
+  if (!hydrated) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--color-background-secondary)',
+        color: 'var(--color-text-secondary)',
+        fontSize: '13px',
+        gap: '8px',
+      }}>
+        <i className="ti ti-loader-2" aria-hidden="true" style={{ fontSize: '18px' }} />
+        Cargando...
+      </div>
+    )
+  }
 
   function getInnerTab(id: string): 'ronda' | 'clasificacion' {
     return innerTab[id] ?? 'ronda'
@@ -84,13 +78,13 @@ useEffect(() => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'var(--color-background-secondary)',
+      background: 'transparent',
       fontFamily: 'var(--font-sans)',
     }}>
 
       {/* Barra de pestañas superior */}
       <div style={{
-        background: 'var(--color-background-primary)',
+        background: 'rgba(5, 7, 12, 0.94)',
         borderBottom: '0.5px solid var(--color-border-tertiary)',
         padding: '0 1rem',
         display: 'flex',
@@ -99,20 +93,28 @@ useEffect(() => {
         position: 'sticky',
         top: 0,
         zIndex: 10,
+        backdropFilter: 'blur(14px)',
       }}>
 
         {/* Logo */}
         <div style={{
-          fontSize: '14px',
-          fontWeight: 600,
-          color: 'var(--color-text-primary)',
-          padding: '12px 16px 12px 4px',
+          padding: '7px 16px 7px 4px',
           borderRight: '0.5px solid var(--color-border-tertiary)',
           marginRight: '8px',
-          whiteSpace: 'nowrap',
           flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
         }}>
-          <i className="ti ti-cards" aria-hidden="true" /> Torneos
+          <img
+            src="/subterra-logo.jpg"
+            alt="Subterra TCG - Juegos de mesa"
+            style={{
+              width: '132px',
+              height: '30px',
+              objectFit: 'contain',
+              display: 'block',
+            }}
+          />
         </div>
 
         {/* Pestaña temporizadores */}
@@ -270,8 +272,8 @@ interface TopTabProps {
 
 function TopTab({ label, active, status, onClick, onClose }: TopTabProps) {
   const dotColor = (() => {
-    if (status === 'active')   return '#1D9E75'
-    if (status === 'finished') return '#854F0B'
+    if (status === 'active')   return 'var(--color-accent-secondary)'
+    if (status === 'finished') return 'var(--color-text-warning)'
     return 'transparent'
   })()
 
@@ -285,7 +287,7 @@ function TopTab({ label, active, status, onClick, onClose }: TopTabProps) {
         padding: '0 12px',
         height: '44px',
         borderBottom: active
-          ? '2px solid var(--color-text-primary)'
+          ? '2px solid var(--color-accent-primary)'
           : '2px solid transparent',
         cursor: 'pointer',
         flexShrink: 0,
@@ -349,9 +351,9 @@ function TopTab({ label, active, status, onClick, onClose }: TopTabProps) {
 
 function StatusBadge({ status }: { status: Tournament['status'] }) {
   const config = {
-    setup:    { label: 'Configuración', bg: '#E6F1FB', color: '#0C447C', border: '#B5D4F4' },
-    active:   { label: 'En curso',      bg: '#EAF3DE', color: '#27500A', border: '#C0DD97' },
-    finished: { label: 'Finalizado',    bg: '#FAEEDA', color: '#633806', border: '#FAC775' },
+    setup:    { label: 'Configuración', bg: 'var(--color-draw-bg)', color: 'var(--color-accent-secondary)', border: 'var(--color-border-primary)' },
+    active:   { label: 'En curso',      bg: 'var(--color-success-bg)', color: 'var(--color-accent-secondary)', border: 'var(--color-border-success)' },
+    finished: { label: 'Finalizado',    bg: 'var(--color-warning-bg)', color: 'var(--color-text-warning)', border: 'var(--color-border-warning)' },
   }
   const c = config[status]
   return (

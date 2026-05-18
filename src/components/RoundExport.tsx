@@ -20,10 +20,10 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
     return (
       <div ref={ref} style={{
         width: '640px',
-        background: '#ffffff',
+        background: 'var(--color-background-primary)',
         padding: '2rem',
         fontFamily: 'system-ui, sans-serif',
-        color: '#1a1a1a',
+        color: 'var(--color-text-primary)',
       }}>
 
         {/* Cabecera */}
@@ -33,15 +33,15 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
           alignItems: 'flex-start',
           marginBottom: '1.5rem',
           paddingBottom: '1rem',
-          borderBottom: '1px solid #e5e5e5',
+          borderBottom: '1px solid var(--color-border-tertiary)',
         }}>
           <div>
             <div style={{ fontSize: '20px', fontWeight: 600 }}>{tournament.name}</div>
-            <div style={{ fontSize: '13px', color: '#888', marginTop: '2px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
               Ronda {tournament.currentRound} · Sistema Swiss
             </div>
           </div>
-          <div style={{ fontSize: '12px', color: '#aaa', textAlign: 'right' }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', textAlign: 'right' }}>
             {now}
           </div>
         </div>
@@ -50,7 +50,7 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
         <div style={{ marginBottom: '1.5rem' }}>
           <div style={{
             fontSize: '13px', fontWeight: 600, marginBottom: '.75rem',
-            textTransform: 'uppercase', letterSpacing: '0.05em', color: '#555',
+            textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-secondary)',
           }}>
             Emparejamientos
           </div>
@@ -71,9 +71,9 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
 
             const resultColor = (() => {
               if (!match.result)              return 'transparent'
-              if (match.result === 'timeout') return '#fee2e2'
-              if (match.result === 'draw')    return '#dbeafe'
-              return '#dcfce7'
+              if (match.result === 'timeout') return 'var(--color-danger-bg)'
+              if (match.result === 'draw')    return 'var(--color-draw-bg)'
+              return 'var(--color-success-bg)'
             })()
 
             return (
@@ -84,17 +84,17 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
                 gap: '8px',
                 padding: '10px 12px',
                 marginBottom: '6px',
-                border: '1px solid #f0f0f0',
+                border: '1px solid var(--color-border-tertiary)',
                 borderRadius: '8px',
-                background: '#fafafa',
+                background: 'var(--color-background-secondary)',
               }}>
-                <span style={{ fontSize: '11px', color: '#aaa', textAlign: 'center' }}>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', textAlign: 'center' }}>
                   M{match.tableNumber}
                 </span>
                 <span style={{ fontSize: '14px', fontWeight: 500, textAlign: 'right' }}>
                   {p1Name}
                 </span>
-                <span style={{ fontSize: '11px', color: '#bbb', padding: '0 4px' }}>vs</span>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', padding: '0 4px' }}>vs</span>
                 <span style={{ fontSize: '14px', fontWeight: 500 }}>
                   {p2Name}
                 </span>
@@ -107,7 +107,7 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
                     {resultText}
                   </span>
                 ) : (
-                  <span style={{ fontSize: '11px', color: '#ccc' }}>—</span>
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>—</span>
                 )}
               </div>
             )
@@ -118,7 +118,7 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
         <div>
           <div style={{
             fontSize: '13px', fontWeight: 600, marginBottom: '.75rem',
-            textTransform: 'uppercase', letterSpacing: '0.05em', color: '#555',
+            textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-secondary)',
           }}>
             Clasificación
           </div>
@@ -127,7 +127,7 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
             display: 'grid',
             gridTemplateColumns: '28px 1fr 40px 40px 40px 40px',
             gap: '4px', padding: '4px 8px',
-            fontSize: '11px', color: '#aaa', fontWeight: 600,
+            fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: 600,
           }}>
             <span>#</span><span>Jugador</span>
             <span style={{ textAlign: 'center' }}>Pts</span>
@@ -142,17 +142,17 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
               gridTemplateColumns: '28px 1fr 40px 40px 40px 40px',
               gap: '4px', alignItems: 'center',
               padding: '7px 8px', borderRadius: '6px',
-              background: row.position % 2 === 0 ? '#f9f9f9' : '#ffffff',
+              background: row.position % 2 === 0 ? 'var(--color-background-secondary)' : 'var(--color-background-primary)',
               fontSize: '13px',
             }}>
-              <span style={{ color: '#aaa', textAlign: 'center', fontSize: '12px' }}>
+              <span style={{ color: 'var(--color-text-muted)', textAlign: 'center', fontSize: '12px' }}>
                 {row.position}
               </span>
               <span style={{ fontWeight: 500 }}>{row.player.name}</span>
               <span style={{ textAlign: 'center', fontWeight: 600 }}>{row.player.points}</span>
-              <span style={{ textAlign: 'center', color: '#666' }}>{row.player.wins}</span>
-              <span style={{ textAlign: 'center', color: '#666' }}>{row.player.draws}</span>
-              <span style={{ textAlign: 'center', color: '#666' }}>{row.player.losses}</span>
+              <span style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>{row.player.wins}</span>
+              <span style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>{row.player.draws}</span>
+              <span style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>{row.player.losses}</span>
             </div>
           ))}
         </div>
@@ -160,8 +160,8 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
         {/* Pie */}
         <div style={{
           marginTop: '1.5rem', paddingTop: '1rem',
-          borderTop: '1px solid #f0f0f0',
-          fontSize: '11px', color: '#ccc', textAlign: 'center',
+          borderTop: '1px solid var(--color-border-tertiary)',
+          fontSize: '11px', color: 'var(--color-text-muted)', textAlign: 'center',
         }}>
           Generado con Gestor de Torneos · {now}
         </div>

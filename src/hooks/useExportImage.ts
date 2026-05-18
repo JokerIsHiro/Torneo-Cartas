@@ -13,7 +13,7 @@ export function useExportImage(): UseExportImageReturn {
     if (!ref.current) return
 
     const canvas = await html2canvas(ref.current, {
-      backgroundColor: '#ffffff',
+      backgroundColor: '#000000',
       scale: 2,
       useCORS: true,
       logging: false,

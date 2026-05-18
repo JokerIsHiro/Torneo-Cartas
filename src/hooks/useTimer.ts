@@ -84,8 +84,9 @@ export function useTimer({ durationSeconds, onFinish }: UseTimerOptions): UseTim
   // Si durationSeconds cambia desde fuera (ej: el usuario ajusta el tiempo),
   // reiniciar el temporizador
   useEffect(() => {
-    reset()
-  }, [durationSeconds]) // eslint-disable-line react-hooks/exhaustive-deps
+    const id = setTimeout(reset, 0)
+    return () => clearTimeout(id)
+  }, [reset])
 
   // ─── Helpers de UI ───────────────────────────────────────────────────────
 

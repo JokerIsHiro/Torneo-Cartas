@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useTimerStore, useTimerData } from '../store/timerStore'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
+import { CircularTimer } from './CircularTimer'
 
 interface TimerProps {
   tournamentId: string
@@ -58,17 +59,17 @@ export function Timer({ tournamentId }: TimerProps) {
 
   const { formatted, status, secondsLeft, isWarning, isDanger, isFinished } = timerData
 
-  const progressPercent = (secondsLeft / duration) * 100
+  const progress = secondsLeft / duration
 
   const barColor = (() => {
-    if (isFinished || isDanger) return '#E24B4A'
-    if (isWarning)              return '#EF9F27'
-    return '#1D9E75'
+    if (isFinished || isDanger) return 'var(--color-text-danger)'
+    if (isWarning)              return 'var(--color-text-warning)'
+    return 'var(--color-accent-primary)'
   })()
 
   const timeColor = (() => {
-    if (isFinished || isDanger) return '#A32D2D'
-    if (isWarning)              return '#854F0B'
+    if (isFinished || isDanger) return 'var(--color-text-danger)'
+    if (isWarning)              return 'var(--color-text-warning)'
     return 'var(--color-text-primary)'
   })()
 
@@ -85,64 +86,27 @@ export function Timer({ tournamentId }: TimerProps) {
   return (
     <div style={{
       background: 'var(--color-background-primary)',
-      border: `0.5px solid ${isFinished || isDanger ? '#F7C1C1' : 'var(--color-border-tertiary)'}`,
+      border: `0.5px solid ${isFinished || isDanger ? 'var(--color-border-danger)' : 'var(--color-border-tertiary)'}`,
       borderRadius: 'var(--border-radius-lg)',
       padding: '1.25rem 1.5rem',
       marginBottom: '1.5rem',
       transition: 'border-color .3s',
     }}>
 
-      {/* Tiempo */}
-      <div style={{
-        fontSize: '52px',
-        fontWeight: 500,
-        fontFamily: 'var(--font-mono, monospace)',
-        color: timeColor,
-        letterSpacing: '2px',
-        lineHeight: 1,
-        textAlign: 'center',
-        transition: 'color .3s',
-      }}>
-        {formatted}
-      </div>
-
-      {/* Estado */}
-      <div style={{
-        fontSize: '12px',
-        color: timeColor === 'var(--color-text-primary)' ? 'var(--color-text-secondary)' : timeColor,
-        textAlign: 'center',
-        marginTop: '6px',
-        marginBottom: '1rem',
-        transition: 'color .3s',
-      }}>
-        {statusLabel}
-      </div>
-
-      {/* Barra de progreso invertida */}
-      <div style={{
-        height: '6px',
-        background: 'var(--color-background-secondary)',
-        borderRadius: '3px',
-        marginBottom: '1rem',
-        overflow: 'hidden',
-        position: 'relative',
-      }}>
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          background: isFinished || isDanger ? '#FCEBEB' : isWarning ? '#FDF3E3' : '#EAF3DE',
-          transition: 'background .3s',
-        }} />
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          height: '100%',
-          width: `${progressPercent}%`,
-          background: barColor,
-          borderRadius: '3px',
-          transition: 'width 1s linear, background .3s',
-        }} />
+      <div style={{ marginBottom: '1rem' }}>
+        <CircularTimer
+          formatted={formatted}
+          progress={progress}
+          color={barColor}
+          trackColor={isFinished || isDanger ? 'var(--color-danger-bg)' : isWarning ? 'var(--color-warning-bg)' : 'var(--color-success-bg)'}
+          glowColor={isFinished || isDanger ? 'rgba(255, 107, 122, 0.16)' : isWarning ? 'rgba(255, 209, 102, 0.12)' : 'rgba(31, 122, 255, 0.14)'}
+          size="min(72vw, 260px)"
+          strokeWidth={6.5}
+          label={statusLabel}
+          labelColor={timeColor === 'var(--color-text-primary)' ? 'var(--color-text-secondary)' : timeColor}
+          timeColor={timeColor}
+          timeSize="clamp(36px, 11vw, 56px)"
+        />
       </div>
 
       {/* Controles */}
@@ -158,7 +122,7 @@ export function Timer({ tournamentId }: TimerProps) {
           <ControlBtn onClick={() => resumeTimer(tournamentId)} icon="ti-player-play" label="Continuar" />
         )}
         {isFinished && (
-          <ControlBtn onClick={() => {}} icon="ti-clock-off" label="Tiempo agotado" disabled color="#A32D2D" />
+          <ControlBtn onClick={() => {}} icon="ti-clock-off" label="Tiempo agotado" disabled color="var(--color-text-danger)" />
         )}
 
         <ControlBtn
