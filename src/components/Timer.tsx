@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTimerStore, useTimerData } from '../store/timerStore'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
@@ -11,38 +11,53 @@ export function Timer({ tournamentId }: TimerProps) {
   const tournament = useTournamentsStore(
     s => s.tournaments.find(t => t.id === tournamentId)
   )
-  const { initTimer, startTimer, pauseTimer, resumeTimer, resetTimer } = useTimerStore()
+
+  // Extraer funciones y estado como valores primitivos, no el objeto store entero
+  const initTimer   = useTimerStore(s => s.initTimer)
+  const startTimer  = useTimerStore(s => s.startTimer)
+  const pauseTimer  = useTimerStore(s => s.pauseTimer)
+  const resumeTimer = useTimerStore(s => s.resumeTimer)
+  const resetTimer  = useTimerStore(s => s.resetTimer)
+
+  // Solo el status como string primitivo, no el objeto timerData entero
+  const timerStatus = useTimerStore(s => s.timers[tournamentId]?.status ?? 'idle')
+
   const { allResultsIn } = useSwissPairings(tournamentId)
   const timerData = useTimerData(tournamentId)
 
-  const duration = tournament?.timerDuration ?? 50 * 60
+  const duration     = tournament?.timerDuration ?? 50 * 60
   const currentRound = tournament?.currentRound ?? 0
 
-  // Inicializar timer al montar
+  // Ref para evitar que el efecto de ronda se dispare en el montaje inicial
+  const prevRoundRef = useRef<number>(currentRound)
+
+  // 1. Inicializar timer solo al montar (o si cambia el torneo)
   useEffect(() => {
     initTimer(tournamentId, duration)
-  }, [tournamentId, duration])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tournamentId])
 
-  // Arrancar automáticamente al cambiar de ronda
+  // 2. Arrancar al cambiar de ronda (no en el montaje inicial)
   useEffect(() => {
-    if (currentRound > 0) {
+    if (currentRound > 0 && currentRound !== prevRoundRef.current) {
+      prevRoundRef.current = currentRound
       resetTimer(tournamentId, duration)
       startTimer(tournamentId)
     }
-  }, [currentRound])
+  }, [currentRound, tournamentId, duration, resetTimer, startTimer])
 
-  // Pausar cuando todos los resultados están introducidos
+  // 3. Pausar cuando entran todos los resultados
+  //    timerStatus es un string primitivo → React compara por valor, no por referencia
   useEffect(() => {
-    if (allResultsIn && timerData?.status === 'running') {
+    if (allResultsIn && timerStatus === 'running') {
       pauseTimer(tournamentId)
     }
-  }, [allResultsIn])
+  }, [allResultsIn, timerStatus, tournamentId, pauseTimer])
 
   if (!timerData) return null
 
   const { formatted, status, secondsLeft, isWarning, isDanger, isFinished } = timerData
 
-  // Barra invertida: empieza llena y se vacía
   const progressPercent = (secondsLeft / duration) * 100
 
   const barColor = (() => {
@@ -112,14 +127,12 @@ export function Timer({ tournamentId }: TimerProps) {
         overflow: 'hidden',
         position: 'relative',
       }}>
-        {/* Fondo completo en color muy suave */}
         <div style={{
           position: 'absolute',
           inset: 0,
           background: isFinished || isDanger ? '#FCEBEB' : isWarning ? '#FDF3E3' : '#EAF3DE',
           transition: 'background .3s',
         }} />
-        {/* Barra que se vacía de izquierda a derecha */}
         <div style={{
           position: 'absolute',
           top: 0,
