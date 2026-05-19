@@ -7,14 +7,16 @@ import { Results } from './pages/Results'
 import { Standings } from './components/Standings'
 import { ProjectorView } from './components/ProjectorView'
 import { TimersView } from './components/TimersView'
+import { RegistrationView } from './components/RegistrationView'
 import type { Tournament } from './types/tournament'
 
-type AppRoute = 'admin' | 'proyeccion' | 'temporizadores'
+type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion'
 type AdminTab = string
 
 function getRouteFromHash(): AppRoute {
   if (window.location.hash.startsWith('#/proyeccion')) return 'proyeccion'
   if (window.location.hash.startsWith('#/temporizadores')) return 'temporizadores'
+  if (window.location.hash.startsWith('#/inscripcion')) return 'inscripcion'
   return 'admin'
 }
 
@@ -157,7 +159,7 @@ export default function App() {
           </>
         )}
 
-        {route !== 'admin' && (
+        {route !== 'admin' && route !== 'inscripcion' && (
           <div className="public-nav">
             {route === 'proyeccion' && (
               <button onClick={() => setRoute('temporizadores')}>
@@ -178,6 +180,7 @@ export default function App() {
       <main className={route !== 'admin' ? 'main-content projector-content' : 'main-content'}>
         {route === 'proyeccion' && <ProjectorView />}
         {route === 'temporizadores' && <TimersView />}
+        {route === 'inscripcion' && <RegistrationView />}
 
         {route === 'admin' && activeTournament && (
           <TournamentView

@@ -58,13 +58,13 @@ export function Setup({ tournamentId }: SetupProps) {
 
   function getInvitationLink() {
     const url = new URL(window.location.href)
-    url.hash = `/proyeccion?torneo=${encodeURIComponent(tournamentId)}`
+    url.hash = `/inscripcion?torneo=${encodeURIComponent(tournamentId)}`
     return url.toString()
   }
 
   function getInvitationText() {
     const game = tcgOptions.find(opt => opt.value === tcg)?.label ?? 'TCG'
-    return `Invitación a ${name || 'torneo'} (${game}). Consulta la información pública aquí: ${getInvitationLink()}`
+    return `Invitación a ${name || 'torneo'} (${game}). Inscríbete aquí: ${getInvitationLink()}`
   }
 
   async function copyInvitation() {
@@ -191,7 +191,7 @@ export function Setup({ tournamentId }: SetupProps) {
           fontSize: '12px',
           color: inviteStatus ? 'var(--color-accent-secondary)' : 'var(--color-text-secondary)',
         }}>
-          {inviteStatus || 'Comparte este enlace para que puedan consultar la información pública del torneo.'}
+          {inviteStatus || 'Comparte este enlace para que puedan inscribirse al torneo.'}
         </div>
       </div>
 
