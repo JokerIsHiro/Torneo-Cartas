@@ -4,6 +4,7 @@ import { useTournamentsStore } from '../store/tournamentsStore'
 import { useTimerData, useTimerStore } from '../store/timerStore'
 import type { Tournament } from '../types/tournament'
 import { CircularTimer } from './CircularTimer'
+import { playTimerFinishedSound, unlockTimerSound } from '../utils/timerSound'
 
 // Pantalla publica de temporizadores de todos los torneos activos.
 export function TimersView() {
@@ -34,6 +35,11 @@ export function TimersView() {
     await viewRef.current.requestFullscreen()
   }
 
+  async function testSound() {
+    await unlockTimerSound()
+    playTimerFinishedSound()
+  }
+
   if (!tournaments.length) {
     return (
       <div style={{
@@ -61,6 +67,25 @@ export function TimersView() {
         justifyContent: 'flex-end',
         marginBottom: isFullscreen ? '1.25rem' : '.75rem',
       }}>
+        <button
+          onClick={testSound}
+          style={{
+            padding: '8px 12px',
+            fontSize: '12px',
+            border: '0.5px solid var(--color-border-secondary)',
+            borderRadius: 'var(--border-radius-md)',
+            background: 'var(--color-background-primary)',
+            color: 'var(--color-text-primary)',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '7px',
+            marginRight: '8px',
+          }}
+        >
+          <i className="ti ti-volume" aria-hidden="true" />
+          Probar sonido
+        </button>
         <button
           onClick={toggleFullscreen}
           style={{
