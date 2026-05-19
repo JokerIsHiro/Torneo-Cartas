@@ -5,6 +5,7 @@ import { playTimerFinishedSound } from '../utils/timerSound'
 interface TimerState {
   secondsLeft: number
   status: 'idle' | 'running' | 'paused' | 'finished'
+  endsAt: number | null
   intervalId: ReturnType<typeof setInterval> | null
 }
 
@@ -26,16 +27,23 @@ export const TIMER_SYNC_KEY = 'torneos-timers-sync'
 const defaultTimer = (durationSeconds: number): TimerState => ({
   secondsLeft: durationSeconds,
   status: 'idle',
+  endsAt: null,
   intervalId: null,
 })
+
+function getSecondsLeft(timer: TimerState | SyncedTimerState) {
+  if (timer.status !== 'running' || !timer.endsAt) return timer.secondsLeft
+  return Math.max(0, Math.ceil((timer.endsAt - Date.now()) / 1000))
+}
 
 function publishTimers(timers: Record<string, TimerState>) {
   const syncedTimers = Object.fromEntries(
     Object.entries(timers).map(([id, timer]) => [
       id,
       {
-        secondsLeft: timer.secondsLeft,
+        secondsLeft: getSecondsLeft(timer),
         status: timer.status,
+        endsAt: timer.endsAt,
       } satisfies SyncedTimerState,
     ])
   )
@@ -56,24 +64,32 @@ function commitTimers(timers: Record<string, TimerState>) {
   publishTimers(timers)
 }
 
+function ensureTicker(tournamentId: string, timer: TimerState) {
+  if (timer.status !== 'running') return null
+  if (timer.intervalId) return timer.intervalId
+  return setInterval(() => tickTimer(tournamentId), 250)
+}
+
 function tickTimer(tournamentId: string) {
   const current = useTimerStore.getState().timers[tournamentId]
-  if (!current) return
+  if (!current || current.status !== 'running') return
 
-  if (current.secondsLeft <= 1) {
+  const secondsLeft = getSecondsLeft(current)
+
+  if (secondsLeft <= 0) {
     if (current.intervalId) clearInterval(current.intervalId)
     useTournamentsStore.getState().applyTimeoutToUnfinished(tournamentId)
     playTimerFinishedSound()
     commitTimers({
       ...useTimerStore.getState().timers,
-      [tournamentId]: { ...current, secondsLeft: 0, status: 'finished', intervalId: null },
+      [tournamentId]: { ...current, secondsLeft: 0, status: 'finished', endsAt: null, intervalId: null },
     })
     return
   }
 
   commitTimers({
     ...useTimerStore.getState().timers,
-    [tournamentId]: { ...current, secondsLeft: current.secondsLeft - 1 },
+    [tournamentId]: { ...current, secondsLeft },
   })
 }
 
@@ -84,18 +100,21 @@ export function syncTimersFromStorage(value?: string | null) {
     timers: Object.fromEntries(
       Object.entries(syncedTimers).map(([id, timer]) => {
         const existing = s.timers[id]
+        const secondsLeft = getSecondsLeft(timer)
 
         if (existing?.intervalId && timer.status !== 'running') {
           clearInterval(existing.intervalId)
         }
 
-        return [
-          id,
-          {
-            ...timer,
-            intervalId: existing?.status === 'running' ? existing.intervalId : null,
-          },
-        ]
+        const nextTimer: TimerState = {
+          ...timer,
+          secondsLeft,
+          intervalId: timer.status === 'running' ? existing?.intervalId ?? null : null,
+        }
+
+        nextTimer.intervalId = ensureTicker(id, nextTimer)
+
+        return [id, nextTimer]
       })
     ),
   }))
@@ -106,10 +125,20 @@ export const useTimerStore = create<TimerStore>((_, get) => ({
 
   initTimer: (tournamentId, durationSeconds) => {
     const existing = get().timers[tournamentId]
-    if (existing) return
+    if (existing) {
+      const intervalId = ensureTicker(tournamentId, existing)
+      if (intervalId !== existing.intervalId) {
+        commitTimers({ ...get().timers, [tournamentId]: { ...existing, intervalId } })
+      }
+      return
+    }
 
     const syncedTimer = readSyncedTimers()[tournamentId]
-    const timer = syncedTimer ? { ...syncedTimer, intervalId: null } : defaultTimer(durationSeconds)
+    const timer: TimerState = syncedTimer
+      ? { ...syncedTimer, secondsLeft: getSecondsLeft(syncedTimer), intervalId: null }
+      : defaultTimer(durationSeconds)
+    timer.intervalId = ensureTicker(tournamentId, timer)
+
     commitTimers({ ...get().timers, [tournamentId]: timer })
   },
 
@@ -117,11 +146,15 @@ export const useTimerStore = create<TimerStore>((_, get) => ({
     const timer = get().timers[tournamentId]
     if (!timer || timer.status !== 'idle') return
 
-    const intervalId = setInterval(() => tickTimer(tournamentId), 1000)
-    commitTimers({
-      ...get().timers,
-      [tournamentId]: { ...timer, status: 'running', intervalId },
-    })
+    const nextTimer: TimerState = {
+      ...timer,
+      status: 'running',
+      endsAt: Date.now() + timer.secondsLeft * 1000,
+      intervalId: null,
+    }
+    nextTimer.intervalId = ensureTicker(tournamentId, nextTimer)
+
+    commitTimers({ ...get().timers, [tournamentId]: nextTimer })
   },
 
   pauseTimer: (tournamentId) => {
@@ -131,7 +164,13 @@ export const useTimerStore = create<TimerStore>((_, get) => ({
 
     commitTimers({
       ...get().timers,
-      [tournamentId]: { ...timer, status: 'paused', intervalId: null },
+      [tournamentId]: {
+        ...timer,
+        secondsLeft: getSecondsLeft(timer),
+        status: 'paused',
+        endsAt: null,
+        intervalId: null,
+      },
     })
   },
 
@@ -139,11 +178,15 @@ export const useTimerStore = create<TimerStore>((_, get) => ({
     const timer = get().timers[tournamentId]
     if (!timer || timer.status !== 'paused') return
 
-    const intervalId = setInterval(() => tickTimer(tournamentId), 1000)
-    commitTimers({
-      ...get().timers,
-      [tournamentId]: { ...timer, status: 'running', intervalId },
-    })
+    const nextTimer: TimerState = {
+      ...timer,
+      status: 'running',
+      endsAt: Date.now() + timer.secondsLeft * 1000,
+      intervalId: null,
+    }
+    nextTimer.intervalId = ensureTicker(tournamentId, nextTimer)
+
+    commitTimers({ ...get().timers, [tournamentId]: nextTimer })
   },
 
   resetTimer: (tournamentId, durationSeconds) => {
@@ -165,7 +208,8 @@ export function useTimerData(tournamentId: string) {
   const timer = useTimerStore(s => s.timers[tournamentId])
   if (!timer) return null
 
-  const { secondsLeft, status } = timer
+  const secondsLeft = getSecondsLeft(timer)
+  const { status } = timer
   const m = Math.floor(secondsLeft / 60)
   const s = secondsLeft % 60
   const formatted = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
