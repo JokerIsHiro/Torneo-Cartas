@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import type { MatchResult, Player, Tournament } from '../types/tournament'
 
@@ -11,10 +12,12 @@ interface PlayerSession {
 export function RegistrationView() {
   const tournamentId = getTargetTournamentId()
   const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
-  const { syncEnabled, syncLoaded } = useTournamentsStore(s => ({
-    syncEnabled: s.syncEnabled,
-    syncLoaded: s.syncLoaded,
-  }))
+  const { syncEnabled, syncLoaded } = useTournamentsStore(
+    useShallow(s => ({
+      syncEnabled: s.syncEnabled,
+      syncLoaded: s.syncLoaded,
+    }))
+  )
   const addPlayer = useTournamentsStore(s => s.addPlayer)
   const submitPlayerResult = useTournamentsStore(s => s.submitPlayerResult)
   const [name, setName] = useState('')
