@@ -11,6 +11,7 @@ export function TimersView() {
   const tournaments = useTournamentsStore(
     useShallow(s => s.tournaments.filter(t => t.status === 'active'))
   )
+  const density = tournaments.length >= 5 ? 'many' : tournaments.length >= 3 ? 'several' : 'few'
 
   useEffect(() => {
     function handleFullscreenChange() {
@@ -79,23 +80,21 @@ export function TimersView() {
         </button>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isFullscreen
-          ? 'repeat(auto-fit, minmax(min(420px, 100%), 1fr))'
-          : 'repeat(auto-fill, minmax(280px, 1fr))',
-        gap: isFullscreen ? '1.5rem' : '1rem',
-        paddingBottom: '1rem',
-      }}>
+      <div className={`timers-grid ${density} ${isFullscreen ? 'fullscreen' : ''}`}>
         {tournaments.map(t => (
-          <TimerCard key={t.id} tournament={t} large={isFullscreen} />
+          <TimerCard
+            key={t.id}
+            tournament={t}
+            large={isFullscreen}
+            compact={density === 'many'}
+          />
         ))}
       </div>
     </div>
   )
 }
 
-function TimerCard({ tournament, large }: { tournament: Tournament; large: boolean }) {
+function TimerCard({ tournament, large, compact }: { tournament: Tournament; large: boolean; compact: boolean }) {
   const initTimer   = useTimerStore(s => s.initTimer)
   const startTimer  = useTimerStore(s => s.startTimer)
   const pauseTimer  = useTimerStore(s => s.pauseTimer)
@@ -134,16 +133,16 @@ function TimerCard({ tournament, large }: { tournament: Tournament; large: boole
   })()
 
   return (
-    <div style={{
+    <div className={compact ? 'timer-card compact' : 'timer-card'} style={{
       background: 'var(--color-background-primary)',
       border: `0.5px solid ${isFinished || isDanger ? 'var(--color-border-danger)' : 'var(--color-border-tertiary)'}`,
       borderRadius: 'var(--border-radius-lg)',
-      padding: large ? '1.5rem' : '1.25rem',
+      padding: compact ? '1rem' : large ? '1.5rem' : '1.25rem',
       transition: 'border-color .3s',
     }}>
       <div style={{ marginBottom: large ? '1rem' : '.875rem' }}>
         <div style={{
-          fontSize: large ? '18px' : '14px',
+          fontSize: compact ? '15px' : large ? '18px' : '14px',
           fontWeight: 500,
           color: 'var(--color-text-primary)',
           marginBottom: '2px',
@@ -153,7 +152,7 @@ function TimerCard({ tournament, large }: { tournament: Tournament; large: boole
         }}>
           {tournament.name}
         </div>
-        <div style={{ fontSize: large ? '13px' : '11px', color: 'var(--color-text-secondary)' }}>
+        <div style={{ fontSize: compact ? '12px' : large ? '13px' : '11px', color: 'var(--color-text-secondary)' }}>
           Ronda {tournament.currentRound}
         </div>
       </div>
@@ -165,12 +164,12 @@ function TimerCard({ tournament, large }: { tournament: Tournament; large: boole
           color={timerColor}
           trackColor={isFinished || isDanger ? 'var(--color-danger-bg)' : isWarning ? 'var(--color-warning-bg)' : 'var(--color-success-bg)'}
           glowColor={isFinished || isDanger ? 'rgba(255, 107, 122, 0.18)' : isWarning ? 'rgba(255, 209, 102, 0.14)' : 'rgba(31, 122, 255, 0.16)'}
-          size={large ? 'min(46vh, 72vw, 390px)' : 'min(58vw, 220px)'}
+          size={compact ? 'clamp(180px, 18vw, 280px)' : large ? 'clamp(240px, 28vw, 390px)' : 'min(58vw, 220px)'}
           strokeWidth={large ? 6.5 : 6.5}
           label={statusLabel}
           labelColor={timeColor === 'var(--color-text-primary)' ? 'var(--color-text-secondary)' : timeColor}
           timeColor={timeColor}
-          timeSize={large ? 'clamp(54px, 8vw, 92px)' : 'clamp(34px, 10vw, 46px)'}
+          timeSize={compact ? 'clamp(42px, 5vw, 68px)' : large ? 'clamp(54px, 8vw, 92px)' : 'clamp(34px, 10vw, 46px)'}
         />
       </div>
 
