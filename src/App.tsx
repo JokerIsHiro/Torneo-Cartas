@@ -9,6 +9,7 @@ import { ProjectorView } from './components/ProjectorView'
 import { TimersView } from './components/TimersView'
 import { RegistrationView } from './components/RegistrationView'
 import type { Tournament } from './types/tournament'
+import { unlockTimerSound } from './utils/timerSound'
 
 type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion'
 type AdminTab = string
@@ -72,6 +73,20 @@ export default function App() {
 
     window.addEventListener('storage', handleStorageSync)
     return () => window.removeEventListener('storage', handleStorageSync)
+  }, [])
+
+  useEffect(() => {
+    function handleFirstInteraction() {
+      void unlockTimerSound()
+    }
+
+    window.addEventListener('pointerdown', handleFirstInteraction, { once: true })
+    window.addEventListener('keydown', handleFirstInteraction, { once: true })
+
+    return () => {
+      window.removeEventListener('pointerdown', handleFirstInteraction)
+      window.removeEventListener('keydown', handleFirstInteraction)
+    }
   }, [])
 
   if (!hydrated) {

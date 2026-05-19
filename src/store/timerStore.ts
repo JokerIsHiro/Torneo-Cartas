@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { useTournamentsStore } from './tournamentsStore'
+import { playTimerFinishedSound } from '../utils/timerSound'
 
 interface TimerState {
   secondsLeft: number
@@ -62,6 +63,7 @@ function tickTimer(tournamentId: string) {
   if (current.secondsLeft <= 1) {
     if (current.intervalId) clearInterval(current.intervalId)
     useTournamentsStore.getState().applyTimeoutToUnfinished(tournamentId)
+    playTimerFinishedSound()
     commitTimers({
       ...useTimerStore.getState().timers,
       [tournamentId]: { ...current, secondsLeft: 0, status: 'finished', intervalId: null },
