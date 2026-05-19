@@ -10,8 +10,11 @@ import { playTimerFinishedSound, unlockTimerSound } from '../utils/timerSound'
 export function TimersView() {
   const viewRef = useRef<HTMLDivElement | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const targetTournamentId = getTargetTournamentId()
   const tournaments = useTournamentsStore(
-    useShallow(s => s.tournaments.filter(t => t.status === 'active'))
+    useShallow(s => s.tournaments.filter(t =>
+      t.status === 'active' && (!targetTournamentId || t.id === targetTournamentId)
+    ))
   )
   const density = tournaments.length >= 5 ? 'many' : tournaments.length >= 3 ? 'several' : 'few'
 
@@ -118,6 +121,11 @@ export function TimersView() {
       </div>
     </div>
   )
+}
+
+function getTargetTournamentId() {
+  const searchParams = new URLSearchParams(window.location.search)
+  return searchParams.get('torneo') ?? ''
 }
 
 function TimerCard({ tournament, large, compact }: { tournament: Tournament; large: boolean; compact: boolean }) {

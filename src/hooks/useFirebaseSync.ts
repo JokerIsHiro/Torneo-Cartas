@@ -7,7 +7,7 @@ import {
 } from '../services/firebase'
 import { useTournamentsStore } from '../store/tournamentsStore'
 
-export function useFirebaseSync() {
+export function useFirebaseSync(mode: 'admin' | 'public' = 'admin') {
   useEffect(() => {
     let isMounted = true
     const store = useTournamentsStore.getState()
@@ -32,7 +32,7 @@ export function useFirebaseSync() {
           remoteTournaments => {
             const localTournaments = useTournamentsStore.getState().tournaments
 
-            if (!hasReceivedSnapshot && remoteTournaments.length === 0 && localTournaments.length > 0) {
+            if (mode === 'admin' && !hasReceivedSnapshot && remoteTournaments.length === 0 && localTournaments.length > 0) {
               hasReceivedSnapshot = true
               localTournaments.forEach(tournament => {
                 void saveRemoteTournament(tournament).catch(error => {
@@ -43,7 +43,7 @@ export function useFirebaseSync() {
             }
 
             hasReceivedSnapshot = true
-            useTournamentsStore.getState().setRemoteTournaments(remoteTournaments)
+            useTournamentsStore.getState().setRemoteTournaments(remoteTournaments, mode === 'admin')
           },
           error => {
             console.error('No se ha podido escuchar Firebase', error)
@@ -64,5 +64,5 @@ export function useFirebaseSync() {
       useTournamentsStore.getState().setSyncEnabled(false)
       useTournamentsStore.getState().setSyncLoaded(false)
     }
-  }, [])
+  }, [mode])
 }

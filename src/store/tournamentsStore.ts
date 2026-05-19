@@ -186,7 +186,7 @@ interface TournamentsStore {
   // Gestión de torneos
   createTournament: () => string                          // devuelve el id
   deleteTournament: (id: string) => void
-  setRemoteTournaments: (tournaments: Tournament[]) => void
+  setRemoteTournaments: (tournaments: Tournament[], mergeLocal?: boolean) => void
   setSyncEnabled: (enabled: boolean) => void
   setSyncLoaded: (loaded: boolean) => void
   updateTournamentName: (id: string, name: string) => void
@@ -241,9 +241,9 @@ export const useTournamentsStore = create<TournamentsStore>()(
         syncRemoteDelete(id)
       },
 
-      setRemoteTournaments: (tournaments) => {
+      setRemoteTournaments: (tournaments, mergeLocal = false) => {
         set(s => ({
-          tournaments: mergeRemoteTournaments(s.tournaments, tournaments),
+          tournaments: mergeLocal ? mergeRemoteTournaments(s.tournaments, tournaments) : tournaments,
           syncLoaded: true,
         }))
       },

@@ -40,12 +40,11 @@ function setRoute(route: AppRoute) {
 }
 
 export default function App() {
-  useFirebaseSync()
-
   const [hydrated, setHydrated] = useState(false)
   const [route, setRouteState] = useState<AppRoute>(getRouteFromPath)
   const [activeTab, setActiveTab] = useState<AdminTab>('')
   const [innerTab, setInnerTab] = useState<Record<string, 'ronda' | 'clasificacion'>>({})
+  useFirebaseSync(route === 'admin' ? 'admin' : 'public')
 
   const tournaments = useTournamentsStore(s => s.tournaments)
   const createTournament = useTournamentsStore(s => s.createTournament)
@@ -82,6 +81,8 @@ export default function App() {
 
   useEffect(() => {
     function handleStorageSync(event: StorageEvent) {
+      if (route !== 'admin') return
+
       if (event.key === 'torneos-storage') {
         void useTournamentsStore.persist.rehydrate()
       }
@@ -93,7 +94,7 @@ export default function App() {
 
     window.addEventListener('storage', handleStorageSync)
     return () => window.removeEventListener('storage', handleStorageSync)
-  }, [])
+  }, [route])
 
   useEffect(() => {
     function handleFirstInteraction() {
@@ -144,7 +145,9 @@ export default function App() {
   }
 
   function openPublicTab(target: 'proyeccion' | 'temporizadores') {
-    window.open(routePaths[target], '_blank', 'noopener,noreferrer')
+    const url = new URL(routePaths[target], window.location.origin)
+    if (selectedTab) url.searchParams.set('torneo', selectedTab)
+    window.open(url.toString(), '_blank', 'noopener,noreferrer')
   }
 
   const selectedTab = activeTab || tournaments[0]?.id || ''
