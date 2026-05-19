@@ -231,6 +231,8 @@ interface TournamentsStore {
   startTournament: (id: string) => void
   nextRound: (id: string) => void
   setMatchResult: (id: string, matchId: string, result: MatchResult) => void
+  swapCurrentRoundPlayers: (id: string, firstMatchId: string, firstPlayerId: string, secondMatchId: string, secondPlayerId: string) => void
+  addLatePlayerToCurrentRound: (id: string, name: string) => 'added-to-round' | 'added-next-round' | 'duplicate' | 'closed' | 'has-results'
   submitPlayerResult: (id: string, matchId: string, playerId: string, result: PendingMatchResult['result']) => void
   approvePendingResult: (id: string, pendingResultId: string) => void
   rejectPendingResult: (id: string, pendingResultId: string) => void
@@ -368,6 +370,126 @@ export const useTournamentsStore = create<TournamentsStore>()(
           currentRound: 1,
           status: 'active',
         }))
+      },
+
+      swapCurrentRoundPlayers: (id, firstMatchId, firstPlayerId, secondMatchId, secondPlayerId) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament || tournament.status !== 'active') return
+
+        const round = tournament.rounds[tournament.currentRound - 1]
+        if (!round) return
+        if (round.matches.some(match => match.result !== null)) return
+        if (firstMatchId === secondMatchId) return
+        if (firstPlayerId === secondPlayerId) return
+
+        const firstMatch = round.matches.find(match => match.id === firstMatchId)
+        const secondMatch = round.matches.find(match => match.id === secondMatchId)
+        if (!firstMatch || !secondMatch) return
+        if (firstMatch.p2Id === 'BYE' || secondMatch.p2Id === 'BYE') return
+
+        const firstIsP1 = firstMatch.p1Id === firstPlayerId
+        const firstIsP2 = firstMatch.p2Id === firstPlayerId
+        const secondIsP1 = secondMatch.p1Id === secondPlayerId
+        const secondIsP2 = secondMatch.p2Id === secondPlayerId
+        if ((!firstIsP1 && !firstIsP2) || (!secondIsP1 && !secondIsP2)) return
+
+        const updatedMatches = round.matches.map(match => {
+          if (match.id === firstMatchId) {
+            return {
+              ...match,
+              p1Id: firstIsP1 ? secondPlayerId : match.p1Id,
+              p2Id: firstIsP2 ? secondPlayerId : match.p2Id,
+            }
+          }
+
+          if (match.id === secondMatchId) {
+            return {
+              ...match,
+              p1Id: secondIsP1 ? firstPlayerId : match.p1Id,
+              p2Id: secondIsP2 ? firstPlayerId : match.p2Id,
+            }
+          }
+
+          return match
+        })
+
+        commitTournament(set, touchTournament({
+          ...tournament,
+          pendingResults: [],
+          rounds: tournament.rounds.map(candidate =>
+            candidate.number === tournament.currentRound
+              ? { ...candidate, matches: updatedMatches }
+              : candidate
+          ),
+        }))
+      },
+
+      addLatePlayerToCurrentRound: (id, name) => {
+        const playerName = name.trim()
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament || tournament.status !== 'active' || tournament.currentRound > 2) return 'closed'
+        if (!playerName) return 'duplicate'
+        if (tournament.players.some(player => player.name.toLowerCase() === playerName.toLowerCase())) return 'duplicate'
+
+        const round = tournament.rounds[tournament.currentRound - 1]
+        if (!round) return 'closed'
+        if (round.matches.some(match => match.result !== null && match.result !== 'bye')) return 'has-results'
+
+        const initialLosses = tournament.currentRound - 1
+        const latePlayer: Player = {
+          id: crypto.randomUUID(),
+          uid: undefined,
+          name: playerName,
+          points: 0,
+          wins: 0,
+          losses: initialLosses,
+          draws: 0,
+          byes: 0,
+          timeoutLosses: 0,
+          opponents: [],
+        }
+
+        const byeMatch = round.matches.find(match => match.p2Id === 'BYE')
+        if (!byeMatch) {
+          commitTournament(set, touchTournament({
+            ...tournament,
+            players: [...tournament.players, latePlayer],
+          }))
+          return 'added-next-round'
+        }
+
+        const updatedPlayers = tournament.players
+          .map(player => {
+            if (player.id !== byeMatch.p1Id) return player
+            return {
+              ...player,
+              points: Math.max(0, player.points - 3),
+              wins: Math.max(0, player.wins - 1),
+              byes: Math.max(0, player.byes - 1),
+            }
+          })
+          .concat(latePlayer)
+
+        const updatedRounds = tournament.rounds.map(candidate =>
+          candidate.number === tournament.currentRound
+            ? {
+                ...candidate,
+                matches: candidate.matches.map(match =>
+                  match.id === byeMatch.id
+                    ? { ...match, p2Id: latePlayer.id, result: null }
+                    : match
+                ),
+              }
+            : candidate
+        )
+
+        commitTournament(set, touchTournament({
+          ...tournament,
+          players: updatedPlayers,
+          rounds: updatedRounds,
+          pendingResults: [],
+        }))
+        return 'added-to-round'
       },
 
       setMatchResult: (id, matchId, result) => {

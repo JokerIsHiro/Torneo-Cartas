@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
@@ -15,6 +15,8 @@ interface RoundProps {
 export function Round({ tournamentId }: RoundProps) {
   const nextRound = useTournamentsStore(s => s.nextRound)
   const finishTournament = useTournamentsStore(s => s.finishTournament)
+  const swapCurrentRoundPlayers = useTournamentsStore(s => s.swapCurrentRoundPlayers)
+  const addLatePlayerToCurrentRound = useTournamentsStore(s => s.addLatePlayerToCurrentRound)
   const { currentRound, pendingResults, tournament } = useTournamentsStore(
     useShallow(s => {
       const t = s.tournaments.find(t => t.id === tournamentId)
@@ -33,12 +35,31 @@ export function Round({ tournamentId }: RoundProps) {
     isFinalRound,
     shouldFinish,
     roundSummaries,
+    getPlayerName,
   } = useSwissPairings(tournamentId)
 
   const { ref: roundExportRef, exportImage: exportRoundImage } = useExportImage()
   const { ref: standingsExportRef, exportImage: exportStandingsImage } = useExportImage()
   const currentSummary = roundSummaries.find(r => r.number === currentRound)
   const previousPendingCount = useRef(pendingResults.length)
+  const [firstSwapSlot, setFirstSwapSlot] = useState('')
+  const [secondSwapSlot, setSecondSwapSlot] = useState('')
+  const [latePlayerName, setLatePlayerName] = useState('')
+  const [pairingToolMessage, setPairingToolMessage] = useState('')
+  const editablePairings = currentMatches.length > 0
+    && currentMatches.every(match => match.result === null)
+    && !currentMatches.some(match => match.p2Id === 'BYE')
+  const canAddLatePlayer = currentMatches.length > 0
+    && currentRound <= 2
+    && currentMatches.every(match => match.result === null || match.result === 'bye')
+  const playerSlots = useMemo(() => {
+    return currentMatches
+      .filter(match => match.p2Id !== 'BYE')
+      .flatMap(match => [
+        { value: `${match.id}:${match.p1Id}`, label: `Mesa ${match.tableNumber} · ${getPlayerName(match.p1Id)}` },
+        { value: `${match.id}:${match.p2Id}`, label: `Mesa ${match.tableNumber} · ${getPlayerName(match.p2Id)}` },
+      ])
+  }, [currentMatches, getPlayerName])
 
   useEffect(() => {
     if (pendingResults.length > previousPendingCount.current) {
@@ -88,6 +109,79 @@ export function Round({ tournamentId }: RoundProps) {
 
         {tournament && pendingResults.length > 0 && (
           <PendingResultsPanel tournament={tournament} pendingResults={pendingResults} />
+        )}
+
+        {editablePairings && (
+          <section className="pairing-tools-panel">
+            <header>
+              <strong>Editar emparejamiento</strong>
+              <span>Intercambia jugadores antes del primer resultado</span>
+            </header>
+            <select value={firstSwapSlot} onChange={event => setFirstSwapSlot(event.target.value)}>
+              <option value="">Primer jugador</option>
+              {playerSlots.map(slot => (
+                <option key={`first-${slot.value}`} value={slot.value}>{slot.label}</option>
+              ))}
+            </select>
+            <select value={secondSwapSlot} onChange={event => setSecondSwapSlot(event.target.value)}>
+              <option value="">Segundo jugador</option>
+              {playerSlots.map(slot => (
+                <option key={`second-${slot.value}`} value={slot.value}>{slot.label}</option>
+              ))}
+            </select>
+            <button
+              disabled={!canSwapSlots(firstSwapSlot, secondSwapSlot)}
+              onClick={() => {
+                const first = parseSwapSlot(firstSwapSlot)
+                const second = parseSwapSlot(secondSwapSlot)
+                if (!first || !second) return
+                swapCurrentRoundPlayers(tournamentId, first.matchId, first.playerId, second.matchId, second.playerId)
+                setFirstSwapSlot('')
+                setSecondSwapSlot('')
+              }}
+            >
+              <i className="ti ti-arrows-exchange" aria-hidden="true" />
+              Intercambiar
+            </button>
+          </section>
+        )}
+
+        {canAddLatePlayer && (
+          <section className="pairing-tools-panel">
+            <header>
+              <strong>Jugador tardio</strong>
+              <span>Ronda 1 entra limpio. Ronda 2 entra con 1 derrota. Desde ronda 3 no se permite.</span>
+            </header>
+            <input
+              value={latePlayerName}
+              onChange={event => {
+                setLatePlayerName(event.target.value)
+                setPairingToolMessage('')
+              }}
+              placeholder="Nombre del jugador"
+            />
+            <button
+              disabled={!latePlayerName.trim()}
+              onClick={() => {
+                const result = addLatePlayerToCurrentRound(tournamentId, latePlayerName.trim())
+                const messages = {
+                  'added-to-round': 'Jugador anadido a la ronda actual.',
+                  'added-next-round': 'Jugador anadido al torneo. No habia BYE, entrara en la siguiente ronda.',
+                  duplicate: 'Ya existe un jugador con ese nombre.',
+                  closed: 'Solo se puede anadir en ronda 1 o ronda 2.',
+                  'has-results': 'No se puede anadir si ya hay resultados registrados.',
+                }
+                setPairingToolMessage(messages[result])
+                if (result === 'added-to-round' || result === 'added-next-round') {
+                  setLatePlayerName('')
+                }
+              }}
+            >
+              <i className="ti ti-user-plus" aria-hidden="true" />
+              Anadir jugador
+            </button>
+            {pairingToolMessage && <p>{pairingToolMessage}</p>}
+          </section>
         )}
 
         {allResultsIn && (
@@ -177,6 +271,21 @@ function PendingResultsPanel({
       ))}
     </section>
   )
+}
+
+function parseSwapSlot(value: string) {
+  const [matchId, playerId] = value.split(':')
+  if (!matchId || !playerId) return null
+  return { matchId, playerId }
+}
+
+function canSwapSlots(firstValue: string, secondValue: string) {
+  const first = parseSwapSlot(firstValue)
+  const second = parseSwapSlot(secondValue)
+  if (!first || !second) return false
+  if (first.matchId === second.matchId) return false
+  if (first.playerId === second.playerId) return false
+  return true
 }
 
 async function notifyOrganizer(title: string, body: string) {

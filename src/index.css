@@ -630,6 +630,17 @@ button:disabled {
   gap: 8px;
 }
 
+.pairing-tools-panel select,
+.pairing-tools-panel input {
+  width: 100%;
+  min-width: 0;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  outline: none;
+}
+
 .round-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 390px;
@@ -862,6 +873,61 @@ button:disabled {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-top: 8px;
+}
+
+.pairing-tools-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  background: var(--color-background-primary);
+}
+
+.pairing-tools-panel header {
+  display: grid;
+  gap: 2px;
+}
+
+.pairing-tools-panel header strong {
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.pairing-tools-panel header span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.pairing-tools-panel select,
+.pairing-tools-panel input {
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.pairing-tools-panel button {
+  min-height: 38px;
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pairing-tools-panel button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pairing-tools-panel p {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .pending-results-panel {
@@ -1117,7 +1183,7 @@ button:disabled {
   }
 
   .setup-summary-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 
   .round-export-actions {

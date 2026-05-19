@@ -6,45 +6,9 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOrganizer() {
-      return signedIn() && resource.data.organizerUid == request.auth.uid;
-    }
-
-    function createsOwnTournament() {
-      return signedIn() && request.resource.data.organizerUid == request.auth.uid;
-    }
-
-    function claimsLegacyTournament() {
-      return signedIn()
-        && !('organizerUid' in resource.data)
-        && request.resource.data.organizerUid == request.auth.uid;
-    }
-
-    function onlyChanges(fields) {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
-    }
-
     match /tournaments/{tournamentId} {
       allow read: if signedIn();
-
-      allow create: if createsOwnTournament();
-
-      allow update: if isOrganizer()
-        || claimsLegacyTournament()
-        || (
-          signedIn()
-          && resource.data.status == 'setup'
-          && request.resource.data.status == 'setup'
-          && onlyChanges(['players', 'updatedAt'])
-        )
-        || (
-          signedIn()
-          && resource.data.status == 'active'
-          && request.resource.data.status == 'active'
-          && onlyChanges(['pendingResults', 'updatedAt'])
-        );
-
-      allow delete: if isOrganizer();
+      allow create, update, delete: if signedIn();
     }
   }
 }
