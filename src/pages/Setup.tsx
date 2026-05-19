@@ -58,7 +58,8 @@ export function Setup({ tournamentId }: SetupProps) {
   }
 
   function getInvitationLink() {
-    const url = new URL(window.location.href)
+    const publicUrl = import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin
+    const url = new URL(publicUrl)
     url.pathname = '/inscripcion'
     url.search = `?torneo=${encodeURIComponent(tournamentId)}`
     url.hash = ''

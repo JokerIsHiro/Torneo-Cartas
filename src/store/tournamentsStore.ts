@@ -159,12 +159,14 @@ function syncRemoteDelete(tournamentId: string) {
 interface TournamentsStore {
   tournaments: Tournament[]
   syncEnabled: boolean
+  syncLoaded: boolean
 
   // Gestión de torneos
   createTournament: () => string                          // devuelve el id
   deleteTournament: (id: string) => void
   setRemoteTournaments: (tournaments: Tournament[]) => void
   setSyncEnabled: (enabled: boolean) => void
+  setSyncLoaded: (loaded: boolean) => void
   updateTournamentName: (id: string, name: string) => void
   setTournamentTCG: (id: string, tcg: TournamentTCG) => void
   setTimerDuration: (id: string, seconds: number) => void
@@ -189,6 +191,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
     (set, get) => ({
       tournaments: [],
       syncEnabled: false,
+      syncLoaded: false,
 
       createTournament: () => {
         const id = crypto.randomUUID()
@@ -216,11 +219,15 @@ export const useTournamentsStore = create<TournamentsStore>()(
       },
 
       setRemoteTournaments: (tournaments) => {
-        set({ tournaments })
+        set({ tournaments, syncLoaded: true })
       },
 
       setSyncEnabled: (enabled) => {
         set({ syncEnabled: enabled })
+      },
+
+      setSyncLoaded: (loaded) => {
+        set({ syncLoaded: loaded })
       },
 
       updateTournamentName: (id, name) => {

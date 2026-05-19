@@ -14,10 +14,12 @@ export function useFirebaseSync() {
 
     if (!hasFirebaseConfig()) {
       store.setSyncEnabled(false)
+      store.setSyncLoaded(true)
       return
     }
 
     store.setSyncEnabled(true)
+    store.setSyncLoaded(false)
 
     let hasReceivedSnapshot = false
     let unsubscribe: (() => void) | null = null
@@ -46,18 +48,21 @@ export function useFirebaseSync() {
           error => {
             console.error('No se ha podido escuchar Firebase', error)
             useTournamentsStore.getState().setSyncEnabled(false)
+            useTournamentsStore.getState().setSyncLoaded(true)
           }
         )
       })
       .catch(error => {
         console.error('No se ha podido iniciar Firebase Auth', error)
         useTournamentsStore.getState().setSyncEnabled(false)
+        useTournamentsStore.getState().setSyncLoaded(true)
       })
 
     return () => {
       isMounted = false
       unsubscribe?.()
       useTournamentsStore.getState().setSyncEnabled(false)
+      useTournamentsStore.getState().setSyncLoaded(false)
     }
   }, [])
 }

@@ -11,6 +11,10 @@ interface PlayerSession {
 export function RegistrationView() {
   const tournamentId = getTargetTournamentId()
   const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
+  const { syncEnabled, syncLoaded } = useTournamentsStore(s => ({
+    syncEnabled: s.syncEnabled,
+    syncLoaded: s.syncLoaded,
+  }))
   const addPlayer = useTournamentsStore(s => s.addPlayer)
   const submitPlayerResult = useTournamentsStore(s => s.submitPlayerResult)
   const [name, setName] = useState('')
@@ -26,12 +30,32 @@ export function RegistrationView() {
     return tournament.players.find(p => p.id === session.playerId) ?? null
   }, [session, tournament])
 
+  if (!tournamentId) {
+    return (
+      <div className="registration-card">
+        <i className="ti ti-link-off" aria-hidden="true" />
+        <h1>Enlace no disponible</h1>
+        <p>Falta el identificador del torneo en el enlace.</p>
+      </div>
+    )
+  }
+
+  if (!tournament && syncEnabled && !syncLoaded) {
+    return (
+      <div className="registration-card">
+        <i className="ti ti-loader-2" aria-hidden="true" />
+        <h1>Cargando torneo</h1>
+        <p>Estamos sincronizando los datos del evento.</p>
+      </div>
+    )
+  }
+
   if (!tournament) {
     return (
       <div className="registration-card">
         <i className="ti ti-link-off" aria-hidden="true" />
         <h1>Enlace no disponible</h1>
-        <p>Este dispositivo no tiene acceso a los datos del torneo.</p>
+        <p>No se ha encontrado este torneo. Revisa que el enlace sea el ultimo generado por el organizador.</p>
       </div>
     )
   }
