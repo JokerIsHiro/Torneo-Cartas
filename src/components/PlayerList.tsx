@@ -43,7 +43,7 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
           <div style={cardTitleStyle}>
             <i className="ti ti-user-plus" aria-hidden="true" /> Añadir jugadores
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="player-add-form" style={{ display: 'flex', gap: '8px' }}>
             <input
               type="text"
               value={input}
@@ -62,7 +62,7 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
                 outline: 'none',
               }}
             />
-            <button onClick={handleAdd} style={btnStyle}>
+            <button onClick={handleAdd} disabled={!input.trim()} style={btnStyle}>
               <i className="ti ti-plus" aria-hidden="true" /> Añadir
             </button>
           </div>
@@ -139,7 +139,7 @@ function SetupPlayerRow({ player, index, onRemove }: { player: Player; index: nu
       <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', minWidth: '20px' }}>
         {index}
       </span>
-      <span style={{ flex: 1, fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
+      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
         {player.name}
       </span>
       <button

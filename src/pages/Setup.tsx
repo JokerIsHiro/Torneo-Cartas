@@ -90,7 +90,7 @@ export function Setup({ tournamentId }: SetupProps) {
 
   return (
     <div>
-      <div style={cardStyle}>
+      <div className="setup-card" style={cardStyle}>
         <div style={cardTitleStyle}>
           <i className="ti ti-tournament" aria-hidden="true" /> Nombre del torneo
         </div>
@@ -103,7 +103,7 @@ export function Setup({ tournamentId }: SetupProps) {
         />
       </div>
 
-      <div style={cardStyle}>
+      <div className="setup-card" style={cardStyle}>
         <div style={cardTitleStyle}>
           <i className="ti ti-cards" aria-hidden="true" /> Juego
         </div>
@@ -135,7 +135,7 @@ export function Setup({ tournamentId }: SetupProps) {
         )}
       </div>
 
-      <div style={cardStyle}>
+      <div className="setup-card" style={cardStyle}>
         <div style={cardTitleStyle}>
           <i className="ti ti-clock" aria-hidden="true" /> Duración de cada ronda
         </div>
@@ -162,7 +162,7 @@ export function Setup({ tournamentId }: SetupProps) {
         </div>
       </div>
 
-      <div style={cardStyle}>
+      <div className="setup-card" style={cardStyle}>
         <div style={cardTitleStyle}>
           <i className="ti ti-send" aria-hidden="true" /> Invitación
         </div>
@@ -247,7 +247,7 @@ export function Setup({ tournamentId }: SetupProps) {
         }}
       >
         <i className="ti ti-player-play" aria-hidden="true" />
-        Iniciar torneo
+        Iniciar ronda 1
       </button>
     </div>
   )

@@ -153,21 +153,27 @@ export default function App() {
               />
             ))}
 
-            <button
-              onClick={() => openPublicTab('proyeccion')}
-              className="projector-open-button"
-            >
-              <i className="ti ti-external-link" aria-hidden="true" />
-              Emparejamientos
-            </button>
+            {tournaments.length > 0 && (
+              <div className="admin-public-actions">
+                <button
+                  onClick={() => openPublicTab('proyeccion')}
+                  className="projector-open-button"
+                  title="Abrir emparejamientos en otra pestaña"
+                >
+                  <i className="ti ti-external-link" aria-hidden="true" />
+                  Emparejamientos
+                </button>
 
-            <button
-              onClick={() => openPublicTab('temporizadores')}
-              className="projector-open-button"
-            >
-              <i className="ti ti-clock" aria-hidden="true" />
-              Temporizadores
-            </button>
+                <button
+                  onClick={() => openPublicTab('temporizadores')}
+                  className="projector-open-button"
+                  title="Abrir temporizadores en otra pestaña"
+                >
+                  <i className="ti ti-clock" aria-hidden="true" />
+                  Temporizadores
+                </button>
+              </div>
+            )}
 
             <button
               onClick={handleCreateTournament}

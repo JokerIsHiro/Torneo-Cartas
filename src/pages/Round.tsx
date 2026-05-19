@@ -48,7 +48,7 @@ export function Round({ tournamentId }: RoundProps) {
         alignItems: 'center',
         marginBottom: '1rem',
       }}>
-        <div className="round-export-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
           <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
             <i className="ti ti-swords" aria-hidden="true" /> Ronda {currentRound}
           </span>
@@ -63,7 +63,7 @@ export function Round({ tournamentId }: RoundProps) {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="round-export-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
             {currentSummary?.matchesDone ?? 0}/{currentSummary?.matchesTotal ?? 0} resultados
           </span>
