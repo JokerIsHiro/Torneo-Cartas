@@ -2,12 +2,11 @@ import { useEffect } from 'react'
 import {
   ensureFirebaseAuth,
   hasFirebaseConfig,
-  saveRemoteTournament,
   subscribeToRemoteTournaments,
 } from '../services/firebase'
 import { useTournamentsStore } from '../store/tournamentsStore'
 
-export function useFirebaseSync(mode: 'admin' | 'public' = 'admin') {
+export function useFirebaseSync() {
   useEffect(() => {
     let isMounted = true
     const store = useTournamentsStore.getState()
@@ -18,10 +17,10 @@ export function useFirebaseSync(mode: 'admin' | 'public' = 'admin') {
       return
     }
 
+    localStorage.removeItem('torneos-storage')
     store.setSyncEnabled(true)
     store.setSyncLoaded(false)
 
-    let hasReceivedSnapshot = false
     let unsubscribe: (() => void) | null = null
 
     void ensureFirebaseAuth()
@@ -30,20 +29,7 @@ export function useFirebaseSync(mode: 'admin' | 'public' = 'admin') {
 
         unsubscribe = subscribeToRemoteTournaments(
           remoteTournaments => {
-            const localTournaments = useTournamentsStore.getState().tournaments
-
-            if (mode === 'admin' && !hasReceivedSnapshot && remoteTournaments.length === 0 && localTournaments.length > 0) {
-              hasReceivedSnapshot = true
-              localTournaments.forEach(tournament => {
-                void saveRemoteTournament(tournament).catch(error => {
-                  console.error('No se ha podido subir el torneo local a Firebase', error)
-                })
-              })
-              return
-            }
-
-            hasReceivedSnapshot = true
-            useTournamentsStore.getState().setRemoteTournaments(remoteTournaments, mode === 'admin')
+            useTournamentsStore.getState().setRemoteTournaments(remoteTournaments)
           },
           error => {
             console.error('No se ha podido escuchar Firebase', error)
@@ -64,5 +50,5 @@ export function useFirebaseSync(mode: 'admin' | 'public' = 'admin') {
       useTournamentsStore.getState().setSyncEnabled(false)
       useTournamentsStore.getState().setSyncLoaded(false)
     }
-  }, [mode])
+  }, [])
 }

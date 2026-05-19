@@ -34,6 +34,8 @@
 
   --border-radius-md:           6px;
   --border-radius-lg:           10px;
+  --layout-gap:                 16px;
+  --panel-padding:              16px;
 
   --font-sans:                  system-ui, -apple-system, sans-serif;
   --font-mono:                  ui-monospace, 'Cascadia Code', monospace;
@@ -109,11 +111,13 @@ button:disabled {
 .top-bar {
   width: 100%;
   max-width: 100vw;
+  min-height: 64px;
   background: rgba(5, 7, 12, 0.94);
   border-bottom: 0.5px solid var(--color-border-tertiary);
-  padding: 0 1rem;
+  padding: 0 clamp(0.75rem, 2vw, 1.5rem);
   display: flex;
   align-items: center;
+  gap: 8px;
   overflow-x: auto;
   position: sticky;
   top: 0;
@@ -122,9 +126,10 @@ button:disabled {
 }
 
 .brand-block {
-  padding: 6px 18px 6px 4px;
+  min-height: 64px;
+  padding: 6px 18px 6px 0;
   border-right: 0.5px solid var(--color-border-tertiary);
-  margin-right: 10px;
+  margin-right: 2px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -153,9 +158,10 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 12px;
+  padding: 0 14px;
   height: 44px;
-  border-bottom: 2px solid transparent;
+  border: 0.5px solid transparent;
+  border-radius: var(--border-radius-md);
   cursor: pointer;
   flex-shrink: 0;
   transition: border-color .15s;
@@ -163,7 +169,8 @@ button:disabled {
 }
 
 .top-tab.active {
-  border-bottom-color: var(--color-accent-primary);
+  border-color: var(--color-border-primary);
+  background: var(--color-background-primary);
   color: var(--color-text-primary);
 }
 
@@ -209,7 +216,8 @@ button:disabled {
 }
 
 .new-tournament-button {
-  margin-left: 8px;
+  min-height: 36px;
+  margin-left: 0;
   flex-shrink: 0;
   padding: 6px 12px;
   font-size: 12px;
@@ -222,6 +230,7 @@ button:disabled {
 }
 
 .projector-open-button {
+  min-height: 36px;
   flex-shrink: 0;
   padding: 6px 12px;
   font-size: 12px;
@@ -266,9 +275,9 @@ button:disabled {
 .main-content {
   width: 100%;
   min-width: 0;
-  max-width: 1180px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 1.5rem 1rem;
+  padding: clamp(1rem, 2vw, 1.75rem);
 }
 
 .projector-content {
@@ -282,7 +291,11 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--layout-gap);
+  padding: 14px 16px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  background: rgba(5, 7, 12, 0.78);
 }
 
 .tournament-header h2,
@@ -315,7 +328,8 @@ button:disabled {
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-md);
   overflow: hidden;
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--layout-gap);
+  background: var(--color-background-primary);
 }
 
 .segmented-tabs button {
@@ -466,8 +480,8 @@ button:disabled {
 
 .setup-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) 372px;
+  gap: var(--layout-gap);
   align-items: start;
 }
 
@@ -478,17 +492,19 @@ button:disabled {
 
 .setup-side-column {
   position: sticky;
-  top: 86px;
+  top: 80px;
+  display: grid;
+  gap: 12px;
 }
 
 .option-grid {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 8px;
 }
 
 .option-pill {
-  min-height: 32px;
+  min-height: 38px;
   padding: 6px 14px;
   font-size: 13px;
   border: 0.5px solid var(--color-border-tertiary);
@@ -520,6 +536,7 @@ button:disabled {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  min-height: 44px;
 }
 
 .invite-card-header p {
@@ -531,9 +548,9 @@ button:disabled {
 .invite-qr-wrap {
   display: grid;
   place-items: center;
-  width: min(100%, 252px);
-  margin: 0 auto 1rem;
-  padding: 14px;
+  width: min(100%, 268px);
+  margin: 2px auto var(--layout-gap);
+  padding: 16px;
   border-radius: var(--border-radius-lg);
   background: #ffffff;
   border: 0.5px solid var(--color-border-tertiary);
@@ -547,13 +564,13 @@ button:disabled {
 
 .invite-actions {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .invite-action-buttons {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
 }
 
 .invite-status {
@@ -565,7 +582,7 @@ button:disabled {
 .setup-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
   text-align: center;
 }
 
@@ -598,7 +615,7 @@ button:disabled {
 
 .start-tournament-button {
   width: 100%;
-  min-height: 44px;
+  min-height: 48px;
   padding: 10px;
   font-size: 14px;
   font-weight: 600;
@@ -615,8 +632,8 @@ button:disabled {
 
 .round-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 390px);
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: var(--layout-gap);
   align-items: start;
 }
 
@@ -627,16 +644,19 @@ button:disabled {
 
 .round-side-column {
   position: sticky;
-  top: 86px;
+  top: 80px;
+  display: grid;
+  gap: 12px;
 }
 
 .round-section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  padding: 10px 12px;
+  min-height: 58px;
+  gap: var(--layout-gap);
+  margin-bottom: var(--layout-gap);
+  padding: 10px 14px;
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-lg);
   background: var(--color-background-primary);
@@ -667,8 +687,8 @@ button:disabled {
 
 .round-match-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
-  gap: .625rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(390px, 100%), 1fr));
+  gap: 12px;
 }
 
 .round-match-grid .match-card {
@@ -689,7 +709,7 @@ button:disabled {
 }
 
 .round-missing-results {
-  margin-top: 1rem;
+  margin-top: 0;
   padding: 10px 12px;
   border-radius: var(--border-radius-md);
   background: var(--color-background-secondary);
@@ -845,7 +865,7 @@ button:disabled {
 }
 
 .pending-results-panel {
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   border: 0.5px solid var(--color-border-primary);
   border-radius: var(--border-radius-lg);
   background: var(--color-background-primary);

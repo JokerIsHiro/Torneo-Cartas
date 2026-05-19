@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import type {
   Tournament,
   Player,
@@ -11,8 +10,8 @@ import type {
 } from '../types/tournament'
 import { deleteRemoteTournament, getCurrentUserId, saveRemoteTournament } from '../services/firebase'
 
-// Store persistido de torneos. Es la fuente de verdad para jugadores, rondas,
-// resultados, estado del torneo y configuracion.
+// Cache en memoria de torneos. Firestore es la fuente de verdad; Zustand solo
+// alimenta la UI y calcula los siguientes estados antes de enviarlos.
 
 // ─── Helpers de emparejamiento Swiss ─────────────────────────────────────────
 
@@ -158,22 +157,14 @@ function touchTournament<T extends Tournament>(tournament: T): T {
   return { ...tournament, updatedAt: Date.now() }
 }
 
-function mergeRemoteTournaments(local: Tournament[], remote: Tournament[]) {
-  const byId = new Map<string, Tournament>()
-
-  for (const tournament of remote) {
-    byId.set(tournament.id, tournament)
-  }
-
-  for (const tournament of local) {
-    const remoteTournament = byId.get(tournament.id)
-    if (!remoteTournament || (tournament.updatedAt ?? 0) > (remoteTournament.updatedAt ?? 0)) {
-      byId.set(tournament.id, tournament)
-      syncRemoteTournament(tournament)
-    }
-  }
-
-  return [...byId.values()].sort((a, b) => a.createdAt - b.createdAt)
+function replaceTournament(
+  set: (partial: TournamentsStore | Partial<TournamentsStore> | ((state: TournamentsStore) => TournamentsStore | Partial<TournamentsStore>)) => void,
+  tournament: Tournament
+) {
+  set(s => ({
+    tournaments: s.tournaments.map(t => t.id === tournament.id ? tournament : t),
+  }))
+  syncRemoteTournament(tournament)
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -186,7 +177,7 @@ interface TournamentsStore {
   // Gestión de torneos
   createTournament: () => string                          // devuelve el id
   deleteTournament: (id: string) => void
-  setRemoteTournaments: (tournaments: Tournament[], mergeLocal?: boolean) => void
+  setRemoteTournaments: (tournaments: Tournament[]) => void
   setSyncEnabled: (enabled: boolean) => void
   setSyncLoaded: (loaded: boolean) => void
   updateTournamentName: (id: string, name: string) => void
@@ -209,7 +200,6 @@ interface TournamentsStore {
 }
 
 export const useTournamentsStore = create<TournamentsStore>()(
-  persist(
     (set, get) => ({
       tournaments: [],
       syncEnabled: false,
@@ -241,11 +231,8 @@ export const useTournamentsStore = create<TournamentsStore>()(
         syncRemoteDelete(id)
       },
 
-      setRemoteTournaments: (tournaments, mergeLocal = false) => {
-        set(s => ({
-          tournaments: mergeLocal ? mergeRemoteTournaments(s.tournaments, tournaments) : tournaments,
-          syncLoaded: true,
-        }))
+      setRemoteTournaments: (tournaments) => {
+        set({ tournaments, syncLoaded: true })
       },
 
       setSyncEnabled: (enabled) => {
@@ -257,24 +244,21 @@ export const useTournamentsStore = create<TournamentsStore>()(
       },
 
       updateTournamentName: (id, name) => {
-        set(s => ({
-          tournaments: s.tournaments.map(t => t.id === id ? touchTournament({ ...t, name }) : t),
-        }))
-        syncRemoteTournament(get().tournaments.find(t => t.id === id))
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament) return
+        replaceTournament(set, touchTournament({ ...tournament, name }))
       },
 
       setTournamentTCG: (id, tcg) => {
-        set(s => ({
-          tournaments: s.tournaments.map(t => t.id === id ? touchTournament({ ...t, tcg }) : t),
-        }))
-        syncRemoteTournament(get().tournaments.find(t => t.id === id))
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament) return
+        replaceTournament(set, touchTournament({ ...tournament, tcg }))
       },
 
       setTimerDuration: (id, seconds) => {
-        set(s => ({
-          tournaments: s.tournaments.map(t => t.id === id ? touchTournament({ ...t, timerDuration: seconds }) : t),
-        }))
-        syncRemoteTournament(get().tournaments.find(t => t.id === id))
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament) return
+        replaceTournament(set, touchTournament({ ...tournament, timerDuration: seconds }))
       },
 
       addPlayer: (id, name) => {
@@ -295,12 +279,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
           opponents: [],
         }
 
-        set(s => ({
-          tournaments: s.tournaments.map(t =>
-            t.id === id ? touchTournament({ ...t, players: [...t.players, newPlayer] }) : t
-          ),
-        }))
-        syncRemoteTournament(get().tournaments.find(t => t.id === id))
+        replaceTournament(set, touchTournament({ ...tournament, players: [...tournament.players, newPlayer] }))
         return newPlayer.id
       },
 
@@ -308,14 +287,10 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament || tournament.status !== 'setup') return
 
-        set(s => ({
-          tournaments: s.tournaments.map(t =>
-            t.id === id
-              ? touchTournament({ ...t, players: t.players.filter(p => p.id !== playerId) })
-              : t
-          ),
+        replaceTournament(set, touchTournament({
+          ...tournament,
+          players: tournament.players.filter(p => p.id !== playerId),
         }))
-        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       startTournament: (id) => {
@@ -334,14 +309,13 @@ export const useTournamentsStore = create<TournamentsStore>()(
           endedAt: null,
         }
 
-        set(s => ({
-          tournaments: s.tournaments.map(t =>
-            t.id === id
-              ? touchTournament({ ...t, players: updatedPlayers, rounds: [firstRound], currentRound: 1, status: 'active' })
-              : t
-          ),
+        replaceTournament(set, touchTournament({
+          ...tournament,
+          players: updatedPlayers,
+          rounds: [firstRound],
+          currentRound: 1,
+          status: 'active',
         }))
-        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       setMatchResult: (id, matchId, result) => {
@@ -361,12 +335,12 @@ export const useTournamentsStore = create<TournamentsStore>()(
         )
         const pendingResults = (tournament.pendingResults ?? []).filter(p => p.matchId !== matchId)
 
-        set(s => ({
-          tournaments: s.tournaments.map(t =>
-            t.id === id ? touchTournament({ ...t, players: updatedPlayers, rounds: updatedRounds, pendingResults }) : t
-          ),
+        replaceTournament(set, touchTournament({
+          ...tournament,
+          players: updatedPlayers,
+          rounds: updatedRounds,
+          pendingResults,
         }))
-        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       submitPlayerResult: (id, matchId, playerId, result) => {
@@ -389,16 +363,13 @@ export const useTournamentsStore = create<TournamentsStore>()(
           createdAt: Date.now(),
         }
 
-        set(s => ({
-          tournaments: s.tournaments.map(t => {
-            if (t.id !== id) return t
-            const pendingResults = (t.pendingResults ?? []).filter(p =>
-              !(p.matchId === matchId && p.playerId === playerId)
-            )
-            return touchTournament({ ...t, pendingResults: [...pendingResults, pendingResult] })
-          }),
+        const pendingResults = (tournament.pendingResults ?? []).filter(p =>
+          !(p.matchId === matchId && p.playerId === playerId)
+        )
+        replaceTournament(set, touchTournament({
+          ...tournament,
+          pendingResults: [...pendingResults, pendingResult],
         }))
-        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       approvePendingResult: (id, pendingResultId) => {
@@ -409,14 +380,12 @@ export const useTournamentsStore = create<TournamentsStore>()(
       },
 
       rejectPendingResult: (id, pendingResultId) => {
-        set(s => ({
-          tournaments: s.tournaments.map(t =>
-            t.id === id
-              ? touchTournament({ ...t, pendingResults: (t.pendingResults ?? []).filter(p => p.id !== pendingResultId) })
-              : t
-          ),
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament) return
+        replaceTournament(set, touchTournament({
+          ...tournament,
+          pendingResults: (tournament.pendingResults ?? []).filter(p => p.id !== pendingResultId),
         }))
-        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       applyTimeoutToUnfinished: (id) => {
@@ -441,12 +410,12 @@ export const useTournamentsStore = create<TournamentsStore>()(
           !unfinished.some(match => match.id === p.matchId)
         )
 
-        set(s => ({
-          tournaments: s.tournaments.map(t =>
-            t.id === id ? touchTournament({ ...t, players: updatedPlayers, rounds: updatedRounds, pendingResults }) : t
-          ),
+        replaceTournament(set, touchTournament({
+          ...tournament,
+          players: updatedPlayers,
+          rounds: updatedRounds,
+          pendingResults,
         }))
-        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       nextRound: (id) => {
@@ -474,20 +443,13 @@ export const useTournamentsStore = create<TournamentsStore>()(
           endedAt: null,
         }
 
-        set(s => ({
-          tournaments: s.tournaments.map(t =>
-            t.id === id
-              ? touchTournament({
-                  ...t,
-                  players: updatedPlayers,
-                  rounds: [...closedRounds, newRound],
-                  pendingResults: [],
-                  currentRound: nextRoundNumber,
-                })
-              : t
-          ),
+        replaceTournament(set, touchTournament({
+          ...tournament,
+          players: updatedPlayers,
+          rounds: [...closedRounds, newRound],
+          pendingResults: [],
+          currentRound: nextRoundNumber,
         }))
-        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       finishTournament: (id) => {
@@ -501,16 +463,14 @@ export const useTournamentsStore = create<TournamentsStore>()(
           r.number === tournament.currentRound ? { ...r, endedAt: Date.now() } : r
         )
 
-        set(s => ({
-          tournaments: s.tournaments.map(t =>
-            t.id === id ? touchTournament({ ...t, rounds: closedRounds, pendingResults: [], status: 'finished' }) : t
-          ),
+        replaceTournament(set, touchTournament({
+          ...tournament,
+          rounds: closedRounds,
+          pendingResults: [],
+          status: 'finished',
         }))
-        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
-    }),
-    { name: 'torneos-storage' }
-  )
+    })
 )
 
 // Helper para obtener un torneo por id sin suscribirse a todo el store

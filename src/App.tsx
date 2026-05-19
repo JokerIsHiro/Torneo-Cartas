@@ -40,13 +40,14 @@ function setRoute(route: AppRoute) {
 }
 
 export default function App() {
-  const [hydrated, setHydrated] = useState(false)
   const [route, setRouteState] = useState<AppRoute>(getRouteFromPath)
   const [activeTab, setActiveTab] = useState<AdminTab>('')
   const [innerTab, setInnerTab] = useState<Record<string, 'ronda' | 'clasificacion'>>({})
-  useFirebaseSync(route === 'admin' ? 'admin' : 'public')
+  useFirebaseSync()
 
   const tournaments = useTournamentsStore(s => s.tournaments)
+  const syncEnabled = useTournamentsStore(s => s.syncEnabled)
+  const syncLoaded = useTournamentsStore(s => s.syncLoaded)
   const createTournament = useTournamentsStore(s => s.createTournament)
   const deleteTournament = useTournamentsStore(s => s.deleteTournament)
   const initTimer = useTimerStore(s => s.initTimer)
@@ -67,26 +68,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (useTournamentsStore.persist.hasHydrated()) {
-      const id = setTimeout(() => setHydrated(true), 0)
-      return () => clearTimeout(id)
-    }
-
-    const unsub = useTournamentsStore.persist.onFinishHydration(() => {
-      setHydrated(true)
-      unsub()
-    })
-    return () => unsub()
-  }, [])
-
-  useEffect(() => {
     function handleStorageSync(event: StorageEvent) {
-      if (route !== 'admin') return
-
-      if (event.key === 'torneos-storage') {
-        void useTournamentsStore.persist.rehydrate()
-      }
-
       if (event.key === TIMER_SYNC_KEY) {
         syncTimersFromStorage(event.newValue)
       }
@@ -94,7 +76,7 @@ export default function App() {
 
     window.addEventListener('storage', handleStorageSync)
     return () => window.removeEventListener('storage', handleStorageSync)
-  }, [route])
+  }, [])
 
   useEffect(() => {
     function handleFirstInteraction() {
@@ -110,15 +92,6 @@ export default function App() {
     }
   }, [])
 
-  if (!hydrated) {
-    return (
-      <div className="loading-screen">
-        <i className="ti ti-loader-2" aria-hidden="true" />
-        Cargando...
-      </div>
-    )
-  }
-
   function getInnerTab(id: string): 'ronda' | 'clasificacion' {
     return innerTab[id] ?? 'ronda'
   }
@@ -128,6 +101,7 @@ export default function App() {
   }
 
   function handleCreateTournament() {
+    if (syncEnabled && !syncLoaded) return
     const id = createTournament()
     initTimer(id, 50 * 60)
     setActiveTab(id)
@@ -200,6 +174,7 @@ export default function App() {
 
             <button
               onClick={handleCreateTournament}
+              disabled={syncEnabled && !syncLoaded}
               className="new-tournament-button"
             >
               <i className="ti ti-plus" aria-hidden="true" />
@@ -239,7 +214,14 @@ export default function App() {
           />
         )}
 
-        {route === 'admin' && !activeTournament && (
+        {route === 'admin' && syncEnabled && !syncLoaded && (
+          <div className="empty-state">
+            <i className="ti ti-loader-2" aria-hidden="true" />
+            <div>Cargando torneos...</div>
+          </div>
+        )}
+
+        {route === 'admin' && syncLoaded && !activeTournament && (
           <div className="empty-state">
             <i className="ti ti-trophy-off" aria-hidden="true" />
             <div>No hay torneos creados</div>
