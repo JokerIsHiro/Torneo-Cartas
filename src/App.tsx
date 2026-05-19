@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTournamentsStore } from './store/tournamentsStore'
-import { useTimerStore } from './store/timerStore'
+import { syncTimersFromStorage, TIMER_SYNC_KEY, useTimerStore } from './store/timerStore'
 import { Setup } from './pages/Setup'
 import { Round } from './pages/Round'
 import { Results } from './pages/Results'
@@ -61,8 +61,13 @@ export default function App() {
 
   useEffect(() => {
     function handleStorageSync(event: StorageEvent) {
-      if (event.key !== 'torneos-storage') return
-      void useTournamentsStore.persist.rehydrate()
+      if (event.key === 'torneos-storage') {
+        void useTournamentsStore.persist.rehydrate()
+      }
+
+      if (event.key === TIMER_SYNC_KEY) {
+        syncTimersFromStorage(event.newValue)
+      }
     }
 
     window.addEventListener('storage', handleStorageSync)

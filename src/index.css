@@ -438,6 +438,27 @@ button:hover:not(:disabled) {
   min-width: 0;
 }
 
+.result-button {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.result-button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--color-border-secondary) !important;
+}
+
 .registration-card {
   width: min(100%, 460px);
   margin: clamp(1rem, 6vh, 4rem) auto 0;

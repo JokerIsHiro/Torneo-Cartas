@@ -39,7 +39,8 @@ export function MatchCard({ match, tournamentId, readOnly = false }: MatchCardPr
     const c = colors[variant]
     return {
       flex: 1,
-      padding: '6px 8px',
+      padding: '8px 10px',
+      minHeight: '42px',
       fontSize: '12px',
       border: active ? `0.5px solid ${c.border}` : '0.5px solid var(--color-border-tertiary)',
       borderRadius: 'var(--border-radius-md)',
@@ -49,6 +50,7 @@ export function MatchCard({ match, tournamentId, readOnly = false }: MatchCardPr
       transition: 'all .15s',
       textAlign: 'center' as const,
       fontWeight: active ? 500 : 400,
+      minWidth: 0,
     }
   }
 
@@ -115,38 +117,42 @@ export function MatchCard({ match, tournamentId, readOnly = false }: MatchCardPr
           borderTop: '0.5px solid var(--color-border-tertiary)',
         }}>
           <button
+            className="result-button result-button-win"
             style={{...resultBtnStyle(match.result === 'p1', 'win'), borderRadius: 'var(--border-radius-md)'}}
             onClick={() => handleResult('p1')}
           >
             <i className="ti ti-trophy" aria-hidden="true" style={{ fontSize: '12px' }} />
-            {' '}{getPlayerName(match.p1Id)}
+            <span>Gana {getPlayerName(match.p1Id)}</span>
           </button>
 
           {allowsDraw && (
             <button
+              className="result-button result-button-draw"
               style={{...resultBtnStyle(match.result === 'draw', 'draw'), borderRadius: 'var(--border-radius-md)'}}
               onClick={() => handleResult('draw')}
             >
               <i className="ti ti-equal" aria-hidden="true" style={{ fontSize: '12px' }} />
-              {' '}Empate
+              <span>Empate</span>
             </button>
           )}
 
           <button
+            className="result-button result-button-win"
             style={{...resultBtnStyle(match.result === 'p2', 'win'), borderRadius: 'var(--border-radius-md)'}}
             onClick={() => handleResult('p2')}
           >
             <i className="ti ti-trophy" aria-hidden="true" style={{ fontSize: '12px' }} />
-            {' '}{getPlayerName(match.p2Id as string)}
+            <span>Gana {getPlayerName(match.p2Id as string)}</span>
           </button>
 
           <button
+            className="result-button result-button-timeout"
             style={resultBtnStyle(match.result === 'timeout', 'timeout')}
             onClick={() => handleResult('timeout')}
             title="Ambos jugadores pierden por tiempo"
           >
             <i className="ti ti-clock-off" aria-hidden="true" style={{ fontSize: '12px' }} />
-            {' '}Tiempo
+            <span>Tiempo</span>
           </button>
         </div>
       )}
