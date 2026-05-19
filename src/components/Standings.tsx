@@ -9,17 +9,22 @@ interface StandingsProps {
 }
 
 export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
-  const { status, rounds, exists } = useTournamentsStore(
+  const { status, rounds, tcg, exists } = useTournamentsStore(
     useShallow(s => {
       const t = s.tournaments.find(t => t.id === tournamentId)
       return {
         exists:       !!t,
         status:       t?.status       ?? 'setup',
         rounds:       t?.rounds       ?? [],
+        tcg:          t?.tcg          ?? 'magic',
       }
     })
   )
   const { standings, roundSummaries, totalRounds, getPlayerName } = useSwissPairings(tournamentId)
+  const hasDraws = tcg !== 'yugioh'
+  const standingsColumns = hasDraws
+    ? '28px 1fr 44px 44px 44px 44px 56px'
+    : '28px 1fr 44px 44px 44px 56px'
 
   if (!exists || status === 'setup') {
     return (
@@ -52,14 +57,14 @@ export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
         </div>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '28px 1fr 44px 44px 44px 44px 56px',
+          gridTemplateColumns: standingsColumns,
           gap: '4px', padding: '4px 10px',
           fontSize: '11px', fontWeight: 500, color: 'var(--color-text-secondary)',
         }}>
           <span>#</span><span>Jugador</span>
           <span style={{ textAlign: 'center' }}>Pts</span>
           <span style={{ textAlign: 'center' }}>V</span>
-          <span style={{ textAlign: 'center' }}>E</span>
+          {hasDraws && <span style={{ textAlign: 'center' }}>E</span>}
           <span style={{ textAlign: 'center' }}>D</span>
           <span style={{ textAlign: 'center' }}>Tiempo</span>
         </div>
@@ -67,7 +72,7 @@ export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
         {standings.map(row => (
           <div key={row.player.id} style={{
             display: 'grid',
-            gridTemplateColumns: '28px 1fr 44px 44px 44px 44px 56px',
+            gridTemplateColumns: standingsColumns,
             gap: '4px', alignItems: 'center',
             padding: '7px 10px',
             borderRadius: 'var(--border-radius-md)',
@@ -86,7 +91,7 @@ export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
             </span>
             <span style={{ fontSize: '13px', fontWeight: 500, textAlign: 'center' }}>{row.player.points}</span>
             <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{row.player.wins}</span>
-            <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{row.player.draws}</span>
+            {hasDraws && <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{row.player.draws}</span>}
             <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{row.player.losses}</span>
             <span style={{
               fontSize: '12px', textAlign: 'center',

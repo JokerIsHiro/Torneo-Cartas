@@ -20,6 +20,10 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
 
     const title = type === 'round' ? `Ronda ${tournament.currentRound}` : 'Clasificación'
     const subtitle = type === 'round' ? 'Emparejamientos' : `Tras la ronda ${tournament.currentRound}`
+    const hasDraws = tournament.tcg !== 'yugioh'
+    const exportStandingsColumns = hasDraws
+      ? '36px 1fr 52px 48px 48px 48px'
+      : '36px 1fr 52px 48px 48px'
 
     return (
       <div ref={ref} style={exportShellStyle}>
@@ -50,17 +54,18 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
 
         {type === 'standings' && (
           <div>
-            <div style={standingsHeaderStyle}>
+            <div style={{ ...standingsHeaderStyle, gridTemplateColumns: exportStandingsColumns }}>
               <span>#</span><span>Jugador</span>
               <span style={{ textAlign: 'center' }}>Pts</span>
               <span style={{ textAlign: 'center' }}>V</span>
-              <span style={{ textAlign: 'center' }}>E</span>
+              {hasDraws && <span style={{ textAlign: 'center' }}>E</span>}
               <span style={{ textAlign: 'center' }}>D</span>
             </div>
 
             {standings.map(row => (
               <div key={row.player.id} style={{
                 ...standingRowStyle,
+                gridTemplateColumns: exportStandingsColumns,
                 background: row.position % 2 === 0
                   ? 'var(--color-background-secondary)'
                   : 'var(--color-background-primary)',
@@ -69,7 +74,7 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
                 <span style={{ fontWeight: 600 }}>{row.player.name}</span>
                 <span style={scoreStyle}>{row.player.points}</span>
                 <span style={mutedScoreStyle}>{row.player.wins}</span>
-                <span style={mutedScoreStyle}>{row.player.draws}</span>
+                {hasDraws && <span style={mutedScoreStyle}>{row.player.draws}</span>}
                 <span style={mutedScoreStyle}>{row.player.losses}</span>
               </div>
             ))}
