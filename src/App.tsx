@@ -11,25 +11,36 @@ import { RegistrationView } from './components/RegistrationView'
 import type { Tournament } from './types/tournament'
 import { unlockTimerSound } from './utils/timerSound'
 
-// Componente raiz. Decide que vista se muestra segun el hash de la URL
+// Componente raiz. Decide que vista se muestra segun la ruta de la URL
 // y conecta la sincronizacion entre pestanas.
 type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion'
 type AdminTab = string
 
-function getRouteFromHash(): AppRoute {
-  if (window.location.hash.startsWith('#/proyeccion')) return 'proyeccion'
-  if (window.location.hash.startsWith('#/temporizadores')) return 'temporizadores'
-  if (window.location.hash.startsWith('#/inscripcion')) return 'inscripcion'
+const routePaths: Record<AppRoute, string> = {
+  admin: '/',
+  proyeccion: '/proyeccion',
+  temporizadores: '/temporizadores',
+  inscripcion: '/inscripcion',
+}
+
+function getRouteFromPath(): AppRoute {
+  if (window.location.pathname.startsWith('/proyeccion')) return 'proyeccion'
+  if (window.location.pathname.startsWith('/temporizadores')) return 'temporizadores'
+  if (window.location.pathname.startsWith('/inscripcion')) return 'inscripcion'
   return 'admin'
 }
 
 function setRoute(route: AppRoute) {
-  window.location.hash = `#/${route}`
+  const targetPath = routePaths[route]
+  if (window.location.pathname !== targetPath) {
+    window.history.pushState(null, '', targetPath)
+  }
+  window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
 export default function App() {
   const [hydrated, setHydrated] = useState(false)
-  const [route, setRouteState] = useState<AppRoute>(getRouteFromHash)
+  const [route, setRouteState] = useState<AppRoute>(getRouteFromPath)
   const [activeTab, setActiveTab] = useState<AdminTab>('')
   const [innerTab, setInnerTab] = useState<Record<string, 'ronda' | 'clasificacion'>>({})
 
@@ -39,14 +50,18 @@ export default function App() {
   const initTimer = useTimerStore(s => s.initTimer)
 
   useEffect(() => {
-    if (!window.location.hash) setRoute('admin')
-
-    function handleHashChange() {
-      setRouteState(getRouteFromHash())
+    if (window.location.hash.startsWith('#/')) {
+      const legacyPath = window.location.hash.slice(1)
+      window.history.replaceState(null, '', legacyPath)
     }
 
-    window.addEventListener('hashchange', handleHashChange)
-    return () => window.removeEventListener('hashchange', handleHashChange)
+    function handleRouteChange() {
+      setRouteState(getRouteFromPath())
+    }
+
+    handleRouteChange()
+    window.addEventListener('popstate', handleRouteChange)
+    return () => window.removeEventListener('popstate', handleRouteChange)
   }, [])
 
   useEffect(() => {
@@ -126,7 +141,7 @@ export default function App() {
   }
 
   function openPublicTab(target: 'proyeccion' | 'temporizadores') {
-    window.open(`${window.location.pathname}#/${target}`, '_blank', 'noopener,noreferrer')
+    window.open(routePaths[target], '_blank', 'noopener,noreferrer')
   }
 
   const selectedTab = activeTab || tournaments[0]?.id || ''
