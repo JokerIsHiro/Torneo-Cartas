@@ -55,4 +55,5 @@ export interface Tournament {
   status: TournamentStatus
   timerDuration: number  // segundos
   createdAt: number
+  updatedAt: number
 }

@@ -8,13 +8,12 @@ import { RoundExport } from '../components/RoundExport'
 import { useExportImage } from '../hooks/useExportImage'
 import type { PendingMatchResult, Tournament } from '../types/tournament'
 
-// Pantalla de ronda activa: temporizador, emparejamientos, resultados y exports.
 interface RoundProps {
   tournamentId: string
 }
 
 export function Round({ tournamentId }: RoundProps) {
-  const nextRound       = useTournamentsStore(s => s.nextRound)
+  const nextRound = useTournamentsStore(s => s.nextRound)
   const finishTournament = useTournamentsStore(s => s.finishTournament)
   const { currentRound, pendingResults, tournament } = useTournamentsStore(
     useShallow(s => {
@@ -49,91 +48,69 @@ export function Round({ tournamentId }: RoundProps) {
   }, [pendingResults.length])
 
   return (
-    <div>
+    <div className="round-workspace">
       <div style={exportHiddenStyle}>
         <RoundExport ref={roundExportRef} tournamentId={tournamentId} type="round" />
         <RoundExport ref={standingsExportRef} tournamentId={tournamentId} type="standings" />
       </div>
 
-      <Timer tournamentId={tournamentId} />
-
-      {tournament && pendingResults.length > 0 && (
-        <PendingResultsPanel tournament={tournament} pendingResults={pendingResults} />
-      )}
-
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '1rem',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-          <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
-            <i className="ti ti-swords" aria-hidden="true" /> Ronda {currentRound}
-          </span>
-          {isFinalRound && (
-            <span style={{
-              fontSize: '11px', padding: '2px 8px',
-              borderRadius: 'var(--border-radius-md)',
-              background: 'var(--color-draw-bg)', color: 'var(--color-accent-secondary)', border: '0.5px solid var(--color-border-primary)',
-            }}>
-              ronda final
+      <section className="round-main-column">
+        <div className="round-section-header">
+          <div>
+            <span>
+              <i className="ti ti-swords" aria-hidden="true" /> Ronda {currentRound}
             </span>
-          )}
-        </div>
+            {isFinalRound && <em>ronda final</em>}
+          </div>
 
-        <div className="round-export-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-            {currentSummary?.matchesDone ?? 0}/{currentSummary?.matchesTotal ?? 0} resultados
-          </span>
-          <button
-            onClick={() => exportRoundImage(`ronda-${currentRound}`)}
-            style={exportButtonStyle}
-          >
-            <i className="ti ti-download" aria-hidden="true" /> Ronda
-          </button>
-          <button
-            onClick={() => exportStandingsImage(`clasificacion-ronda-${currentRound}`)}
-            style={exportButtonStyle}
-          >
-            <i className="ti ti-trophy" aria-hidden="true" /> Clasificación
-          </button>
-        </div>
-      </div>
-
-      {currentMatches.map(match => (
-        <MatchCard key={match.id} match={match} tournamentId={tournamentId} />
-      ))}
-
-      {allResultsIn && (
-        <div style={{ marginTop: '1rem' }}>
-          {shouldFinish ? (
-            <button onClick={() => finishTournament(tournamentId)} style={actionBtnStyle('var(--color-accent-secondary)', 'var(--color-border-success)')}>
-              <i className="ti ti-trophy" aria-hidden="true" /> Finalizar torneo
+          <div className="round-export-actions">
+            <span>
+              {currentSummary?.matchesDone ?? 0}/{currentSummary?.matchesTotal ?? 0} resultados
+            </span>
+            <button onClick={() => exportRoundImage(`ronda-${currentRound}`)} style={exportButtonStyle}>
+              <i className="ti ti-download" aria-hidden="true" /> Ronda
             </button>
-          ) : (
-            <button onClick={() => nextRound(tournamentId)} style={actionBtnStyle()}>
-              <i className="ti ti-arrow-right" aria-hidden="true" /> Nueva ronda →
+            <button onClick={() => exportStandingsImage(`clasificacion-ronda-${currentRound}`)} style={exportButtonStyle}>
+              <i className="ti ti-trophy" aria-hidden="true" /> Clasificacion
             </button>
-          )}
+          </div>
         </div>
-      )}
 
-      {!allResultsIn && unfinishedCount > 0 && (
-        <div style={{
-          marginTop: '1rem',
-          padding: '10px 12px',
-          borderRadius: 'var(--border-radius-md)',
-          background: 'var(--color-background-secondary)',
-          border: '0.5px solid var(--color-border-tertiary)',
-          fontSize: '13px',
-          color: 'var(--color-text-secondary)',
-          textAlign: 'center',
-        }}>
-          <i className="ti ti-clock" aria-hidden="true" />
-          {' '}Faltan {unfinishedCount} {unfinishedCount === 1 ? 'resultado' : 'resultados'} por introducir
+        <div className="round-match-grid">
+          {currentMatches.map(match => (
+            <MatchCard key={match.id} match={match} tournamentId={tournamentId} />
+          ))}
         </div>
-      )}
+      </section>
+
+      <aside className="round-side-column">
+        <Timer tournamentId={tournamentId} />
+
+        {tournament && pendingResults.length > 0 && (
+          <PendingResultsPanel tournament={tournament} pendingResults={pendingResults} />
+        )}
+
+        {allResultsIn && (
+          <div style={{ marginTop: '1rem' }}>
+            {shouldFinish ? (
+              <button onClick={() => finishTournament(tournamentId)} style={actionBtnStyle('var(--color-accent-secondary)', 'var(--color-border-success)')}>
+                <i className="ti ti-trophy" aria-hidden="true" /> Finalizar torneo
+              </button>
+            ) : (
+              <button onClick={() => nextRound(tournamentId)} style={actionBtnStyle()}>
+                <i className="ti ti-arrow-right" aria-hidden="true" /> Nueva ronda
+              </button>
+            )}
+          </div>
+        )}
+
+        {!allResultsIn && unfinishedCount > 0 && (
+          <div className="round-missing-results">
+            <i className="ti ti-clock" aria-hidden="true" />
+            {' '}Faltan {unfinishedCount} {unfinishedCount === 1 ? 'resultado' : 'resultados'} por introducir
+          </div>
+        )}
+      </aside>
     </div>
   )
 }

@@ -154,6 +154,28 @@ function syncRemoteDelete(tournamentId: string) {
   })
 }
 
+function touchTournament<T extends Tournament>(tournament: T): T {
+  return { ...tournament, updatedAt: Date.now() }
+}
+
+function mergeRemoteTournaments(local: Tournament[], remote: Tournament[]) {
+  const byId = new Map<string, Tournament>()
+
+  for (const tournament of remote) {
+    byId.set(tournament.id, tournament)
+  }
+
+  for (const tournament of local) {
+    const remoteTournament = byId.get(tournament.id)
+    if (!remoteTournament || (tournament.updatedAt ?? 0) > (remoteTournament.updatedAt ?? 0)) {
+      byId.set(tournament.id, tournament)
+      syncRemoteTournament(tournament)
+    }
+  }
+
+  return [...byId.values()].sort((a, b) => a.createdAt - b.createdAt)
+}
+
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 interface TournamentsStore {
@@ -207,6 +229,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
           status: 'setup',
           timerDuration: 50 * 60,
           createdAt: Date.now(),
+          updatedAt: Date.now(),
         }
         set(s => ({ tournaments: [...s.tournaments, newTournament] }))
         syncRemoteTournament(newTournament)
@@ -219,7 +242,10 @@ export const useTournamentsStore = create<TournamentsStore>()(
       },
 
       setRemoteTournaments: (tournaments) => {
-        set({ tournaments, syncLoaded: true })
+        set(s => ({
+          tournaments: mergeRemoteTournaments(s.tournaments, tournaments),
+          syncLoaded: true,
+        }))
       },
 
       setSyncEnabled: (enabled) => {
@@ -232,21 +258,21 @@ export const useTournamentsStore = create<TournamentsStore>()(
 
       updateTournamentName: (id, name) => {
         set(s => ({
-          tournaments: s.tournaments.map(t => t.id === id ? { ...t, name } : t),
+          tournaments: s.tournaments.map(t => t.id === id ? touchTournament({ ...t, name }) : t),
         }))
         syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       setTournamentTCG: (id, tcg) => {
         set(s => ({
-          tournaments: s.tournaments.map(t => t.id === id ? { ...t, tcg } : t),
+          tournaments: s.tournaments.map(t => t.id === id ? touchTournament({ ...t, tcg }) : t),
         }))
         syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       setTimerDuration: (id, seconds) => {
         set(s => ({
-          tournaments: s.tournaments.map(t => t.id === id ? { ...t, timerDuration: seconds } : t),
+          tournaments: s.tournaments.map(t => t.id === id ? touchTournament({ ...t, timerDuration: seconds }) : t),
         }))
         syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
@@ -271,7 +297,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
 
         set(s => ({
           tournaments: s.tournaments.map(t =>
-            t.id === id ? { ...t, players: [...t.players, newPlayer] } : t
+            t.id === id ? touchTournament({ ...t, players: [...t.players, newPlayer] }) : t
           ),
         }))
         syncRemoteTournament(get().tournaments.find(t => t.id === id))
@@ -285,7 +311,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         set(s => ({
           tournaments: s.tournaments.map(t =>
             t.id === id
-              ? { ...t, players: t.players.filter(p => p.id !== playerId) }
+              ? touchTournament({ ...t, players: t.players.filter(p => p.id !== playerId) })
               : t
           ),
         }))
@@ -311,7 +337,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         set(s => ({
           tournaments: s.tournaments.map(t =>
             t.id === id
-              ? { ...t, players: updatedPlayers, rounds: [firstRound], currentRound: 1, status: 'active' }
+              ? touchTournament({ ...t, players: updatedPlayers, rounds: [firstRound], currentRound: 1, status: 'active' })
               : t
           ),
         }))
@@ -337,7 +363,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
 
         set(s => ({
           tournaments: s.tournaments.map(t =>
-            t.id === id ? { ...t, players: updatedPlayers, rounds: updatedRounds, pendingResults } : t
+            t.id === id ? touchTournament({ ...t, players: updatedPlayers, rounds: updatedRounds, pendingResults }) : t
           ),
         }))
         syncRemoteTournament(get().tournaments.find(t => t.id === id))
@@ -369,7 +395,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
             const pendingResults = (t.pendingResults ?? []).filter(p =>
               !(p.matchId === matchId && p.playerId === playerId)
             )
-            return { ...t, pendingResults: [...pendingResults, pendingResult] }
+            return touchTournament({ ...t, pendingResults: [...pendingResults, pendingResult] })
           }),
         }))
         syncRemoteTournament(get().tournaments.find(t => t.id === id))
@@ -386,7 +412,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         set(s => ({
           tournaments: s.tournaments.map(t =>
             t.id === id
-              ? { ...t, pendingResults: (t.pendingResults ?? []).filter(p => p.id !== pendingResultId) }
+              ? touchTournament({ ...t, pendingResults: (t.pendingResults ?? []).filter(p => p.id !== pendingResultId) })
               : t
           ),
         }))
@@ -417,7 +443,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
 
         set(s => ({
           tournaments: s.tournaments.map(t =>
-            t.id === id ? { ...t, players: updatedPlayers, rounds: updatedRounds, pendingResults } : t
+            t.id === id ? touchTournament({ ...t, players: updatedPlayers, rounds: updatedRounds, pendingResults }) : t
           ),
         }))
         syncRemoteTournament(get().tournaments.find(t => t.id === id))
@@ -451,13 +477,13 @@ export const useTournamentsStore = create<TournamentsStore>()(
         set(s => ({
           tournaments: s.tournaments.map(t =>
             t.id === id
-              ? {
+              ? touchTournament({
                   ...t,
                   players: updatedPlayers,
                   rounds: [...closedRounds, newRound],
                   pendingResults: [],
                   currentRound: nextRoundNumber,
-                }
+                })
               : t
           ),
         }))
@@ -477,7 +503,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
 
         set(s => ({
           tournaments: s.tournaments.map(t =>
-            t.id === id ? { ...t, rounds: closedRounds, pendingResults: [], status: 'finished' } : t
+            t.id === id ? touchTournament({ ...t, rounds: closedRounds, pendingResults: [], status: 'finished' }) : t
           ),
         }))
         syncRemoteTournament(get().tournaments.find(t => t.id === id))

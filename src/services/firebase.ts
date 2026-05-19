@@ -130,5 +130,6 @@ function normalizeTournament(data: Partial<Tournament> & { id: string }): Tourna
     status: data.status ?? 'setup',
     timerDuration: data.timerDuration ?? 50 * 60,
     createdAt: data.createdAt ?? Date.now(),
+    updatedAt: data.updatedAt ?? data.createdAt ?? Date.now(),
   }
 }

@@ -14,6 +14,12 @@ service cloud.firestore {
       return signedIn() && request.resource.data.organizerUid == request.auth.uid;
     }
 
+    function claimsLegacyTournament() {
+      return signedIn()
+        && !('organizerUid' in resource.data)
+        && request.resource.data.organizerUid == request.auth.uid;
+    }
+
     function onlyChanges(fields) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
     }
@@ -24,6 +30,7 @@ service cloud.firestore {
       allow create: if createsOwnTournament();
 
       allow update: if isOrganizer()
+        || claimsLegacyTournament()
         || (
           signedIn()
           && resource.data.status == 'setup'
