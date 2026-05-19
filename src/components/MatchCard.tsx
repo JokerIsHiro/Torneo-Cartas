@@ -145,15 +145,6 @@ export function MatchCard({ match, tournamentId, readOnly = false }: MatchCardPr
             <span>Gana {getPlayerName(match.p2Id as string)}</span>
           </button>
 
-          <button
-            className="result-button result-button-timeout"
-            style={resultBtnStyle(match.result === 'timeout', 'timeout')}
-            onClick={() => handleResult('timeout')}
-            title="Ambos jugadores pierden por tiempo"
-          >
-            <i className="ti ti-clock-off" aria-hidden="true" style={{ fontSize: '12px' }} />
-            <span>Tiempo</span>
-          </button>
         </div>
       )}
     </div>

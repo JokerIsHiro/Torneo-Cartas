@@ -78,7 +78,10 @@ function tickTimer(tournamentId: string) {
 
   if (secondsLeft <= 0) {
     if (current.intervalId) clearInterval(current.intervalId)
-    useTournamentsStore.getState().applyTimeoutToUnfinished(tournamentId)
+    const tournament = useTournamentsStore.getState().tournaments.find(t => t.id === tournamentId)
+    if (tournament?.tcg === 'yugioh') {
+      useTournamentsStore.getState().applyTimeoutToUnfinished(tournamentId)
+    }
     playTimerFinishedSound()
     commitTimers({
       ...useTimerStore.getState().timers,
