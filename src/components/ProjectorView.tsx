@@ -34,6 +34,10 @@ export function ProjectorView() {
 }
 
 function getTargetTournamentId() {
+  const searchParams = new URLSearchParams(window.location.search)
+  const searchTournament = searchParams.get('torneo')
+  if (searchTournament) return searchTournament
+
   const queryStart = window.location.hash.indexOf('?')
   if (queryStart === -1) return ''
   const params = new URLSearchParams(window.location.hash.slice(queryStart + 1))

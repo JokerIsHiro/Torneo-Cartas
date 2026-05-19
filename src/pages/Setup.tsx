@@ -59,7 +59,9 @@ export function Setup({ tournamentId }: SetupProps) {
 
   function getInvitationLink() {
     const url = new URL(window.location.href)
-    url.hash = `/inscripcion?torneo=${encodeURIComponent(tournamentId)}`
+    url.pathname = '/inscripcion'
+    url.search = `?torneo=${encodeURIComponent(tournamentId)}`
+    url.hash = ''
     return url.toString()
   }
 

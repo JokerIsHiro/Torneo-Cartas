@@ -571,6 +571,127 @@ button:disabled {
   font-size: 12px;
 }
 
+.player-panel {
+  display: grid;
+  gap: 8px;
+  padding: 1rem;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  background: var(--color-background-secondary);
+  text-align: left;
+}
+
+.player-panel strong {
+  color: var(--color-text-primary);
+  font-size: 15px;
+}
+
+.player-panel span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.player-match-table {
+  width: fit-content;
+  padding: 4px 10px;
+  border: 0.5px solid var(--color-border-primary);
+  border-radius: var(--border-radius-md);
+  color: var(--color-accent-secondary);
+  background: var(--color-draw-bg);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.player-result-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pending-results-panel {
+  margin-bottom: 1rem;
+  border: 0.5px solid var(--color-border-primary);
+  border-radius: var(--border-radius-lg);
+  background: var(--color-background-primary);
+  overflow: hidden;
+}
+
+.pending-results-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 12px 14px;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  background: var(--color-background-secondary);
+}
+
+.pending-results-panel header div {
+  display: grid;
+  gap: 2px;
+}
+
+.pending-results-panel header strong {
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.pending-results-panel header span,
+.pending-result-row span {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.pending-results-panel header i {
+  color: var(--color-accent-secondary);
+  font-size: 18px;
+}
+
+.pending-result-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+}
+
+.pending-result-row:last-child {
+  border-bottom: 0;
+}
+
+.pending-result-row > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.pending-result-row strong {
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.pending-result-row > div:last-child {
+  display: flex;
+  gap: 8px;
+}
+
+.pending-result-row button {
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
 /* Grid de temporizadores. Cambia de densidad segun cantidad y fullscreen. */
 .timers-grid {
   display: grid;
@@ -732,6 +853,16 @@ button:disabled {
     width: 100%;
     justify-content: flex-start !important;
     margin-top: 8px;
+  }
+
+  .player-result-actions,
+  .pending-result-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pending-result-row > div:last-child {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
   .timers-grid,

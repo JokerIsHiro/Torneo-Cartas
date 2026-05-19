@@ -6,8 +6,10 @@ import type {
   Match,
   Round,
   MatchResult,
+  PendingMatchResult,
   TournamentTCG,
 } from '../types/tournament'
+import { deleteRemoteTournament, getCurrentUserId, saveRemoteTournament } from '../services/firebase'
 
 // Store persistido de torneos. Es la fuente de verdad para jugadores, rondas,
 // resultados, estado del torneo y configuracion.
@@ -139,26 +141,45 @@ function applyByeToPlayers(players: Player[], byeMatch: Match): Player[] {
   )
 }
 
+function syncRemoteTournament(tournament: Tournament | undefined) {
+  if (!tournament) return
+  void saveRemoteTournament(tournament).catch(error => {
+    console.error('No se ha podido sincronizar el torneo con Firebase', error)
+  })
+}
+
+function syncRemoteDelete(tournamentId: string) {
+  void deleteRemoteTournament(tournamentId).catch(error => {
+    console.error('No se ha podido eliminar el torneo en Firebase', error)
+  })
+}
+
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 interface TournamentsStore {
   tournaments: Tournament[]
+  syncEnabled: boolean
 
   // Gestión de torneos
   createTournament: () => string                          // devuelve el id
   deleteTournament: (id: string) => void
+  setRemoteTournaments: (tournaments: Tournament[]) => void
+  setSyncEnabled: (enabled: boolean) => void
   updateTournamentName: (id: string, name: string) => void
   setTournamentTCG: (id: string, tcg: TournamentTCG) => void
   setTimerDuration: (id: string, seconds: number) => void
 
   // Jugadores
-  addPlayer: (id: string, name: string) => void
+  addPlayer: (id: string, name: string) => string | null
   removePlayer: (id: string, playerId: string) => void
 
   // Torneo
   startTournament: (id: string) => void
   nextRound: (id: string) => void
   setMatchResult: (id: string, matchId: string, result: MatchResult) => void
+  submitPlayerResult: (id: string, matchId: string, playerId: string, result: PendingMatchResult['result']) => void
+  approvePendingResult: (id: string, pendingResultId: string) => void
+  rejectPendingResult: (id: string, pendingResultId: string) => void
   applyTimeoutToUnfinished: (id: string) => void
   finishTournament: (id: string) => void
 }
@@ -167,53 +188,70 @@ export const useTournamentsStore = create<TournamentsStore>()(
   persist(
     (set, get) => ({
       tournaments: [],
+      syncEnabled: false,
 
       createTournament: () => {
         const id = crypto.randomUUID()
         const newTournament: Tournament = {
           id,
+          organizerUid: getCurrentUserId() ?? undefined,
           name: 'Nuevo torneo',
           tcg: 'magic',
           players: [],
           rounds: [],
+          pendingResults: [],
           currentRound: 0,
           status: 'setup',
           timerDuration: 50 * 60,
           createdAt: Date.now(),
         }
         set(s => ({ tournaments: [...s.tournaments, newTournament] }))
+        syncRemoteTournament(newTournament)
         return id
       },
 
       deleteTournament: (id) => {
         set(s => ({ tournaments: s.tournaments.filter(t => t.id !== id) }))
+        syncRemoteDelete(id)
+      },
+
+      setRemoteTournaments: (tournaments) => {
+        set({ tournaments })
+      },
+
+      setSyncEnabled: (enabled) => {
+        set({ syncEnabled: enabled })
       },
 
       updateTournamentName: (id, name) => {
         set(s => ({
           tournaments: s.tournaments.map(t => t.id === id ? { ...t, name } : t),
         }))
+        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       setTournamentTCG: (id, tcg) => {
         set(s => ({
           tournaments: s.tournaments.map(t => t.id === id ? { ...t, tcg } : t),
         }))
+        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       setTimerDuration: (id, seconds) => {
         set(s => ({
           tournaments: s.tournaments.map(t => t.id === id ? { ...t, timerDuration: seconds } : t),
         }))
+        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       addPlayer: (id, name) => {
         const tournament = get().tournaments.find(t => t.id === id)
-        if (!tournament || tournament.status !== 'setup') return
-        if (tournament.players.find(p => p.name.toLowerCase() === name.toLowerCase())) return
+        if (!tournament || tournament.status !== 'setup') return null
+        if (tournament.players.find(p => p.name.toLowerCase() === name.toLowerCase())) return null
 
         const newPlayer: Player = {
           id: crypto.randomUUID(),
+          uid: getCurrentUserId() ?? undefined,
           name,
           points: 0,
           wins: 0,
@@ -229,6 +267,8 @@ export const useTournamentsStore = create<TournamentsStore>()(
             t.id === id ? { ...t, players: [...t.players, newPlayer] } : t
           ),
         }))
+        syncRemoteTournament(get().tournaments.find(t => t.id === id))
+        return newPlayer.id
       },
 
       removePlayer: (id, playerId) => {
@@ -242,6 +282,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
               : t
           ),
         }))
+        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       startTournament: (id) => {
@@ -267,6 +308,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
               : t
           ),
         }))
+        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       setMatchResult: (id, matchId, result) => {
@@ -284,12 +326,64 @@ export const useTournamentsStore = create<TournamentsStore>()(
             ? { ...r, matches: r.matches.map(m => m.id === matchId ? { ...m, result } : m) }
             : r
         )
+        const pendingResults = (tournament.pendingResults ?? []).filter(p => p.matchId !== matchId)
 
         set(s => ({
           tournaments: s.tournaments.map(t =>
-            t.id === id ? { ...t, players: updatedPlayers, rounds: updatedRounds } : t
+            t.id === id ? { ...t, players: updatedPlayers, rounds: updatedRounds, pendingResults } : t
           ),
         }))
+        syncRemoteTournament(get().tournaments.find(t => t.id === id))
+      },
+
+      submitPlayerResult: (id, matchId, playerId, result) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament || tournament.status !== 'active') return
+        if ((tournament.tcg ?? 'magic') === 'yugioh' && result === 'draw') return
+
+        const round = tournament.rounds[tournament.currentRound - 1]
+        const match = round?.matches.find(m => m.id === matchId)
+        if (!match || match.result !== null || match.p2Id === 'BYE') return
+        if (match.p1Id !== playerId && match.p2Id !== playerId) return
+
+        const pendingResult: PendingMatchResult = {
+          id: crypto.randomUUID(),
+          submittedByUid: getCurrentUserId() ?? undefined,
+          roundNumber: tournament.currentRound,
+          matchId,
+          playerId,
+          result,
+          createdAt: Date.now(),
+        }
+
+        set(s => ({
+          tournaments: s.tournaments.map(t => {
+            if (t.id !== id) return t
+            const pendingResults = (t.pendingResults ?? []).filter(p =>
+              !(p.matchId === matchId && p.playerId === playerId)
+            )
+            return { ...t, pendingResults: [...pendingResults, pendingResult] }
+          }),
+        }))
+        syncRemoteTournament(get().tournaments.find(t => t.id === id))
+      },
+
+      approvePendingResult: (id, pendingResultId) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        const pendingResult = tournament?.pendingResults?.find(p => p.id === pendingResultId)
+        if (!tournament || !pendingResult) return
+        get().setMatchResult(id, pendingResult.matchId, pendingResult.result)
+      },
+
+      rejectPendingResult: (id, pendingResultId) => {
+        set(s => ({
+          tournaments: s.tournaments.map(t =>
+            t.id === id
+              ? { ...t, pendingResults: (t.pendingResults ?? []).filter(p => p.id !== pendingResultId) }
+              : t
+          ),
+        }))
+        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       applyTimeoutToUnfinished: (id) => {
@@ -310,12 +404,16 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const updatedRounds = tournament.rounds.map(r =>
           r.number === tournament.currentRound ? { ...r, matches: updatedMatches } : r
         )
+        const pendingResults = (tournament.pendingResults ?? []).filter(p =>
+          !unfinished.some(match => match.id === p.matchId)
+        )
 
         set(s => ({
           tournaments: s.tournaments.map(t =>
-            t.id === id ? { ...t, players: updatedPlayers, rounds: updatedRounds } : t
+            t.id === id ? { ...t, players: updatedPlayers, rounds: updatedRounds, pendingResults } : t
           ),
         }))
+        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       nextRound: (id) => {
@@ -350,11 +448,13 @@ export const useTournamentsStore = create<TournamentsStore>()(
                   ...t,
                   players: updatedPlayers,
                   rounds: [...closedRounds, newRound],
+                  pendingResults: [],
                   currentRound: nextRoundNumber,
                 }
               : t
           ),
         }))
+        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
 
       finishTournament: (id) => {
@@ -370,9 +470,10 @@ export const useTournamentsStore = create<TournamentsStore>()(
 
         set(s => ({
           tournaments: s.tournaments.map(t =>
-            t.id === id ? { ...t, rounds: closedRounds, status: 'finished' } : t
+            t.id === id ? { ...t, rounds: closedRounds, pendingResults: [], status: 'finished' } : t
           ),
         }))
+        syncRemoteTournament(get().tournaments.find(t => t.id === id))
       },
     }),
     { name: 'torneos-storage' }

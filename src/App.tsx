@@ -10,6 +10,7 @@ import { TimersView } from './components/TimersView'
 import { RegistrationView } from './components/RegistrationView'
 import type { Tournament } from './types/tournament'
 import { unlockTimerSound } from './utils/timerSound'
+import { useFirebaseSync } from './hooks/useFirebaseSync'
 
 // Componente raiz. Decide que vista se muestra segun la ruta de la URL
 // y conecta la sincronizacion entre pestanas.
@@ -39,6 +40,8 @@ function setRoute(route: AppRoute) {
 }
 
 export default function App() {
+  useFirebaseSync()
+
   const [hydrated, setHydrated] = useState(false)
   const [route, setRouteState] = useState<AppRoute>(getRouteFromPath)
   const [activeTab, setActiveTab] = useState<AdminTab>('')

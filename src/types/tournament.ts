@@ -2,6 +2,7 @@
 // Si se anade una nueva estadistica o un nuevo juego, normalmente empieza aqui.
 export interface Player {
   id: string
+  uid?: string
   name: string
   points: number
   wins: number
@@ -22,6 +23,16 @@ export interface Match {
   result: MatchResult
 }
 
+export interface PendingMatchResult {
+  id: string
+  submittedByUid?: string
+  roundNumber: number
+  matchId: string
+  playerId: string
+  result: Exclude<MatchResult, 'bye' | null>
+  createdAt: number
+}
+
 export interface Round {
   number: number
   matches: Match[]
@@ -34,10 +45,12 @@ export type TournamentTCG = 'magic' | 'riftbound' | 'pokemon' | 'yugioh' | 'one-
 
 export interface Tournament {
   id: string
+  organizerUid?: string
   name: string
   tcg: TournamentTCG
   players: Player[]
   rounds: Round[]
+  pendingResults: PendingMatchResult[]
   currentRound: number
   status: TournamentStatus
   timerDuration: number  // segundos
