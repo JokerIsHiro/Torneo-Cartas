@@ -4,6 +4,7 @@ import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import { PlayerList } from '../components/PlayerList'
 import type { TournamentTCG } from '../types/tournament'
+import { hasFirebaseConfig } from '../services/firebase'
 
 // Pantalla de configuracion: nombre, juego, duracion, invitacion y jugadores.
 interface SetupProps {
@@ -46,6 +47,7 @@ export function Setup({ tournamentId }: SetupProps) {
   const { totalRounds }      = useSwissPairings(tournamentId)
   const [error, setError]    = useState('')
   const [inviteStatus, setInviteStatus] = useState('')
+  const firebaseConfigured = hasFirebaseConfig()
 
   if (!exists) return null
 
@@ -193,9 +195,15 @@ export function Setup({ tournamentId }: SetupProps) {
           minHeight: '18px',
           marginTop: '6px',
           fontSize: '12px',
-          color: inviteStatus ? 'var(--color-accent-secondary)' : 'var(--color-text-secondary)',
+          color: !firebaseConfigured
+            ? 'var(--color-text-warning)'
+            : inviteStatus
+              ? 'var(--color-accent-secondary)'
+              : 'var(--color-text-secondary)',
         }}>
-          {inviteStatus || 'Comparte este enlace para que puedan inscribirse al torneo.'}
+          {!firebaseConfigured
+            ? 'Firebase no esta configurado: el enlace publico no podra cargar el torneo.'
+            : inviteStatus || 'Comparte este enlace para que puedan inscribirse al torneo.'}
         </div>
       </div>
 
