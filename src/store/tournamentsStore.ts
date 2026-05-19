@@ -140,31 +140,70 @@ function applyByeToPlayers(players: Player[], byeMatch: Match): Player[] {
   )
 }
 
-function syncRemoteTournament(tournament: Tournament | undefined) {
-  if (!tournament) return
-  void saveRemoteTournament(tournament).catch(error => {
-    console.error('No se ha podido sincronizar el torneo con Firebase', error)
-  })
-}
-
-function syncRemoteDelete(tournamentId: string) {
-  void deleteRemoteTournament(tournamentId).catch(error => {
-    console.error('No se ha podido eliminar el torneo en Firebase', error)
-  })
-}
+const pendingTournamentWrites = new Map<string, Tournament>()
+const pendingTournamentDeletes = new Set<string>()
 
 function touchTournament<T extends Tournament>(tournament: T): T {
   return { ...tournament, updatedAt: Date.now() }
 }
 
-function replaceTournament(
+function applyPendingWrites(remoteTournaments: Tournament[]) {
+  const byId = new Map(remoteTournaments.map(tournament => [tournament.id, tournament]))
+
+  for (const tournamentId of pendingTournamentDeletes) {
+    byId.delete(tournamentId)
+  }
+
+  for (const [tournamentId, pendingTournament] of pendingTournamentWrites) {
+    const remoteTournament = byId.get(tournamentId)
+    if (!remoteTournament || pendingTournament.updatedAt >= remoteTournament.updatedAt) {
+      byId.set(tournamentId, pendingTournament)
+    }
+  }
+
+  return [...byId.values()].sort((a, b) => a.createdAt - b.createdAt)
+}
+
+function commitTournament(
   set: (partial: TournamentsStore | Partial<TournamentsStore> | ((state: TournamentsStore) => TournamentsStore | Partial<TournamentsStore>)) => void,
   tournament: Tournament
 ) {
+  pendingTournamentWrites.set(tournament.id, tournament)
   set(s => ({
     tournaments: s.tournaments.map(t => t.id === tournament.id ? tournament : t),
   }))
-  syncRemoteTournament(tournament)
+  void saveRemoteTournament(tournament)
+    .then(() => {
+      const pendingTournament = pendingTournamentWrites.get(tournament.id)
+      if (pendingTournament?.updatedAt === tournament.updatedAt) {
+        pendingTournamentWrites.delete(tournament.id)
+      }
+    })
+    .catch(error => {
+      const pendingTournament = pendingTournamentWrites.get(tournament.id)
+      if (pendingTournament?.updatedAt === tournament.updatedAt) {
+        pendingTournamentWrites.delete(tournament.id)
+      }
+      console.error('No se ha podido sincronizar el torneo con Firebase', error)
+    })
+}
+
+function commitTournamentDelete(
+  set: (partial: TournamentsStore | Partial<TournamentsStore> | ((state: TournamentsStore) => TournamentsStore | Partial<TournamentsStore>)) => void,
+  tournamentId: string
+) {
+  pendingTournamentWrites.delete(tournamentId)
+  pendingTournamentDeletes.add(tournamentId)
+  set(s => ({ tournaments: s.tournaments.filter(t => t.id !== tournamentId) }))
+
+  void deleteRemoteTournament(tournamentId)
+    .then(() => {
+      pendingTournamentDeletes.delete(tournamentId)
+    })
+    .catch(error => {
+      pendingTournamentDeletes.delete(tournamentId)
+      console.error('No se ha podido eliminar el torneo en Firebase', error)
+    })
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -222,17 +261,30 @@ export const useTournamentsStore = create<TournamentsStore>()(
           updatedAt: Date.now(),
         }
         set(s => ({ tournaments: [...s.tournaments, newTournament] }))
-        syncRemoteTournament(newTournament)
+        pendingTournamentWrites.set(newTournament.id, newTournament)
+        void saveRemoteTournament(newTournament)
+          .then(() => {
+            const pendingTournament = pendingTournamentWrites.get(newTournament.id)
+            if (pendingTournament?.updatedAt === newTournament.updatedAt) {
+              pendingTournamentWrites.delete(newTournament.id)
+            }
+          })
+          .catch(error => {
+            const pendingTournament = pendingTournamentWrites.get(newTournament.id)
+            if (pendingTournament?.updatedAt === newTournament.updatedAt) {
+              pendingTournamentWrites.delete(newTournament.id)
+            }
+            console.error('No se ha podido sincronizar el torneo con Firebase', error)
+          })
         return id
       },
 
       deleteTournament: (id) => {
-        set(s => ({ tournaments: s.tournaments.filter(t => t.id !== id) }))
-        syncRemoteDelete(id)
+        commitTournamentDelete(set, id)
       },
 
       setRemoteTournaments: (tournaments) => {
-        set({ tournaments, syncLoaded: true })
+        set({ tournaments: applyPendingWrites(tournaments), syncLoaded: true })
       },
 
       setSyncEnabled: (enabled) => {
@@ -246,19 +298,19 @@ export const useTournamentsStore = create<TournamentsStore>()(
       updateTournamentName: (id, name) => {
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament) return
-        replaceTournament(set, touchTournament({ ...tournament, name }))
+        commitTournament(set, touchTournament({ ...tournament, name }))
       },
 
       setTournamentTCG: (id, tcg) => {
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament) return
-        replaceTournament(set, touchTournament({ ...tournament, tcg }))
+        commitTournament(set, touchTournament({ ...tournament, tcg }))
       },
 
       setTimerDuration: (id, seconds) => {
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament) return
-        replaceTournament(set, touchTournament({ ...tournament, timerDuration: seconds }))
+        commitTournament(set, touchTournament({ ...tournament, timerDuration: seconds }))
       },
 
       addPlayer: (id, name) => {
@@ -279,7 +331,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
           opponents: [],
         }
 
-        replaceTournament(set, touchTournament({ ...tournament, players: [...tournament.players, newPlayer] }))
+        commitTournament(set, touchTournament({ ...tournament, players: [...tournament.players, newPlayer] }))
         return newPlayer.id
       },
 
@@ -287,7 +339,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament || tournament.status !== 'setup') return
 
-        replaceTournament(set, touchTournament({
+        commitTournament(set, touchTournament({
           ...tournament,
           players: tournament.players.filter(p => p.id !== playerId),
         }))
@@ -309,7 +361,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
           endedAt: null,
         }
 
-        replaceTournament(set, touchTournament({
+        commitTournament(set, touchTournament({
           ...tournament,
           players: updatedPlayers,
           rounds: [firstRound],
@@ -335,7 +387,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         )
         const pendingResults = (tournament.pendingResults ?? []).filter(p => p.matchId !== matchId)
 
-        replaceTournament(set, touchTournament({
+        commitTournament(set, touchTournament({
           ...tournament,
           players: updatedPlayers,
           rounds: updatedRounds,
@@ -366,7 +418,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const pendingResults = (tournament.pendingResults ?? []).filter(p =>
           !(p.matchId === matchId && p.playerId === playerId)
         )
-        replaceTournament(set, touchTournament({
+        commitTournament(set, touchTournament({
           ...tournament,
           pendingResults: [...pendingResults, pendingResult],
         }))
@@ -382,7 +434,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
       rejectPendingResult: (id, pendingResultId) => {
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament) return
-        replaceTournament(set, touchTournament({
+        commitTournament(set, touchTournament({
           ...tournament,
           pendingResults: (tournament.pendingResults ?? []).filter(p => p.id !== pendingResultId),
         }))
@@ -410,7 +462,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
           !unfinished.some(match => match.id === p.matchId)
         )
 
-        replaceTournament(set, touchTournament({
+        commitTournament(set, touchTournament({
           ...tournament,
           players: updatedPlayers,
           rounds: updatedRounds,
@@ -443,7 +495,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
           endedAt: null,
         }
 
-        replaceTournament(set, touchTournament({
+        commitTournament(set, touchTournament({
           ...tournament,
           players: updatedPlayers,
           rounds: [...closedRounds, newRound],
@@ -463,7 +515,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
           r.number === tournament.currentRound ? { ...r, endedAt: Date.now() } : r
         )
 
-        replaceTournament(set, touchTournament({
+        commitTournament(set, touchTournament({
           ...tournament,
           rounds: closedRounds,
           pendingResults: [],
