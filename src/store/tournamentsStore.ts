@@ -9,9 +9,13 @@ import type {
   TournamentTCG,
 } from '../types/tournament'
 
+// Store persistido de torneos. Es la fuente de verdad para jugadores, rondas,
+// resultados, estado del torneo y configuracion.
+
 // ─── Helpers de emparejamiento Swiss ─────────────────────────────────────────
 
 function generatePairings(players: Player[], roundNumber: number, tournamentId: string): Match[] {
+  // Ordenamos por puntos para emparejar jugadores con rendimiento parecido.
   const sorted = [...players].sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points
     return a.name.localeCompare(b.name)
@@ -22,6 +26,7 @@ function generatePairings(players: Player[], roundNumber: number, tournamentId: 
   let tableNumber = 1
   let byePlayer: Player | null = null
 
+  // Si hay numero impar de jugadores, asignamos BYE a quien aun no lo haya recibido.
   if (sorted.length % 2 !== 0) {
     for (let i = sorted.length - 1; i >= 0; i--) {
       if (sorted[i].byes === 0) {
@@ -36,6 +41,7 @@ function generatePairings(players: Player[], roundNumber: number, tournamentId: 
     }
   }
 
+  // Intentamos evitar repetir rivales. Si no hay alternativa, emparejamos igualmente.
   for (let i = 0; i < sorted.length; i++) {
     if (paired.has(sorted[i].id)) continue
 
@@ -88,13 +94,14 @@ function generatePairings(players: Player[], roundNumber: number, tournamentId: 
 }
 
 function applyResult(players: Player[], match: Match, result: MatchResult): Player[] {
+  // Recalcula estadisticas de los dos jugadores afectados por una partida.
   return players.map(p => {
     if (p.id !== match.p1Id && p.id !== match.p2Id) return p
 
     const isP1 = p.id === match.p1Id
     const updated = { ...p }
 
-    // Revertir anterior
+    // Revertir resultado anterior antes de aplicar el nuevo.
     if (match.result && match.result !== 'bye') {
       if (match.result === 'p1' && isP1)   { updated.points -= 3; updated.wins -= 1 }
       if (match.result === 'p1' && !isP1)  { updated.losses -= 1 }
@@ -104,7 +111,7 @@ function applyResult(players: Player[], match: Match, result: MatchResult): Play
       if (match.result === 'timeout')      { updated.losses -= 1; updated.timeoutLosses -= 1 }
     }
 
-    // Aplicar nuevo
+    // Aplicar nuevo resultado.
     if (result === 'p1' && isP1)   { updated.points += 3; updated.wins += 1 }
     if (result === 'p1' && !isP1)  { updated.losses += 1 }
     if (result === 'p2' && !isP1)  { updated.points += 3; updated.wins += 1 }
@@ -124,6 +131,7 @@ function applyResult(players: Player[], match: Match, result: MatchResult): Play
 }
 
 function applyByeToPlayers(players: Player[], byeMatch: Match): Player[] {
+  // El BYE cuenta como victoria automatica para el jugador que descansa.
   return players.map(p =>
     p.id === byeMatch.p1Id
       ? { ...p, points: p.points + 3, wins: p.wins + 1, byes: p.byes + 1 }

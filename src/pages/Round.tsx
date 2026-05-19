@@ -6,6 +6,7 @@ import { MatchCard } from '../components/MatchCard'
 import { RoundExport } from '../components/RoundExport'
 import { useExportImage } from '../hooks/useExportImage'
 
+// Pantalla de ronda activa: temporizador, emparejamientos, resultados y exports.
 interface RoundProps {
   tournamentId: string
 }

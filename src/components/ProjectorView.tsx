@@ -4,6 +4,7 @@ import { useSwissPairings } from '../hooks/useSwissPairings'
 import { MatchCard } from './MatchCard'
 import type { Tournament } from '../types/tournament'
 
+// Pantalla publica de emparejamientos. No permite modificar resultados.
 export function ProjectorView() {
   const targetTournamentId = getTargetTournamentId()
   const tournaments = useTournamentsStore(

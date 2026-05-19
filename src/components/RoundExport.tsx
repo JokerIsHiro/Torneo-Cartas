@@ -2,6 +2,7 @@ import { forwardRef } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 
+// Plantilla oculta que se renderiza para exportar imagenes de ronda o clasificacion.
 interface RoundExportProps {
   tournamentId: string
   type: 'round' | 'standings'

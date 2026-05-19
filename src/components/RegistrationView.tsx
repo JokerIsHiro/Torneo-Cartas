@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 
+// Pantalla publica de inscripcion para un torneo concreto.
 export function RegistrationView() {
   const tournamentId = getTargetTournamentId()
   const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))

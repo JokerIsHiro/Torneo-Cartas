@@ -80,6 +80,7 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Estructura base de la aplicacion y pantalla de carga. */
 .app-shell {
   min-height: 100vh;
   width: 100%;
@@ -104,6 +105,7 @@ button:disabled {
   font-size: 18px;
 }
 
+/* Cabecera superior: logo, pestanas de torneos y accesos a pantallas publicas. */
 .top-bar {
   width: 100%;
   max-width: 100vw;
@@ -260,6 +262,7 @@ button:disabled {
   font-size: 12px;
 }
 
+/* Contenedor principal comun para admin y pantallas publicas. */
 .main-content {
   width: 100%;
   min-width: 0;
@@ -306,6 +309,7 @@ button:disabled {
   flex-shrink: 0;
 }
 
+/* Tabs internos del torneo activo: ronda y clasificacion. */
 .segmented-tabs {
   display: flex;
   border: 0.5px solid var(--color-border-tertiary);
@@ -334,6 +338,7 @@ button:disabled {
   font-weight: 500;
 }
 
+/* Pantalla publica de emparejamientos. */
 .projector-pairings {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -411,6 +416,7 @@ button:disabled {
   margin-top: 5px !important;
 }
 
+/* Estados vacios y acciones generales. */
 .empty-state {
   text-align: center;
   padding: 4rem 1rem;
@@ -458,6 +464,7 @@ button:disabled {
   min-width: 0;
 }
 
+/* Botones para registrar resultados de una partida. */
 .result-button {
   min-width: 0;
   display: inline-flex;
@@ -479,6 +486,7 @@ button:disabled {
   border-color: var(--color-border-secondary) !important;
 }
 
+/* Pantalla publica de inscripcion. */
 .registration-card {
   width: min(100%, 460px);
   margin: clamp(1rem, 6vh, 4rem) auto 0;
@@ -563,6 +571,7 @@ button:disabled {
   font-size: 12px;
 }
 
+/* Grid de temporizadores. Cambia de densidad segun cantidad y fullscreen. */
 .timers-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
@@ -595,6 +604,7 @@ button:disabled {
   min-height: 0;
 }
 
+/* Ajustes de movil: evita solapes, apila formularios y reduce grids. */
 @media (max-width: 680px) {
   .top-bar {
     padding: 0.5rem;

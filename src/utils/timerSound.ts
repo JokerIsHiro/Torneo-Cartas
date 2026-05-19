@@ -1,5 +1,6 @@
 let audioContext: AudioContext | null = null
 
+// Crea una unica instancia de AudioContext para todos los avisos sonoros.
 function getAudioContext() {
   audioContext ??= new AudioContext()
   return audioContext
@@ -14,6 +15,7 @@ export async function unlockTimerSound() {
   }
 }
 
+// Aviso corto de fin de ronda. No depende de archivos externos de audio.
 export function playTimerFinishedSound() {
   try {
     const ctx = getAudioContext()

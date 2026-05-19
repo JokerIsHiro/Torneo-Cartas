@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
+// Hook de temporizador local. Los timers de torneo usan timerStore para sincronizarse
+// entre pestanas, pero este hook queda disponible para usos aislados.
 type TimerStatus = 'idle' | 'running' | 'paused' | 'finished'
 
 interface UseTimerOptions {

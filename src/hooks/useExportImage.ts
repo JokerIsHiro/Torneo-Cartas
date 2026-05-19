@@ -1,6 +1,7 @@
 import { useRef, useCallback } from 'react'
 import html2canvas from 'html2canvas'
 
+// Convierte un nodo oculto del DOM en una imagen PNG descargable.
 interface UseExportImageReturn {
   ref: React.RefObject<HTMLDivElement | null>
   exportImage: (filename?: string) => Promise<void>

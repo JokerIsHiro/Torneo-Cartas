@@ -5,6 +5,7 @@ import { useSwissPairings } from '../hooks/useSwissPairings'
 import { PlayerList } from '../components/PlayerList'
 import type { TournamentTCG } from '../types/tournament'
 
+// Pantalla de configuracion: nombre, juego, duracion, invitacion y jugadores.
 interface SetupProps {
   tournamentId: string
 }

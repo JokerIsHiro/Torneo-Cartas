@@ -11,6 +11,8 @@ import { RegistrationView } from './components/RegistrationView'
 import type { Tournament } from './types/tournament'
 import { unlockTimerSound } from './utils/timerSound'
 
+// Componente raiz. Decide que vista se muestra segun el hash de la URL
+// y conecta la sincronizacion entre pestanas.
 type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion'
 type AdminTab = string
 

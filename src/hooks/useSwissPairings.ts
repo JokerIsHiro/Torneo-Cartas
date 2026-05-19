@@ -3,6 +3,8 @@ import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import type { Player, Match, Round } from '../types/tournament'
 
+// Hook de lectura para todo lo derivado del sistema Swiss:
+// emparejamientos actuales, clasificacion, resumen de rondas y nombres.
 interface StandingsRow {
   player: Player
   position: number

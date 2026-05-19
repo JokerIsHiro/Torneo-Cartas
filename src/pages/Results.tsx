@@ -4,6 +4,7 @@ import { Standings } from '../components/Standings'
 import { RoundExport } from '../components/RoundExport'
 import { useExportImage } from '../hooks/useExportImage'
 
+// Pantalla final del torneo: permite exportar el standing final y eliminar el torneo.
 interface ResultsProps {
   tournamentId: string
 }

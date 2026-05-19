@@ -5,6 +5,7 @@ import { useTimerData, useTimerStore } from '../store/timerStore'
 import type { Tournament } from '../types/tournament'
 import { CircularTimer } from './CircularTimer'
 
+// Pantalla publica de temporizadores de todos los torneos activos.
 export function TimersView() {
   const viewRef = useRef<HTMLDivElement | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)

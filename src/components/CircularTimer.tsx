@@ -1,3 +1,4 @@
+// Reloj circular reutilizable. Solo pinta UI; la logica del tiempo vive en timerStore.
 interface CircularTimerProps {
   formatted: string
   progress: number

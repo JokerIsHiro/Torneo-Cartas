@@ -4,6 +4,7 @@ import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import { CircularTimer } from './CircularTimer'
 
+// Temporizador embebido dentro de la ronda del admin.
 interface TimerProps {
   tournamentId: string
 }

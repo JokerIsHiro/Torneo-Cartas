@@ -3,6 +3,7 @@ import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import type { Player } from '../types/tournament'
 
+// Lista de participantes. En setup permite anadir/quitar; en torneo activo muestra ranking.
 interface PlayerListProps {
   tournamentId: string
 }

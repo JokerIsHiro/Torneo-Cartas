@@ -2,6 +2,7 @@ import type { Match, MatchResult } from '../types/tournament'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 
+// Tarjeta de partida. En admin permite marcar resultados; en proyeccion es solo lectura.
 interface MatchCardProps {
   match: Match
   tournamentId: string

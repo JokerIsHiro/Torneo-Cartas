@@ -1,3 +1,5 @@
+// Tipos centrales del dominio: jugadores, partidas, rondas y torneos.
+// Si se anade una nueva estadistica o un nuevo juego, normalmente empieza aqui.
 export interface Player {
   id: string
   name: string

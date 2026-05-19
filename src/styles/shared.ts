@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 
-
+// Estilos reutilizables para mantener consistencia entre componentes.
 export const cardStyle: CSSProperties = {
   background: 'var(--color-background-primary)',
   border: '0.5px solid var(--color-border-tertiary)',

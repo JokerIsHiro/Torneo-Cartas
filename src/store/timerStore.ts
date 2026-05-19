@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { useTournamentsStore } from './tournamentsStore'
 import { playTimerFinishedSound } from '../utils/timerSound'
 
+// Store de temporizadores. Usa endsAt (hora real de fin) para evitar congelaciones
+// cuando una pestana queda en segundo plano o se abre tarde.
 interface TimerState {
   secondsLeft: number
   status: 'idle' | 'running' | 'paused' | 'finished'
@@ -32,11 +34,14 @@ const defaultTimer = (durationSeconds: number): TimerState => ({
 })
 
 function getSecondsLeft(timer: TimerState | SyncedTimerState) {
+  // Si esta corriendo, calculamos contra la hora real de fin.
+  // Esto evita que se congele si el navegador pausa intervalos.
   if (timer.status !== 'running' || !timer.endsAt) return timer.secondsLeft
   return Math.max(0, Math.ceil((timer.endsAt - Date.now()) / 1000))
 }
 
 function publishTimers(timers: Record<string, TimerState>) {
+  // Publicamos una version serializable sin intervalId para que otras pestanas lean el timer.
   const syncedTimers = Object.fromEntries(
     Object.entries(timers).map(([id, timer]) => [
       id,
@@ -71,6 +76,7 @@ function ensureTicker(tournamentId: string, timer: TimerState) {
 }
 
 function tickTimer(tournamentId: string) {
+  // Tick unico del timer: actualiza segundos restantes o finaliza la ronda.
   const current = useTimerStore.getState().timers[tournamentId]
   if (!current || current.status !== 'running') return
 
@@ -79,6 +85,7 @@ function tickTimer(tournamentId: string) {
   if (secondsLeft <= 0) {
     if (current.intervalId) clearInterval(current.intervalId)
     const tournament = useTournamentsStore.getState().tournaments.find(t => t.id === tournamentId)
+    // Solo YuGiOh recibe derrota automatica al terminar el tiempo.
     if (tournament?.tcg === 'yugioh') {
       useTournamentsStore.getState().applyTimeoutToUnfinished(tournamentId)
     }
@@ -97,6 +104,7 @@ function tickTimer(tournamentId: string) {
 }
 
 export function syncTimersFromStorage(value?: string | null) {
+  // Reconstruye timers recibidos desde otra pestana y activa ticker local si hace falta.
   const syncedTimers = readSyncedTimers(value)
 
   useTimerStore.setState(s => ({

@@ -3,6 +3,7 @@ import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import type { MatchResult, Player } from '../types/tournament'
 
+// Clasificacion del torneo y resumen historico de rondas.
 interface StandingsProps {
   tournamentId: string
   showPodium?: boolean
