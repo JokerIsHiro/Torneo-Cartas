@@ -5,9 +5,10 @@ import type { Player } from '../types/tournament'
 
 interface StandingsProps {
   tournamentId: string
+  showPodium?: boolean
 }
 
-export function Standings({ tournamentId }: StandingsProps) {
+export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
   const { status, rounds, exists } = useTournamentsStore(
     useShallow(s => {
       const t = s.tournaments.find(t => t.id === tournamentId)
@@ -31,7 +32,7 @@ export function Standings({ tournamentId }: StandingsProps) {
 
   return (
     <div>
-      {standings.length >= 3 && (
+      {showPodium && standings.length >= 3 && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '1rem' }}>
           <PodiumCard player={standings[1].player} medal="🥈" position={2} />
           <PodiumCard player={standings[0].player} medal="🥇" position={1} />
