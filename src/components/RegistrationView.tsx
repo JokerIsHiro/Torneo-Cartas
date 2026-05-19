@@ -6,6 +6,7 @@ export function RegistrationView() {
   const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
   const addPlayer = useTournamentsStore(s => s.addPlayer)
   const [name, setName] = useState('')
+  const [registeredName, setRegisteredName] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -21,6 +22,19 @@ export function RegistrationView() {
 
   const currentTournament = tournament
   const isOpen = tournament.status === 'setup'
+
+  if (registeredName) {
+    return (
+      <div className="registration-card">
+        <i className="ti ti-circle-check" aria-hidden="true" />
+        <h1>Inscripción recibida</h1>
+        <p>{registeredName} ya está apuntado a {tournament.name}.</p>
+        <div className="registration-meta">
+          Puedes cerrar esta pestaña.
+        </div>
+      </div>
+    )
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -45,6 +59,7 @@ export function RegistrationView() {
     }
 
     addPlayer(currentTournament.id, playerName)
+    setRegisteredName(playerName)
     setName('')
     setMessage('Inscripción recibida.')
   }
