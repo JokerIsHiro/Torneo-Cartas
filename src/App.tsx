@@ -47,6 +47,7 @@ export default function App() {
   const [route, setRouteState] = useState<AppRoute>(getRouteFromPath)
   const [activeTab, setActiveTab] = useState<AdminTab>('')
   const [innerTab, setInnerTab] = useState<Record<string, TournamentInnerTab>>({})
+  const isMobileDevice = useIsMobileDevice()
   useFirebaseSync()
 
   const tournaments = useTournamentsStore(s => s.tournaments)
@@ -130,10 +131,11 @@ export default function App() {
 
   const selectedTab = activeTab || tournaments[0]?.id || ''
   const activeTournament = tournaments.find(t => t.id === selectedTab)
+  const mobileBlocked = isMobileDevice && route !== 'inscripcion'
 
   return (
     <div className="app-shell">
-      <div className="top-bar">
+      {!mobileBlocked && <div className="top-bar">
         <div className="brand-block">
           <img
             src="/subterra-logo.jpg"
@@ -203,15 +205,16 @@ export default function App() {
             )}
           </div>
         )}
-      </div>
+      </div>}
 
       <main className={route !== 'admin' ? 'main-content projector-content' : 'main-content'}>
-        {route === 'proyeccion' && <ProjectorView />}
-        {route === 'temporizadores' && <TimersView />}
+        {mobileBlocked && <MobilePlayerOnly />}
+        {!mobileBlocked && route === 'proyeccion' && <ProjectorView />}
+        {!mobileBlocked && route === 'temporizadores' && <TimersView />}
         {route === 'inscripcion' && <RegistrationView />}
-        {route === 'qr' && <QrView />}
+        {!mobileBlocked && route === 'qr' && <QrView />}
 
-        {route === 'admin' && activeTournament && (
+        {!mobileBlocked && route === 'admin' && activeTournament && (
           <TournamentView
             tournament={activeTournament}
             innerTab={getInnerTab(activeTournament.id)}
@@ -219,14 +222,14 @@ export default function App() {
           />
         )}
 
-        {route === 'admin' && syncEnabled && !syncLoaded && (
+        {!mobileBlocked && route === 'admin' && syncEnabled && !syncLoaded && (
           <div className="empty-state">
             <i className="ti ti-loader-2" aria-hidden="true" />
             <div>Cargando torneos...</div>
           </div>
         )}
 
-        {route === 'admin' && syncLoaded && !activeTournament && (
+        {!mobileBlocked && route === 'admin' && syncLoaded && !activeTournament && (
           <div className="empty-state">
             <i className="ti ti-trophy-off" aria-hidden="true" />
             <div>No hay torneos creados</div>
@@ -261,6 +264,33 @@ function QrView() {
       <div className="qr-display-box">
         <RegistrationQr value={link} />
       </div>
+    </div>
+  )
+}
+
+function useIsMobileDevice() {
+  // Bloquea herramientas de tienda en moviles y tablets; quedan solo para jugadores.
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 1180px), (pointer: coarse)').matches)
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 1180px), (pointer: coarse)')
+    function handleChange() {
+      setIsMobile(query.matches)
+    }
+
+    query.addEventListener('change', handleChange)
+    return () => query.removeEventListener('change', handleChange)
+  }, [])
+
+  return isMobile
+}
+
+function MobilePlayerOnly() {
+  return (
+    <div className="mobile-player-only">
+      <img src="/subterra-logo.jpg" alt="Subterra TCG" />
+      <h1>Acceso de jugadores</h1>
+      <p>En movil solo esta disponible la inscripcion y el emparejamiento personal desde el enlace o QR del torneo.</p>
     </div>
   )
 }

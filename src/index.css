@@ -1186,6 +1186,37 @@ button:disabled {
   height: auto;
 }
 
+.mobile-player-only {
+  min-height: 100dvh;
+  width: min(100%, 440px);
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.mobile-player-only img {
+  width: 76px;
+  height: 76px;
+  object-fit: contain;
+}
+
+.mobile-player-only h1 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 26px;
+}
+
+.mobile-player-only p {
+  max-width: 32ch;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
 .pending-results-panel {
   margin-bottom: 0;
   border: 0.5px solid var(--color-border-primary);
@@ -1302,35 +1333,50 @@ button:disabled {
   min-height: 0;
 }
 
-/* Ajustes de movil: evita solapes, apila formularios y reduce grids. */
-@media (max-width: 680px) {
+/* Ajustes de movil: usa una estructura propia, no una version encogida de desktop. */
+@media (max-width: 760px) {
   .top-bar {
-    padding: 0.5rem;
-    gap: 6px;
-    align-items: stretch;
+    min-height: 0;
+    padding: 0.625rem;
+    gap: 8px;
+    align-items: center;
     flex-wrap: wrap;
     overflow-x: hidden;
   }
 
   .brand-block {
-    width: 100%;
+    width: auto;
+    min-height: 52px;
+    flex: 0 0 auto;
     border-right: 0;
-    border-bottom: 0.5px solid var(--color-border-tertiary);
     margin: 0;
-    padding: 6px 0 10px;
+    padding: 0 8px 0 0;
     justify-content: center;
   }
 
   .brand-block img {
-    width: 58px;
-    height: 58px;
+    width: 50px;
+    height: 50px;
   }
 
   .top-tab {
-    height: 40px;
+    height: 42px;
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    max-width: none;
+    padding: 0 10px;
     border: 0.5px solid var(--color-border-tertiary);
     border-radius: var(--border-radius-md);
     background: var(--color-background-primary);
+  }
+
+  .top-tab > span:not(.status-dot) {
+    max-width: none;
+    font-size: 13px;
+  }
+
+  .top-tab button {
+    opacity: 1;
   }
 
   .top-tab.active {
@@ -1338,17 +1384,19 @@ button:disabled {
   }
 
   .new-tournament-button {
-    margin-left: 0;
+    flex: 1 1 auto;
     margin-top: 0;
     margin-bottom: 0;
-    min-height: 40px;
+    min-height: 42px;
+    padding: 8px 12px;
   }
 
   .projector-open-button {
     margin-left: 0;
     margin-top: 0;
     margin-bottom: 0;
-    min-height: 40px;
+    min-height: 42px;
+    padding: 8px 10px;
   }
 
   .admin-public-actions {
@@ -1370,16 +1418,38 @@ button:disabled {
   }
 
   .main-content {
-    padding: 1rem 0.75rem;
+    padding: 0.875rem;
   }
 
   .tournament-header,
   .projector-section-header {
     align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .tournament-header h2,
+  .projector-section-header h2 {
+    font-size: 18px;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .status-badge {
+    width: fit-content;
+  }
+
+  .segmented-tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 
   .segmented-tabs button {
-    min-height: 40px;
+    flex: 1 0 112px;
+    min-height: 44px;
+    padding: 9px 10px;
+    white-space: nowrap;
   }
 
   .match-players {
@@ -1428,10 +1498,12 @@ button:disabled {
 
   .setup-workspace {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .setup-side-column {
     position: static;
+    gap: 10px;
   }
 
   .invite-action-buttons {
@@ -1460,16 +1532,51 @@ button:disabled {
 
   .round-workspace {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .round-side-column {
     position: static;
     order: -1;
+    gap: 10px;
   }
 
   .round-section-header {
     align-items: flex-start;
     flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+
+  .round-history-tabs {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .round-history-tabs button {
+    flex: 1 1 calc(50% - 3px);
+    justify-content: center;
+  }
+
+  .round-match-grid,
+  .pairing-table-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .pairing-organizer-help {
+    align-items: flex-start;
+    line-height: 1.35;
+  }
+
+  .pairing-player-slot {
+    min-height: 54px;
+    font-size: 14px;
+  }
+
+  .pairing-table-card {
+    padding: 11px;
   }
 
   .timers-grid,

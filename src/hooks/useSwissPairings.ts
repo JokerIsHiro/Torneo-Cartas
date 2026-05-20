@@ -9,6 +9,10 @@ interface StandingsRow {
   player: Player
   position: number
   isEliminated: boolean
+  tiebreakers: {
+    opponentPoints: number
+    opponentWinRate: number
+  }
 }
 
 interface RoundSummary {
@@ -34,6 +38,24 @@ interface UseSwissPairingsReturn {
 
 const EMPTY_PLAYERS: Player[] = []
 const EMPTY_ROUNDS: Round[] = []
+
+function getTiebreakers(player: Player, players: Player[]) {
+  // Resistencia: mide como de fuertes fueron los rivales que te tocaron.
+  const opponents = player.opponents
+    .map(opponentId => players.find(candidate => candidate.id === opponentId))
+    .filter(Boolean) as Player[]
+
+  const opponentPoints = opponents.reduce((total, opponent) => total + opponent.points, 0)
+  const opponentGames = opponents.reduce((total, opponent) => {
+    return total + opponent.wins + opponent.losses + opponent.draws
+  }, 0)
+  const opponentWins = opponents.reduce((total, opponent) => total + opponent.wins, 0)
+
+  return {
+    opponentPoints,
+    opponentWinRate: opponentGames > 0 ? opponentWins / opponentGames : 0,
+  }
+}
 
 function calcTotalRounds(playerCount: number): number {
   if (playerCount <= 0)  return 0
@@ -92,17 +114,29 @@ export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
   const allResultsIn = unfinishedCount === 0 && currentMatches.length > 0
 
   const standings = useMemo<StandingsRow[]>(() => {
-    const sorted = [...players].sort((a, b) => {
-      if (b.points !== a.points)               return b.points - a.points
-      if (b.wins !== a.wins)                   return b.wins - a.wins
-      if (a.timeoutLosses !== b.timeoutLosses) return a.timeoutLosses - b.timeoutLosses
-      return a.name.localeCompare(b.name)
+    const rows = players.map(player => ({
+      player,
+      position: 0,
+      isEliminated: player.losses >= 2,
+      tiebreakers: getTiebreakers(player, players),
+    }))
+
+    const sorted = rows.sort((a, b) => {
+      if (b.player.points !== a.player.points) return b.player.points - a.player.points
+      if (b.tiebreakers.opponentPoints !== a.tiebreakers.opponentPoints) {
+        return b.tiebreakers.opponentPoints - a.tiebreakers.opponentPoints
+      }
+      if (b.tiebreakers.opponentWinRate !== a.tiebreakers.opponentWinRate) {
+        return b.tiebreakers.opponentWinRate - a.tiebreakers.opponentWinRate
+      }
+      if (b.player.wins !== a.player.wins) return b.player.wins - a.player.wins
+      if (a.player.timeoutLosses !== b.player.timeoutLosses) return a.player.timeoutLosses - b.player.timeoutLosses
+      return a.player.name.localeCompare(b.player.name)
     })
 
-    return sorted.map((player, index) => ({
-      player,
+    return sorted.map((row, index) => ({
+      ...row,
       position: index + 1,
-      isEliminated: player.losses >= 2,
     }))
   }, [players])
 
