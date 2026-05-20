@@ -1,10 +1,9 @@
 import { initializeApp, type FirebaseApp, type FirebaseOptions } from 'firebase/app'
 import {
-  onAuthStateChanged,
+  browserLocalPersistence,
   getAuth,
-  signInWithEmailAndPassword,
+  setPersistence,
   signInAnonymously,
-  signOut,
   type Auth,
   type User,
 } from 'firebase/auth'
@@ -37,6 +36,7 @@ let auth: Auth | null = null
 let db: Firestore | null = null
 let authPromise: Promise<User | null> | null = null
 let runtimeConfigPromise: Promise<FirebaseOptions | null> | null = null
+let authPersistencePromise: Promise<void> | null = null
 
 export function hasFirebaseConfig() {
   return hasEnvFirebaseConfig || isFirebaseHosting()
@@ -68,7 +68,12 @@ async function getFirebaseApp() {
 async function getFirebaseAuth() {
   const firebaseApp = await getFirebaseApp()
   if (!firebaseApp) return null
-  if (!auth) auth = getAuth(firebaseApp)
+  if (!auth) {
+    auth = getAuth(firebaseApp)
+    // Mantiene la sesion aunque se recargue o se abra otra pestana del navegador.
+    authPersistencePromise = setPersistence(auth, browserLocalPersistence)
+  }
+  await authPersistencePromise
   return auth
 }
 
@@ -91,32 +96,6 @@ export async function ensureFirebaseAuth() {
     })
 
   return authPromise
-}
-
-export async function signInAdmin(email: string, password: string) {
-  // Login real de administrador: usa Email/Password de Firebase Auth.
-  const firebaseAuth = await getFirebaseAuth()
-  if (!firebaseAuth) throw new Error('Firebase no esta configurado')
-  const credential = await signInWithEmailAndPassword(firebaseAuth, email, password)
-  return credential.user
-}
-
-export async function signOutAdmin() {
-  const firebaseAuth = await getFirebaseAuth()
-  if (!firebaseAuth) return
-  await signOut(firebaseAuth)
-}
-
-export async function subscribeToAdminAuth(onUser: (user: User | null) => void) {
-  // La UI de admin solo acepta usuarios no anonimos; los jugadores siguen usando anonimo.
-  const firebaseAuth = await getFirebaseAuth()
-  if (!firebaseAuth) {
-    onUser(null)
-    return null
-  }
-  return onAuthStateChanged(firebaseAuth, user => {
-    onUser(user && !user.isAnonymous ? user : null)
-  })
 }
 
 export function getCurrentUserId() {
