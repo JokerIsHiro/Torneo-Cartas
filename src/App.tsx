@@ -17,6 +17,7 @@ import { useFirebaseSync } from './hooks/useFirebaseSync'
 // y conecta la sincronizacion entre pestanas.
 type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion' | 'qr'
 type AdminTab = string
+type TournamentInnerTab = 'ronda' | 'organizar' | 'clasificacion'
 
 const routePaths: Record<AppRoute, string> = {
   admin: '/',
@@ -45,7 +46,7 @@ function setRoute(route: AppRoute) {
 export default function App() {
   const [route, setRouteState] = useState<AppRoute>(getRouteFromPath)
   const [activeTab, setActiveTab] = useState<AdminTab>('')
-  const [innerTab, setInnerTab] = useState<Record<string, 'ronda' | 'clasificacion'>>({})
+  const [innerTab, setInnerTab] = useState<Record<string, TournamentInnerTab>>({})
   useFirebaseSync()
 
   const tournaments = useTournamentsStore(s => s.tournaments)
@@ -95,11 +96,11 @@ export default function App() {
     }
   }, [])
 
-  function getInnerTab(id: string): 'ronda' | 'clasificacion' {
+  function getInnerTab(id: string): TournamentInnerTab {
     return innerTab[id] ?? 'ronda'
   }
 
-  function setInnerTabFor(id: string, tab: 'ronda' | 'clasificacion') {
+  function setInnerTabFor(id: string, tab: TournamentInnerTab) {
     setInnerTab(prev => ({ ...prev, [id]: tab }))
   }
 
@@ -279,8 +280,8 @@ function RegistrationQr({ value }: { value: string }) {
 
 interface TournamentViewProps {
   tournament: Tournament
-  innerTab: 'ronda' | 'clasificacion'
-  onInnerTabChange: (tab: 'ronda' | 'clasificacion') => void
+  innerTab: TournamentInnerTab
+  onInnerTabChange: (tab: TournamentInnerTab) => void
 }
 
 function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentViewProps) {
@@ -304,6 +305,7 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
         <div className="segmented-tabs">
           {([
             { id: 'ronda', label: 'Ronda', icon: 'ti-swords' },
+            { id: 'organizar', label: 'Organizar', icon: 'ti-arrows-shuffle' },
             { id: 'clasificacion', label: 'Clasificación', icon: 'ti-trophy' },
           ] as const).map(t => (
             <button
@@ -319,7 +321,8 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
       )}
 
       {status === 'setup' && <Setup tournamentId={id} />}
-      {status === 'active' && innerTab === 'ronda' && <Round tournamentId={id} />}
+      {status === 'active' && innerTab === 'ronda' && <Round tournamentId={id} mode="results" />}
+      {status === 'active' && innerTab === 'organizar' && <Round tournamentId={id} mode="organize" />}
       {status === 'active' && innerTab === 'clasificacion' && <Standings tournamentId={id} />}
       {status === 'finished' && <Results tournamentId={id} />}
     </div>

@@ -6,13 +6,14 @@ import { Timer } from '../components/Timer'
 import { MatchCard } from '../components/MatchCard'
 import { RoundExport } from '../components/RoundExport'
 import { useExportImage } from '../hooks/useExportImage'
-import type { PendingMatchResult, Tournament } from '../types/tournament'
+import type { Match, PendingMatchResult, Tournament } from '../types/tournament'
 
 interface RoundProps {
   tournamentId: string
+  mode?: 'results' | 'organize'
 }
 
-export function Round({ tournamentId }: RoundProps) {
+export function Round({ tournamentId, mode = 'results' }: RoundProps) {
   const nextRound = useTournamentsStore(s => s.nextRound)
   const finishTournament = useTournamentsStore(s => s.finishTournament)
   const swapCurrentRoundPlayers = useTournamentsStore(s => s.swapCurrentRoundPlayers)
@@ -58,6 +59,7 @@ export function Round({ tournamentId }: RoundProps) {
     && currentRound <= 2
     && currentMatches.every(match => match.result === null || match.result === 'bye')
   const playerSlots = useMemo(() => {
+    // Lista plana de jugadores movibles: cada item sabe en que mesa y slot esta.
     return currentMatches
       .filter(match => match.p2Id !== 'BYE')
       .flatMap(match => [
@@ -81,6 +83,21 @@ export function Round({ tournamentId }: RoundProps) {
     }
     previousPendingCount.current = pendingResults.length
   }, [pendingResults.length])
+
+  if (mode === 'organize') {
+    return (
+      <PairingOrganizer
+        currentRound={currentRound}
+        currentMatches={currentMatches}
+        editablePairings={editablePairings}
+        firstSwapSlot={firstSwapSlot}
+        playerSlots={playerSlots}
+        getPlayerName={getPlayerName}
+        onSelectSlot={setFirstSwapSlot}
+        onSwapPlayers={handleSwapPlayers}
+      />
+    )
+  }
 
   return (
     <div className="round-workspace">
@@ -148,49 +165,6 @@ export function Round({ tournamentId }: RoundProps) {
           <PendingResultsPanel tournament={tournament} pendingResults={pendingResults} />
         )}
 
-        {editablePairings && (
-          <section className="pairing-tools-panel">
-            <header>
-              <strong>Editar emparejamiento</strong>
-              <span>Arrastra un jugador sobre otro, o toca dos jugadores seguidos.</span>
-            </header>
-            <div className="pairing-dnd-board">
-              {playerSlots.map(slot => (
-                <button
-                  key={slot.value}
-                  draggable
-                  onDragStart={event => {
-                    event.dataTransfer.setData('text/plain', slot.value)
-                    setFirstSwapSlot(slot.value)
-                  }}
-                  onDragOver={event => event.preventDefault()}
-                  onDrop={event => {
-                    event.preventDefault()
-                    handleSwapPlayers(event.dataTransfer.getData('text/plain') || firstSwapSlot, slot.value)
-                  }}
-                  onClick={() => {
-                    if (!firstSwapSlot) {
-                      setFirstSwapSlot(slot.value)
-                      return
-                    }
-                    handleSwapPlayers(firstSwapSlot, slot.value)
-                  }}
-                  className={firstSwapSlot === slot.value ? 'selected' : ''}
-                >
-                  <i className="ti ti-grip-vertical" aria-hidden="true" />
-                  <span>{slot.label}</span>
-                </button>
-              ))}
-            </div>
-            {firstSwapSlot && (
-              <button onClick={() => setFirstSwapSlot('')}>
-                <i className="ti ti-x" aria-hidden="true" />
-                Cancelar seleccion
-              </button>
-            )}
-          </section>
-        )}
-
         {canAddLatePlayer && (
           <section className="pairing-tools-panel">
             <header>
@@ -251,6 +225,146 @@ export function Round({ tournamentId }: RoundProps) {
         )}
       </aside>
     </div>
+  )
+}
+
+interface PairingOrganizerProps {
+  currentRound: number
+  currentMatches: Match[]
+  editablePairings: boolean
+  firstSwapSlot: string
+  playerSlots: Array<{ value: string; label: string }>
+  getPlayerName: (id: string) => string
+  onSelectSlot: (slot: string) => void
+  onSwapPlayers: (firstSlot: string, secondSlot: string) => void
+}
+
+function PairingOrganizer({
+  currentRound,
+  currentMatches,
+  editablePairings,
+  firstSwapSlot,
+  playerSlots,
+  getPlayerName,
+  onSelectSlot,
+  onSwapPlayers,
+}: PairingOrganizerProps) {
+  // Vista dedicada para revisar mesas antes de publicar resultados.
+  const slotLabels = new Map(playerSlots.map(slot => [slot.value, slot.label]))
+
+  function handleSlotClick(slot: string) {
+    if (!editablePairings) return
+    if (!firstSwapSlot) {
+      onSelectSlot(slot)
+      return
+    }
+    onSwapPlayers(firstSwapSlot, slot)
+  }
+
+  function handleDrop(event: React.DragEvent, targetSlot: string) {
+    event.preventDefault()
+    if (!editablePairings) return
+    onSwapPlayers(event.dataTransfer.getData('text/plain') || firstSwapSlot, targetSlot)
+  }
+
+  return (
+    <section className="pairing-organizer-page">
+      <div className="round-section-header">
+        <div>
+          <span>
+            <i className="ti ti-arrows-shuffle" aria-hidden="true" /> Organizar ronda {currentRound}
+          </span>
+          <em>{editablePairings ? 'editable' : 'bloqueado'}</em>
+        </div>
+      </div>
+
+      {!editablePairings && (
+        <div className="round-edit-warning">
+          <i className="ti ti-alert-triangle" aria-hidden="true" />
+          Solo se pueden reorganizar emparejamientos antes de introducir el primer resultado y si no hay BYE.
+        </div>
+      )}
+
+      {editablePairings && (
+        <div className="pairing-organizer-help">
+          <i className="ti ti-hand-move" aria-hidden="true" />
+          Arrastra un jugador sobre otro para intercambiarlos. En movil, toca un jugador y despues el otro.
+        </div>
+      )}
+
+      <div className="pairing-table-grid">
+        {currentMatches.map(match => (
+          <article key={match.id} className="pairing-table-card">
+            <header>
+              <strong>Mesa {match.tableNumber}</strong>
+              {match.p2Id === 'BYE' && <span>BYE</span>}
+            </header>
+
+            <PairingPlayerSlot
+              slot={`${match.id}:${match.p1Id}`}
+              playerName={getPlayerName(match.p1Id)}
+              selected={firstSwapSlot === `${match.id}:${match.p1Id}`}
+              disabled={!editablePairings || match.p2Id === 'BYE'}
+              label={slotLabels.get(`${match.id}:${match.p1Id}`)}
+              onClick={handleSlotClick}
+              onDrop={handleDrop}
+            />
+
+            <div className="pairing-table-versus">vs</div>
+
+            <PairingPlayerSlot
+              slot={`${match.id}:${match.p2Id}`}
+              playerName={getPlayerName(match.p2Id)}
+              selected={firstSwapSlot === `${match.id}:${match.p2Id}`}
+              disabled={!editablePairings || match.p2Id === 'BYE'}
+              label={slotLabels.get(`${match.id}:${match.p2Id}`)}
+              onClick={handleSlotClick}
+              onDrop={handleDrop}
+            />
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+interface PairingPlayerSlotProps {
+  slot: string
+  playerName: string
+  selected: boolean
+  disabled: boolean
+  label?: string
+  onClick: (slot: string) => void
+  onDrop: (event: React.DragEvent, slot: string) => void
+}
+
+function PairingPlayerSlot({
+  slot,
+  playerName,
+  selected,
+  disabled,
+  label,
+  onClick,
+  onDrop,
+}: PairingPlayerSlotProps) {
+  return (
+    <button
+      className={selected ? 'pairing-player-slot selected' : 'pairing-player-slot'}
+      draggable={!disabled}
+      disabled={disabled}
+      title={label}
+      onDragStart={event => {
+        event.dataTransfer.setData('text/plain', slot)
+      }}
+      onDragOver={event => {
+        if (!disabled) event.preventDefault()
+      }}
+      onDrop={event => onDrop(event, slot)}
+      onClick={() => onClick(slot)}
+    >
+      <i className="ti ti-grip-vertical" aria-hidden="true" />
+      <span>{playerName}</span>
+    </button>
   )
 }
 
