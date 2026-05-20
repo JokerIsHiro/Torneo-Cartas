@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
 import { useTournamentsStore } from './store/tournamentsStore'
 import { syncTimersFromStorage, TIMER_SYNC_KEY, useTimerStore } from './store/timerStore'
 import { Setup } from './pages/Setup'
@@ -11,10 +12,11 @@ import { RegistrationView } from './components/RegistrationView'
 import type { Tournament } from './types/tournament'
 import { unlockTimerSound } from './utils/timerSound'
 import { useFirebaseSync } from './hooks/useFirebaseSync'
+import { hasFirebaseConfig, signInAdmin, signOutAdmin, subscribeToAdminAuth } from './services/firebase'
 
 // Componente raiz. Decide que vista se muestra segun la ruta de la URL
 // y conecta la sincronizacion entre pestanas.
-type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion'
+type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion' | 'qr'
 type AdminTab = string
 
 const routePaths: Record<AppRoute, string> = {
@@ -22,12 +24,14 @@ const routePaths: Record<AppRoute, string> = {
   proyeccion: '/proyeccion',
   temporizadores: '/temporizadores',
   inscripcion: '/inscripcion',
+  qr: '/qr',
 }
 
 function getRouteFromPath(): AppRoute {
   if (window.location.pathname.startsWith('/proyeccion')) return 'proyeccion'
   if (window.location.pathname.startsWith('/temporizadores')) return 'temporizadores'
   if (window.location.pathname.startsWith('/inscripcion')) return 'inscripcion'
+  if (window.location.pathname.startsWith('/qr')) return 'qr'
   return 'admin'
 }
 
@@ -43,6 +47,8 @@ export default function App() {
   const [route, setRouteState] = useState<AppRoute>(getRouteFromPath)
   const [activeTab, setActiveTab] = useState<AdminTab>('')
   const [innerTab, setInnerTab] = useState<Record<string, 'ronda' | 'clasificacion'>>({})
+  const [adminUser, setAdminUser] = useState<{ email: string | null } | null>(null)
+  const [authChecked, setAuthChecked] = useState(() => !hasFirebaseConfig())
   useFirebaseSync()
 
   const tournaments = useTournamentsStore(s => s.tournaments)
@@ -65,6 +71,26 @@ export default function App() {
     handleRouteChange()
     window.addEventListener('popstate', handleRouteChange)
     return () => window.removeEventListener('popstate', handleRouteChange)
+  }, [])
+
+  useEffect(() => {
+    let isMounted = true
+    let unsubscribe: (() => void) | null = null
+
+    if (!hasFirebaseConfig()) return
+
+    void subscribeToAdminAuth(user => {
+      if (!isMounted) return
+      setAdminUser(user ? { email: user.email } : null)
+      setAuthChecked(true)
+    }).then(nextUnsubscribe => {
+      unsubscribe = nextUnsubscribe
+    })
+
+    return () => {
+      isMounted = false
+      unsubscribe?.()
+    }
   }, [])
 
   useEffect(() => {
@@ -126,6 +152,10 @@ export default function App() {
 
   const selectedTab = activeTab || tournaments[0]?.id || ''
   const activeTournament = tournaments.find(t => t.id === selectedTab)
+  // Estados de acceso privado: las pantallas publicas siguen abiertas, solo bloqueamos admin.
+  const adminPending = route === 'admin' && hasFirebaseConfig() && !authChecked
+  const adminLocked = route === 'admin' && hasFirebaseConfig() && authChecked && !adminUser
+  const adminUnlocked = route === 'admin' && !adminPending && !adminLocked
 
   return (
     <div className="app-shell">
@@ -137,7 +167,7 @@ export default function App() {
           />
         </div>
 
-        {route === 'admin' && (
+        {adminUnlocked && (
           <>
             {tournaments.map(t => (
               <TopTab
@@ -173,6 +203,15 @@ export default function App() {
             )}
 
             <button
+              onClick={() => void signOutAdmin()}
+              className="new-tournament-button"
+              title={adminUser?.email ?? 'Sesion de administrador'}
+            >
+              <i className="ti ti-logout" aria-hidden="true" />
+              Salir
+            </button>
+
+            <button
               onClick={handleCreateTournament}
               disabled={syncEnabled && !syncLoaded}
               className="new-tournament-button"
@@ -205,8 +244,18 @@ export default function App() {
         {route === 'proyeccion' && <ProjectorView />}
         {route === 'temporizadores' && <TimersView />}
         {route === 'inscripcion' && <RegistrationView />}
+        {route === 'qr' && <QrView />}
 
-        {route === 'admin' && activeTournament && (
+        {adminPending && (
+          <div className="empty-state">
+            <i className="ti ti-loader-2" aria-hidden="true" />
+            <div>Comprobando administrador...</div>
+          </div>
+        )}
+
+        {adminLocked && <AdminLogin />}
+
+        {adminUnlocked && activeTournament && (
           <TournamentView
             tournament={activeTournament}
             innerTab={getInnerTab(activeTournament.id)}
@@ -214,14 +263,14 @@ export default function App() {
           />
         )}
 
-        {route === 'admin' && syncEnabled && !syncLoaded && (
+        {adminUnlocked && syncEnabled && !syncLoaded && (
           <div className="empty-state">
             <i className="ti ti-loader-2" aria-hidden="true" />
             <div>Cargando torneos...</div>
           </div>
         )}
 
-        {route === 'admin' && syncLoaded && !activeTournament && (
+        {adminUnlocked && syncLoaded && !activeTournament && (
           <div className="empty-state">
             <i className="ti ti-trophy-off" aria-hidden="true" />
             <div>No hay torneos creados</div>
@@ -233,6 +282,91 @@ export default function App() {
         )}
       </main>
     </div>
+  )
+}
+
+function AdminLogin() {
+  // Formulario minimo para entrar como organizador sin exponer controles de torneo.
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      await signInAdmin(email.trim(), password)
+    } catch {
+      setError('No se ha podido iniciar sesion. Revisa email y contrasena.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form className="admin-login-card" onSubmit={handleSubmit}>
+      <i className="ti ti-lock" aria-hidden="true" />
+      <h1>Administrador</h1>
+      <p>Acceso privado para gestionar torneos.</p>
+      <input
+        value={email}
+        onChange={event => setEmail(event.target.value)}
+        type="email"
+        placeholder="Email"
+        autoComplete="email"
+      />
+      <input
+        value={password}
+        onChange={event => setPassword(event.target.value)}
+        type="password"
+        placeholder="Contrasena"
+        autoComplete="current-password"
+      />
+      <button disabled={loading || !email.trim() || !password}>
+        <i className="ti ti-login" aria-hidden="true" />
+        {loading ? 'Entrando...' : 'Entrar'}
+      </button>
+      {error && <div className="registration-feedback error">{error}</div>}
+    </form>
+  )
+}
+
+function QrView() {
+  // Pantalla publica y limpia para proyectar o abrir el QR de inscripcion en otra pestana.
+  const tournamentId = new URLSearchParams(window.location.search).get('torneo') ?? ''
+  const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
+  const link = (() => {
+    const url = new URL('/inscripcion', window.location.origin)
+    if (tournamentId) url.searchParams.set('torneo', tournamentId)
+    return url.toString()
+  })()
+
+  return (
+    <div className="qr-display-page">
+      <div>
+        <img src="/subterra-logo.jpg" alt="Subterra TCG" />
+        <h1>{tournament?.name ?? 'Inscripcion al torneo'}</h1>
+        <p>Escanea para apuntarte</p>
+      </div>
+      <div className="qr-display-box">
+        <RegistrationQr value={link} />
+      </div>
+    </div>
+  )
+}
+
+function RegistrationQr({ value }: { value: string }) {
+  return (
+    <QRCodeSVG
+      value={value}
+      size={520}
+      level="M"
+      marginSize={4}
+      bgColor="#ffffff"
+      fgColor="#05070c"
+    />
   )
 }
 

@@ -1,7 +1,10 @@
 import { initializeApp, type FirebaseApp, type FirebaseOptions } from 'firebase/app'
 import {
+  onAuthStateChanged,
   getAuth,
+  signInWithEmailAndPassword,
   signInAnonymously,
+  signOut,
   type Auth,
   type User,
 } from 'firebase/auth'
@@ -88,6 +91,32 @@ export async function ensureFirebaseAuth() {
     })
 
   return authPromise
+}
+
+export async function signInAdmin(email: string, password: string) {
+  // Login real de administrador: usa Email/Password de Firebase Auth.
+  const firebaseAuth = await getFirebaseAuth()
+  if (!firebaseAuth) throw new Error('Firebase no esta configurado')
+  const credential = await signInWithEmailAndPassword(firebaseAuth, email, password)
+  return credential.user
+}
+
+export async function signOutAdmin() {
+  const firebaseAuth = await getFirebaseAuth()
+  if (!firebaseAuth) return
+  await signOut(firebaseAuth)
+}
+
+export async function subscribeToAdminAuth(onUser: (user: User | null) => void) {
+  // La UI de admin solo acepta usuarios no anonimos; los jugadores siguen usando anonimo.
+  const firebaseAuth = await getFirebaseAuth()
+  if (!firebaseAuth) {
+    onUser(null)
+    return null
+  }
+  return onAuthStateChanged(firebaseAuth, user => {
+    onUser(user && !user.isAnonymous ? user : null)
+  })
 }
 
 export function getCurrentUserId() {

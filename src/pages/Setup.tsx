@@ -95,6 +95,12 @@ export function Setup({ tournamentId }: SetupProps) {
     await copyInvitation()
   }
 
+  function openQrTab() {
+    const url = new URL('/qr', window.location.origin)
+    url.searchParams.set('torneo', tournamentId)
+    window.open(url.toString(), '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <div className="setup-workspace">
       <section className="setup-main-column">
@@ -188,6 +194,9 @@ export function Setup({ tournamentId }: SetupProps) {
               </button>
               <button onClick={shareInvitation} style={buttonStyle}>
                 <i className="ti ti-share-3" aria-hidden="true" /> Enviar
+              </button>
+              <button onClick={openQrTab} style={buttonStyle}>
+                <i className="ti ti-external-link" aria-hidden="true" /> Abrir QR
               </button>
             </div>
           </div>

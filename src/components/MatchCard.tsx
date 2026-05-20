@@ -7,12 +7,17 @@ interface MatchCardProps {
   match: Match
   tournamentId: string
   readOnly?: boolean
+  roundNumber?: number
 }
 
-export function MatchCard({ match, tournamentId, readOnly = false }: MatchCardProps) {
+export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }: MatchCardProps) {
   const setMatchResult = useTournamentsStore(s => s.setMatchResult)
+  const setRoundMatchResult = useTournamentsStore(s => s.setRoundMatchResult)
   const tcg = useTournamentsStore(
     s => s.tournaments.find(t => t.id === tournamentId)?.tcg ?? 'magic'
+  )
+  const currentRound = useTournamentsStore(
+    s => s.tournaments.find(t => t.id === tournamentId)?.currentRound ?? 0
   )
   const { getPlayerName, getPlayerById } = useSwissPairings(tournamentId)
 
@@ -28,6 +33,10 @@ export function MatchCard({ match, tournamentId, readOnly = false }: MatchCardPr
   function handleResult(result: MatchResult) {
     if (isBye) return
     if (match.result === result) return
+    if (roundNumber && roundNumber !== currentRound) {
+      setRoundMatchResult(tournamentId, roundNumber, match.id, result)
+      return
+    }
     setMatchResult(tournamentId, match.id, result)
   }
 

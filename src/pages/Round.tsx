@@ -42,10 +42,15 @@ export function Round({ tournamentId }: RoundProps) {
   const { ref: standingsExportRef, exportImage: exportStandingsImage } = useExportImage()
   const currentSummary = roundSummaries.find(r => r.number === currentRound)
   const previousPendingCount = useRef(pendingResults.length)
+  const [selectedRound, setSelectedRound] = useState<number | null>(null)
   const [firstSwapSlot, setFirstSwapSlot] = useState('')
-  const [secondSwapSlot, setSecondSwapSlot] = useState('')
   const [latePlayerName, setLatePlayerName] = useState('')
   const [pairingToolMessage, setPairingToolMessage] = useState('')
+  const visibleRound = selectedRound && selectedRound <= currentRound ? selectedRound : currentRound
+  const visibleRoundData = tournament?.rounds.find(round => round.number === visibleRound)
+  const visibleMatches = visibleRoundData?.matches ?? []
+  const visibleSummary = roundSummaries.find(r => r.number === visibleRound)
+  const isViewingCurrentRound = visibleRound === currentRound
   const editablePairings = currentMatches.length > 0
     && currentMatches.every(match => match.result === null)
     && !currentMatches.some(match => match.p2Id === 'BYE')
@@ -60,6 +65,15 @@ export function Round({ tournamentId }: RoundProps) {
         { value: `${match.id}:${match.p2Id}`, label: `Mesa ${match.tableNumber} · ${getPlayerName(match.p2Id)}` },
       ])
   }, [currentMatches, getPlayerName])
+
+  function handleSwapPlayers(firstValue: string, secondValue: string) {
+    // El tablero visual sigue usando la misma operacion segura: intercambiar dos slots.
+    const first = parseSwapSlot(firstValue)
+    const second = parseSwapSlot(secondValue)
+    if (!first || !second || !canSwapSlots(firstValue, secondValue)) return
+    swapCurrentRoundPlayers(tournamentId, first.matchId, first.playerId, second.matchId, second.playerId)
+    setFirstSwapSlot('')
+  }
 
   useEffect(() => {
     if (pendingResults.length > previousPendingCount.current) {
@@ -82,30 +96,53 @@ export function Round({ tournamentId }: RoundProps) {
               <i className="ti ti-swords" aria-hidden="true" /> Ronda {currentRound}
             </span>
             {isFinalRound && <em>ronda final</em>}
+            {!isViewingCurrentRound && <em>editando ronda {visibleRound}</em>}
           </div>
 
           <div className="round-export-actions">
             <span>
-              {currentSummary?.matchesDone ?? 0}/{currentSummary?.matchesTotal ?? 0} resultados
+              {visibleSummary?.matchesDone ?? currentSummary?.matchesDone ?? 0}/{visibleSummary?.matchesTotal ?? currentSummary?.matchesTotal ?? 0} resultados
             </span>
-            <button onClick={() => exportRoundImage(`ronda-${currentRound}`)} style={exportButtonStyle}>
+            <button onClick={() => exportRoundImage(`ronda-${visibleRound}`)} style={exportButtonStyle}>
               <i className="ti ti-download" aria-hidden="true" /> Ronda
             </button>
-            <button onClick={() => exportStandingsImage(`clasificacion-ronda-${currentRound}`)} style={exportButtonStyle}>
+            <button onClick={() => exportStandingsImage(`clasificacion-ronda-${visibleRound}`)} style={exportButtonStyle}>
               <i className="ti ti-trophy" aria-hidden="true" /> Clasificacion
             </button>
           </div>
         </div>
 
+        {roundSummaries.length > 1 && (
+          <div className="round-history-tabs">
+            {roundSummaries.map(summary => (
+              <button
+                key={summary.number}
+                onClick={() => setSelectedRound(summary.number === currentRound ? null : summary.number)}
+                className={visibleRound === summary.number ? 'active' : ''}
+              >
+                <i className={summary.isComplete ? 'ti ti-circle-check' : 'ti ti-circle'} aria-hidden="true" />
+                Ronda {summary.number}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!isViewingCurrentRound && (
+          <div className="round-edit-warning">
+            <i className="ti ti-alert-triangle" aria-hidden="true" />
+            Corrige solo lo necesario: la clasificacion se recalcula, pero las rondas posteriores ya creadas no se regeneran automaticamente.
+          </div>
+        )}
+
         <div className="round-match-grid">
-          {currentMatches.map(match => (
-            <MatchCard key={match.id} match={match} tournamentId={tournamentId} />
+          {visibleMatches.map(match => (
+            <MatchCard key={match.id} match={match} tournamentId={tournamentId} roundNumber={visibleRound} />
           ))}
         </div>
       </section>
 
       <aside className="round-side-column">
-        <Timer tournamentId={tournamentId} />
+        {isViewingCurrentRound && <Timer tournamentId={tournamentId} />}
 
         {tournament && pendingResults.length > 0 && (
           <PendingResultsPanel tournament={tournament} pendingResults={pendingResults} />
@@ -115,34 +152,42 @@ export function Round({ tournamentId }: RoundProps) {
           <section className="pairing-tools-panel">
             <header>
               <strong>Editar emparejamiento</strong>
-              <span>Intercambia jugadores antes del primer resultado</span>
+              <span>Arrastra un jugador sobre otro, o toca dos jugadores seguidos.</span>
             </header>
-            <select value={firstSwapSlot} onChange={event => setFirstSwapSlot(event.target.value)}>
-              <option value="">Primer jugador</option>
+            <div className="pairing-dnd-board">
               {playerSlots.map(slot => (
-                <option key={`first-${slot.value}`} value={slot.value}>{slot.label}</option>
+                <button
+                  key={slot.value}
+                  draggable
+                  onDragStart={event => {
+                    event.dataTransfer.setData('text/plain', slot.value)
+                    setFirstSwapSlot(slot.value)
+                  }}
+                  onDragOver={event => event.preventDefault()}
+                  onDrop={event => {
+                    event.preventDefault()
+                    handleSwapPlayers(event.dataTransfer.getData('text/plain') || firstSwapSlot, slot.value)
+                  }}
+                  onClick={() => {
+                    if (!firstSwapSlot) {
+                      setFirstSwapSlot(slot.value)
+                      return
+                    }
+                    handleSwapPlayers(firstSwapSlot, slot.value)
+                  }}
+                  className={firstSwapSlot === slot.value ? 'selected' : ''}
+                >
+                  <i className="ti ti-grip-vertical" aria-hidden="true" />
+                  <span>{slot.label}</span>
+                </button>
               ))}
-            </select>
-            <select value={secondSwapSlot} onChange={event => setSecondSwapSlot(event.target.value)}>
-              <option value="">Segundo jugador</option>
-              {playerSlots.map(slot => (
-                <option key={`second-${slot.value}`} value={slot.value}>{slot.label}</option>
-              ))}
-            </select>
-            <button
-              disabled={!canSwapSlots(firstSwapSlot, secondSwapSlot)}
-              onClick={() => {
-                const first = parseSwapSlot(firstSwapSlot)
-                const second = parseSwapSlot(secondSwapSlot)
-                if (!first || !second) return
-                swapCurrentRoundPlayers(tournamentId, first.matchId, first.playerId, second.matchId, second.playerId)
-                setFirstSwapSlot('')
-                setSecondSwapSlot('')
-              }}
-            >
-              <i className="ti ti-arrows-exchange" aria-hidden="true" />
-              Intercambiar
-            </button>
+            </div>
+            {firstSwapSlot && (
+              <button onClick={() => setFirstSwapSlot('')}>
+                <i className="ti ti-x" aria-hidden="true" />
+                Cancelar seleccion
+              </button>
+            )}
           </section>
         )}
 

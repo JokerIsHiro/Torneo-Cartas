@@ -140,6 +140,55 @@ function applyByeToPlayers(players: Player[], byeMatch: Match): Player[] {
   )
 }
 
+function rebuildPlayersFromRounds(players: Player[], rounds: Round[]): Player[] {
+  // Cuando se corrige una ronda antigua, reconstruimos la clasificacion completa
+  // desde el historial para no dejar puntos duplicados o estadisticas antiguas.
+  const firstRoundByPlayer = new Map<string, number>()
+
+  rounds.forEach(round => {
+    round.matches.forEach(match => {
+      const candidates = match.p2Id === 'BYE' ? [match.p1Id] : [match.p1Id, match.p2Id]
+      candidates.forEach(playerId => {
+        const previous = firstRoundByPlayer.get(playerId)
+        if (!previous || round.number < previous) {
+          firstRoundByPlayer.set(playerId, round.number)
+        }
+      })
+    })
+  })
+
+  let rebuiltPlayers: Player[] = players.map(player => {
+    const firstRound = firstRoundByPlayer.get(player.id) ?? 1
+    const initialLosses = Math.max(0, firstRound - 1)
+    return {
+      ...player,
+      points: 0,
+      wins: 0,
+      losses: initialLosses,
+      draws: 0,
+      byes: 0,
+      timeoutLosses: 0,
+      opponents: [] as string[],
+    }
+  })
+
+  rounds
+    .slice()
+    .sort((a, b) => a.number - b.number)
+    .forEach(round => {
+      round.matches.forEach(match => {
+        if (!match.result) return
+        if (match.result === 'bye') {
+          rebuiltPlayers = applyByeToPlayers(rebuiltPlayers, match)
+          return
+        }
+        rebuiltPlayers = applyResult(rebuiltPlayers, { ...match, result: null }, match.result)
+      })
+    })
+
+  return rebuiltPlayers
+}
+
 const pendingTournamentWrites = new Map<string, Tournament>()
 const pendingTournamentDeletes = new Set<string>()
 
@@ -231,6 +280,7 @@ interface TournamentsStore {
   startTournament: (id: string) => void
   nextRound: (id: string) => void
   setMatchResult: (id: string, matchId: string, result: MatchResult) => void
+  setRoundMatchResult: (id: string, roundNumber: number, matchId: string, result: MatchResult) => void
   swapCurrentRoundPlayers: (id: string, firstMatchId: string, firstPlayerId: string, secondMatchId: string, secondPlayerId: string) => void
   addLatePlayerToCurrentRound: (id: string, name: string) => 'added-to-round' | 'added-next-round' | 'duplicate' | 'closed' | 'has-results'
   submitPlayerResult: (id: string, matchId: string, playerId: string, result: PendingMatchResult['result']) => void
@@ -512,6 +562,31 @@ export const useTournamentsStore = create<TournamentsStore>()(
         commitTournament(set, touchTournament({
           ...tournament,
           players: updatedPlayers,
+          rounds: updatedRounds,
+          pendingResults,
+        }))
+      },
+
+      setRoundMatchResult: (id, roundNumber, matchId, result) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament) return
+        if ((tournament.tcg ?? 'magic') === 'yugioh' && result === 'draw') return
+
+        const round = tournament.rounds.find(candidate => candidate.number === roundNumber)
+        const match = round?.matches.find(candidate => candidate.id === matchId)
+        if (!round || !match || match.p2Id === 'BYE') return
+        if (match.result === result) return
+
+        const updatedRounds = tournament.rounds.map(candidate =>
+          candidate.number === roundNumber
+            ? { ...candidate, matches: candidate.matches.map(candidateMatch => candidateMatch.id === matchId ? { ...candidateMatch, result } : candidateMatch) }
+            : candidate
+        )
+        const pendingResults = (tournament.pendingResults ?? []).filter(p => p.matchId !== matchId)
+
+        commitTournament(set, touchTournament({
+          ...tournament,
+          players: rebuildPlayersFromRounds(tournament.players, updatedRounds),
           rounds: updatedRounds,
           pendingResults,
         }))
