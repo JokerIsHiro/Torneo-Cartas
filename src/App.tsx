@@ -120,7 +120,7 @@ export default function App() {
 
   function openPublicTab(target: 'proyeccion' | 'temporizadores') {
     const url = new URL(routePaths[target], window.location.origin)
-    if (selectedTab) url.searchParams.set('torneo', selectedTab)
+    if (target === 'proyeccion' && selectedTab) url.searchParams.set('torneo', selectedTab)
     window.open(url.toString(), '_blank', 'noopener,noreferrer')
   }
 

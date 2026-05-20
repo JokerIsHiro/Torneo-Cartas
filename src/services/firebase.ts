@@ -1,4 +1,4 @@
-import { initializeApp, type FirebaseApp } from 'firebase/app'
+import { initializeApp, type FirebaseApp, type FirebaseOptions } from 'firebase/app'
 import {
   getAuth,
   signInAnonymously,
@@ -16,8 +16,9 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import type { Tournament } from '../types/tournament'
+import type { SyncedTimerState } from '../store/timerStore'
 
-const firebaseConfig = {
+const envFirebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -26,41 +27,57 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-const isFirebaseConfigured = Object.values(firebaseConfig).every(Boolean)
+const hasEnvFirebaseConfig = Object.values(envFirebaseConfig).every(Boolean)
 
 let app: FirebaseApp | null = null
 let auth: Auth | null = null
 let db: Firestore | null = null
 let authPromise: Promise<User | null> | null = null
+let runtimeConfigPromise: Promise<FirebaseOptions | null> | null = null
 
 export function hasFirebaseConfig() {
-  return isFirebaseConfigured
+  return hasEnvFirebaseConfig || isFirebaseHosting()
 }
 
-function getFirebaseApp() {
-  if (!isFirebaseConfigured) return null
+function isFirebaseHosting() {
+  return window.location.hostname.endsWith('.web.app') || window.location.hostname.endsWith('.firebaseapp.com')
+}
+
+async function getFirebaseConfig() {
+  if (hasEnvFirebaseConfig) return envFirebaseConfig
+
+  runtimeConfigPromise ??= fetch('/__/firebase/init.json', { cache: 'no-store' })
+    .then(response => response.ok ? response.json() as Promise<FirebaseOptions> : null)
+    .catch(() => null)
+
+  return runtimeConfigPromise
+}
+
+async function getFirebaseApp() {
   if (!app) {
+    const firebaseConfig = await getFirebaseConfig()
+    if (!firebaseConfig) return null
     app = initializeApp(firebaseConfig)
   }
   return app
 }
 
-function getFirebaseAuth() {
-  const firebaseApp = getFirebaseApp()
+async function getFirebaseAuth() {
+  const firebaseApp = await getFirebaseApp()
   if (!firebaseApp) return null
   if (!auth) auth = getAuth(firebaseApp)
   return auth
 }
 
-function getDb() {
-  const firebaseApp = getFirebaseApp()
+async function getDb() {
+  const firebaseApp = await getFirebaseApp()
   if (!firebaseApp) return null
   if (!db) db = getFirestore(firebaseApp)
   return db
 }
 
 export async function ensureFirebaseAuth() {
-  const firebaseAuth = getFirebaseAuth()
+  const firebaseAuth = await getFirebaseAuth()
   if (!firebaseAuth) return null
   if (firebaseAuth.currentUser) return firebaseAuth.currentUser
 
@@ -74,14 +91,14 @@ export async function ensureFirebaseAuth() {
 }
 
 export function getCurrentUserId() {
-  return getFirebaseAuth()?.currentUser?.uid ?? null
+  return auth?.currentUser?.uid ?? null
 }
 
-export function subscribeToRemoteTournaments(
+export async function subscribeToRemoteTournaments(
   onTournaments: (tournaments: Tournament[]) => void,
   onError: (error: Error) => void
-): Unsubscribe | null {
-  const firestore = getDb()
+): Promise<Unsubscribe | null> {
+  const firestore = await getDb()
   if (!firestore) return null
 
   return onSnapshot(
@@ -100,8 +117,31 @@ export function subscribeToRemoteTournaments(
   )
 }
 
+export async function subscribeToRemoteTimers(
+  onTimers: (timers: Record<string, SyncedTimerState>) => void,
+  onError: (error: Error) => void
+): Promise<Unsubscribe | null> {
+  const firestore = await getDb()
+  if (!firestore) return null
+
+  return onSnapshot(
+    collection(firestore, 'timers'),
+    snapshot => {
+      const timers = Object.fromEntries(
+        snapshot.docs.map(document => [
+          document.id,
+          normalizeTimer(document.data()),
+        ])
+      )
+
+      onTimers(timers)
+    },
+    error => onError(error)
+  )
+}
+
 export async function saveRemoteTournament(tournament: Tournament) {
-  const firestore = getDb()
+  const firestore = await getDb()
   if (!firestore) return
   const user = await ensureFirebaseAuth()
   await setDoc(doc(firestore, 'tournaments', tournament.id), {
@@ -111,10 +151,18 @@ export async function saveRemoteTournament(tournament: Tournament) {
 }
 
 export async function deleteRemoteTournament(tournamentId: string) {
-  const firestore = getDb()
+  const firestore = await getDb()
   if (!firestore) return
   await ensureFirebaseAuth()
   await deleteDoc(doc(firestore, 'tournaments', tournamentId))
+  await deleteDoc(doc(firestore, 'timers', tournamentId))
+}
+
+export async function saveRemoteTimer(tournamentId: string, timer: SyncedTimerState) {
+  const firestore = await getDb()
+  if (!firestore) return
+  await ensureFirebaseAuth()
+  await setDoc(doc(firestore, 'timers', tournamentId), timer)
 }
 
 function normalizeTournament(data: Partial<Tournament> & { id: string }): Tournament {
@@ -131,5 +179,14 @@ function normalizeTournament(data: Partial<Tournament> & { id: string }): Tourna
     timerDuration: data.timerDuration ?? 50 * 60,
     createdAt: data.createdAt ?? Date.now(),
     updatedAt: data.updatedAt ?? data.createdAt ?? Date.now(),
+  }
+}
+
+function normalizeTimer(data: Partial<SyncedTimerState>): SyncedTimerState {
+  return {
+    secondsLeft: data.secondsLeft ?? 50 * 60,
+    status: data.status ?? 'idle',
+    endsAt: data.endsAt ?? null,
+    updatedAt: data.updatedAt ?? 0,
   }
 }

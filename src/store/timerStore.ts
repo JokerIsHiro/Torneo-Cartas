@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { useTournamentsStore } from './tournamentsStore'
 import { playTimerFinishedSound } from '../utils/timerSound'
+import { saveRemoteTimer } from '../services/firebase'
 
 // Store de temporizadores. Usa endsAt (hora real de fin) para evitar congelaciones
 // cuando una pestana queda en segundo plano o se abre tarde.
@@ -8,6 +9,7 @@ interface TimerState {
   secondsLeft: number
   status: 'idle' | 'running' | 'paused' | 'finished'
   endsAt: number | null
+  updatedAt: number
   intervalId: ReturnType<typeof setInterval> | null
 }
 
@@ -20,9 +22,10 @@ interface TimerStore {
   resumeTimer: (tournamentId: string) => void
   resetTimer: (tournamentId: string, durationSeconds: number) => void
   getTimer: (tournamentId: string) => TimerState | null
+  setRemoteTimers: (timers: Record<string, SyncedTimerState>) => void
 }
 
-type SyncedTimerState = Omit<TimerState, 'intervalId'>
+export type SyncedTimerState = Omit<TimerState, 'intervalId'>
 
 export const TIMER_SYNC_KEY = 'torneos-timers-sync'
 
@@ -30,6 +33,7 @@ const defaultTimer = (durationSeconds: number): TimerState => ({
   secondsLeft: durationSeconds,
   status: 'idle',
   endsAt: null,
+  updatedAt: Date.now(),
   intervalId: null,
 })
 
@@ -40,17 +44,19 @@ function getSecondsLeft(timer: TimerState | SyncedTimerState) {
   return Math.max(0, Math.ceil((timer.endsAt - Date.now()) / 1000))
 }
 
+function toSyncedTimer(timer: TimerState | SyncedTimerState): SyncedTimerState {
+  return {
+    secondsLeft: getSecondsLeft(timer),
+    status: timer.status,
+    endsAt: timer.endsAt,
+    updatedAt: timer.updatedAt,
+  }
+}
+
 function publishTimers(timers: Record<string, TimerState>) {
   // Publicamos una version serializable sin intervalId para que otras pestanas lean el timer.
   const syncedTimers = Object.fromEntries(
-    Object.entries(timers).map(([id, timer]) => [
-      id,
-      {
-        secondsLeft: getSecondsLeft(timer),
-        status: timer.status,
-        endsAt: timer.endsAt,
-      } satisfies SyncedTimerState,
-    ])
+    Object.entries(timers).map(([id, timer]) => [id, toSyncedTimer(timer)])
   )
 
   localStorage.setItem(TIMER_SYNC_KEY, JSON.stringify(syncedTimers))
@@ -64,9 +70,20 @@ function readSyncedTimers(value?: string | null): Record<string, SyncedTimerStat
   }
 }
 
-function commitTimers(timers: Record<string, TimerState>) {
+function commitTimers(timers: Record<string, TimerState>, publish = true) {
   useTimerStore.setState({ timers })
-  publishTimers(timers)
+  if (publish) publishTimers(timers)
+}
+
+function commitTimer(tournamentId: string, timer: TimerState, publishRemote = true) {
+  const timers = { ...useTimerStore.getState().timers, [tournamentId]: timer }
+  commitTimers(timers)
+
+  if (publishRemote) {
+    void saveRemoteTimer(tournamentId, toSyncedTimer(timer)).catch(error => {
+      console.error('No se ha podido sincronizar el temporizador con Firebase', error)
+    })
+  }
 }
 
 function ensureTicker(tournamentId: string, timer: TimerState) {
@@ -90,9 +107,13 @@ function tickTimer(tournamentId: string) {
       useTournamentsStore.getState().applyTimeoutToUnfinished(tournamentId)
     }
     playTimerFinishedSound()
-    commitTimers({
-      ...useTimerStore.getState().timers,
-      [tournamentId]: { ...current, secondsLeft: 0, status: 'finished', endsAt: null, intervalId: null },
+    commitTimer(tournamentId, {
+      ...current,
+      secondsLeft: 0,
+      status: 'finished',
+      endsAt: null,
+      updatedAt: Date.now(),
+      intervalId: null,
     })
     return
   }
@@ -100,27 +121,28 @@ function tickTimer(tournamentId: string) {
   commitTimers({
     ...useTimerStore.getState().timers,
     [tournamentId]: { ...current, secondsLeft },
-  })
+  }, false)
 }
 
-export function syncTimersFromStorage(value?: string | null) {
+function hydrateSyncedTimers(syncedTimers: Record<string, SyncedTimerState>) {
   // Reconstruye timers recibidos desde otra pestana y activa ticker local si hace falta.
-  const syncedTimers = readSyncedTimers(value)
-
   useTimerStore.setState(s => ({
     timers: Object.fromEntries(
-      Object.entries(syncedTimers).map(([id, timer]) => {
+      Object.entries({ ...s.timers, ...syncedTimers }).map(([id, timer]) => {
         const existing = s.timers[id]
-        const secondsLeft = getSecondsLeft(timer)
+        const incoming = syncedTimers[id]
+        const source = incoming && (!existing || incoming.updatedAt >= existing.updatedAt)
+          ? incoming
+          : existing ?? timer
 
-        if (existing?.intervalId && timer.status !== 'running') {
+        if (existing?.intervalId && source.status !== 'running') {
           clearInterval(existing.intervalId)
         }
 
         const nextTimer: TimerState = {
-          ...timer,
-          secondsLeft,
-          intervalId: timer.status === 'running' ? existing?.intervalId ?? null : null,
+          ...source,
+          secondsLeft: getSecondsLeft(source),
+          intervalId: source.status === 'running' ? existing?.intervalId ?? null : null,
         }
 
         nextTimer.intervalId = ensureTicker(id, nextTimer)
@@ -129,6 +151,10 @@ export function syncTimersFromStorage(value?: string | null) {
       })
     ),
   }))
+}
+
+export function syncTimersFromStorage(value?: string | null) {
+  hydrateSyncedTimers(readSyncedTimers(value))
 }
 
 export const useTimerStore = create<TimerStore>((_, get) => ({
@@ -150,7 +176,7 @@ export const useTimerStore = create<TimerStore>((_, get) => ({
       : defaultTimer(durationSeconds)
     timer.intervalId = ensureTicker(tournamentId, timer)
 
-    commitTimers({ ...get().timers, [tournamentId]: timer })
+    commitTimer(tournamentId, timer, false)
   },
 
   startTimer: (tournamentId) => {
@@ -161,11 +187,12 @@ export const useTimerStore = create<TimerStore>((_, get) => ({
       ...timer,
       status: 'running',
       endsAt: Date.now() + timer.secondsLeft * 1000,
+      updatedAt: Date.now(),
       intervalId: null,
     }
     nextTimer.intervalId = ensureTicker(tournamentId, nextTimer)
 
-    commitTimers({ ...get().timers, [tournamentId]: nextTimer })
+    commitTimer(tournamentId, nextTimer)
   },
 
   pauseTimer: (tournamentId) => {
@@ -173,15 +200,13 @@ export const useTimerStore = create<TimerStore>((_, get) => ({
     if (!timer || timer.status !== 'running') return
     if (timer.intervalId) clearInterval(timer.intervalId)
 
-    commitTimers({
-      ...get().timers,
-      [tournamentId]: {
-        ...timer,
-        secondsLeft: getSecondsLeft(timer),
-        status: 'paused',
-        endsAt: null,
-        intervalId: null,
-      },
+    commitTimer(tournamentId, {
+      ...timer,
+      secondsLeft: getSecondsLeft(timer),
+      status: 'paused',
+      endsAt: null,
+      updatedAt: Date.now(),
+      intervalId: null,
     })
   },
 
@@ -193,25 +218,28 @@ export const useTimerStore = create<TimerStore>((_, get) => ({
       ...timer,
       status: 'running',
       endsAt: Date.now() + timer.secondsLeft * 1000,
+      updatedAt: Date.now(),
       intervalId: null,
     }
     nextTimer.intervalId = ensureTicker(tournamentId, nextTimer)
 
-    commitTimers({ ...get().timers, [tournamentId]: nextTimer })
+    commitTimer(tournamentId, nextTimer)
   },
 
   resetTimer: (tournamentId, durationSeconds) => {
     const timer = get().timers[tournamentId]
     if (timer?.intervalId) clearInterval(timer.intervalId)
 
-    commitTimers({
-      ...get().timers,
-      [tournamentId]: defaultTimer(durationSeconds),
-    })
+    commitTimer(tournamentId, defaultTimer(durationSeconds))
   },
 
   getTimer: (tournamentId) => {
     return get().timers[tournamentId] ?? null
+  },
+
+  setRemoteTimers: (timers) => {
+    hydrateSyncedTimers(timers)
+    publishTimers(useTimerStore.getState().timers)
   },
 }))
 
