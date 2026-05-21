@@ -1826,7 +1826,7 @@ button:disabled {
 
 .deck-export-card {
   width: 1200px;
-  min-height: 1080px;
+  height: 1080px;
   padding: 0;
   background:
     radial-gradient(circle at 16% 0%, rgba(88, 215, 255, 0.14), transparent 320px),
@@ -1837,6 +1837,21 @@ button:disabled {
   border: 1px solid #164a96;
   font-family: var(--font-sans);
   overflow: hidden;
+}
+
+.deck-export-card-feed {
+  width: 1080px;
+  height: 1350px;
+}
+
+.deck-export-card-story {
+  width: 1080px;
+  height: 1920px;
+}
+
+.deck-export-card-normal {
+  width: 1200px;
+  height: 1080px;
 }
 
 .deck-export-hero {
@@ -1913,7 +1928,7 @@ button:disabled {
 .deck-export-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 292px;
-  min-height: 858px;
+  height: calc(100% - 198px);
   background:
     radial-gradient(circle at 22% 8%, rgba(88, 215, 255, 0.08), transparent 300px),
     linear-gradient(90deg, rgba(7, 16, 31, 0.82), rgba(5, 7, 12, 0.68) 75%, transparent 75%),
@@ -2156,6 +2171,69 @@ button:disabled {
   gap: 18px;
   color: #7c9ad0;
   font-size: 22px;
+}
+
+.deck-export-card-feed .deck-export-hero {
+  min-height: 150px;
+}
+
+.deck-export-card-feed .deck-export-layout {
+  grid-template-columns: minmax(0, 1fr) 276px;
+  height: calc(100% - 208px);
+}
+
+.deck-export-card-feed .deck-export-card-grid {
+  grid-template-columns: repeat(9, 1fr);
+}
+
+.deck-export-card-feed .deck-export-section-extra .deck-export-card-grid,
+.deck-export-card-feed .deck-export-section-side .deck-export-card-grid,
+.deck-export-card-feed .deck-export-section-sideboard .deck-export-card-grid {
+  grid-template-columns: repeat(12, 1fr);
+}
+
+.deck-export-card-story .deck-export-hero {
+  min-height: 176px;
+  padding: 28px 36px 24px;
+}
+
+.deck-export-card-story .deck-export-layout {
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: calc(100% - 234px);
+}
+
+.deck-export-card-story .deck-export-body {
+  padding: 22px;
+}
+
+.deck-export-card-story .deck-export-card-grid {
+  grid-template-columns: repeat(10, 1fr);
+}
+
+.deck-export-card-story .deck-export-section-extra .deck-export-card-grid,
+.deck-export-card-story .deck-export-section-side .deck-export-card-grid,
+.deck-export-card-story .deck-export-section-sideboard .deck-export-card-grid {
+  grid-template-columns: repeat(15, 1fr);
+}
+
+.deck-export-card-story .deck-export-sidebar {
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: stretch;
+  border-left: 0;
+  border-top: 2px solid rgba(88, 215, 255, 0.3);
+}
+
+.deck-export-card-story .deck-export-promo {
+  margin-top: 0;
+}
+
+.deck-export-card-story .deck-export-hero-title strong {
+  font-size: 56px;
+}
+
+.deck-export-card-story .deck-export-hero-title h2 {
+  font-size: 58px;
 }
 
 .deck-export-card footer strong {

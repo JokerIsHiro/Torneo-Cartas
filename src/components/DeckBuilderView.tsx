@@ -14,6 +14,7 @@ import { deckRuleConfigs, getDefaultSection, validateDeck } from '../utils/deckR
 import { formatDeckCards, parseDeckImport, parseSavedDeckCards, type ImportedDeckCard } from '../utils/deckImport'
 
 type DeckCard = ImportedDeckCard
+type DeckExportFormat = 'normal' | 'feed' | 'story'
 
 interface SavedDeckTemplate {
   id: string
@@ -48,6 +49,7 @@ export function DeckBuilderView() {
   const [cards, setCards] = useState<DeckCard[]>([])
   const [exportDeck, setExportDeck] = useState<DeckList | null>(null)
   const [exportCards, setExportCards] = useState<DeckCard[]>([])
+  const [exportFormat, setExportFormat] = useState<DeckExportFormat>('feed')
   const [saveStatus, setSaveStatus] = useState('')
   const [deckLibrary, setDeckLibrary] = useState<SavedDeckTemplate[]>(loadDeckLibrary)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -338,7 +340,7 @@ export function DeckBuilderView() {
     })
     setExportCards(hydratedCards)
     await waitFrame()
-    await exportImage(`deck-${selectedPlayer.name}-${deckName}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+    await exportImage(`deck-${selectedPlayer.name}-${deckName}-${exportFormat}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
   }
 
   async function exportSavedDeckImage(deck: DeckList) {
@@ -346,7 +348,7 @@ export function DeckBuilderView() {
     setExportDeck(deck)
     setExportCards(hydratedCards)
     await waitFrame()
-    await exportImage(`deck-${deck.playerName}-${deck.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+    await exportImage(`deck-${deck.playerName}-${deck.name}-${exportFormat}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
   }
 
   return (
@@ -402,6 +404,11 @@ export function DeckBuilderView() {
         </select>
         <input value={deckName} onChange={event => setDeckName(event.target.value)} placeholder="Nombre del mazo" />
         <input value={deckNotes} onChange={event => setDeckNotes(event.target.value)} placeholder="Notas para redes" />
+        <select value={exportFormat} onChange={event => setExportFormat(event.target.value as DeckExportFormat)}>
+          <option value="feed">Feed vertical 4:5</option>
+          <option value="story">Historias / Reels 9:16</option>
+          <option value="normal">Imagen normal</option>
+        </select>
         <button onClick={saveDeck} disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}>
           <i className="ti ti-device-floppy" aria-hidden="true" />
           Guardar
@@ -581,6 +588,7 @@ export function DeckBuilderView() {
           cards={exportCards}
           sections={sections}
           standings={standings}
+          format={exportFormat}
         />
       </div>
     </div>
@@ -730,19 +738,21 @@ function DeckImageExport({
   cards,
   sections,
   standings,
+  format,
 }: {
   ref: React.RefObject<HTMLDivElement | null>
   deck: DeckList | null
   cards: DeckCard[]
   sections: string[]
   standings: ReturnType<typeof useSwissPairings>['standings']
+  format: DeckExportFormat
 }) {
   if (!deck) return <div ref={ref} />
   const standing = standings.find(row => row.player.id === deck.playerId || row.player.name === deck.playerName)
   const rankLabel = getPlacementLabel(standing?.position)
 
   return (
-    <div ref={ref} className="deck-export-card">
+    <div ref={ref} className={`deck-export-card deck-export-card-${format}`}>
       <header className="deck-export-hero">
         <div className="deck-export-hero-mark">
           <img src="/subterra-logo.jpg" alt="" />
