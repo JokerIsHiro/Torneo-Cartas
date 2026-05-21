@@ -9,15 +9,23 @@ import { Standings } from './components/Standings'
 import { ProjectorView } from './components/ProjectorView'
 import { TimersView } from './components/TimersView'
 import { RegistrationView } from './components/RegistrationView'
+import { SnapshotPanel } from './components/SnapshotPanel'
+import { DeckBuilderView } from './components/DeckBuilderView'
 import type { Tournament } from './types/tournament'
 import { unlockTimerSound } from './utils/timerSound'
 import { useFirebaseSync } from './hooks/useFirebaseSync'
+import { signInAdmin, signOutAdmin } from './services/firebase'
 
 // Componente raiz. Decide que vista se muestra segun la ruta de la URL
 // y conecta la sincronizacion entre pestanas.
-type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion' | 'qr'
+type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion' | 'qr' | 'deckbuilder'
 type AdminTab = string
 type TournamentInnerTab = 'ronda' | 'organizar' | 'clasificacion'
+
+const ADMIN_SESSION_KEY = 'torneo-admin-session'
+const ADMIN_SESSION_VALUE = 'firebase-admin-v1'
+const ADMIN_AUTH_EMAIL = import.meta.env.VITE_ADMIN_AUTH_EMAIL?.trim() ?? ''
+const MIN_ADMIN_CODE_LENGTH = 8
 
 const routePaths: Record<AppRoute, string> = {
   admin: '/',
@@ -25,6 +33,7 @@ const routePaths: Record<AppRoute, string> = {
   temporizadores: '/temporizadores',
   inscripcion: '/inscripcion',
   qr: '/qr',
+  deckbuilder: '/deckbuilder',
 }
 
 function getRouteFromPath(): AppRoute {
@@ -32,6 +41,7 @@ function getRouteFromPath(): AppRoute {
   if (window.location.pathname.startsWith('/temporizadores')) return 'temporizadores'
   if (window.location.pathname.startsWith('/inscripcion')) return 'inscripcion'
   if (window.location.pathname.startsWith('/qr')) return 'qr'
+  if (window.location.pathname.startsWith('/deckbuilder')) return 'deckbuilder'
   return 'admin'
 }
 
@@ -47,6 +57,7 @@ export default function App() {
   const [route, setRouteState] = useState<AppRoute>(getRouteFromPath)
   const [activeTab, setActiveTab] = useState<AdminTab>('')
   const [innerTab, setInnerTab] = useState<Record<string, TournamentInnerTab>>({})
+  const [adminUnlocked, setAdminUnlocked] = useState(() => localStorage.getItem(ADMIN_SESSION_KEY) === ADMIN_SESSION_VALUE)
   const isMobileDevice = useIsMobileDevice()
   useFirebaseSync()
 
@@ -129,9 +140,25 @@ export default function App() {
     window.open(url.toString(), '_blank', 'noopener,noreferrer')
   }
 
+  async function handleAdminLogin(code: string) {
+    if (!ADMIN_AUTH_EMAIL) return false
+    await signInAdmin(code.trim())
+    localStorage.setItem(ADMIN_SESSION_KEY, ADMIN_SESSION_VALUE)
+    setAdminUnlocked(true)
+    return true
+  }
+
+  function handleAdminLogout() {
+    localStorage.removeItem(ADMIN_SESSION_KEY)
+    setAdminUnlocked(false)
+    void signOutAdmin()
+    setRoute('admin')
+  }
+
   const selectedTab = activeTab || tournaments[0]?.id || ''
   const activeTournament = tournaments.find(t => t.id === selectedTab)
   const mobileBlocked = isMobileDevice && route !== 'inscripcion'
+  const adminLocked = (route === 'admin' || route === 'deckbuilder') && !adminUnlocked
 
   return (
     <div className="app-shell">
@@ -143,7 +170,7 @@ export default function App() {
           />
         </div>
 
-        {route === 'admin' && (
+        {route === 'admin' && !adminLocked && (
           <>
             {tournaments.map(t => (
               <TopTab
@@ -186,6 +213,15 @@ export default function App() {
               <i className="ti ti-plus" aria-hidden="true" />
               Nuevo torneo
             </button>
+
+            <button
+              onClick={handleAdminLogout}
+              className="projector-open-button"
+              title="Cerrar acceso de tienda"
+            >
+              <i className="ti ti-logout" aria-hidden="true" />
+              Salir
+            </button>
           </>
         )}
 
@@ -209,12 +245,14 @@ export default function App() {
 
       <main className={route !== 'admin' ? 'main-content projector-content' : 'main-content'}>
         {mobileBlocked && <MobilePlayerOnly />}
+        {!mobileBlocked && adminLocked && <AdminLogin onSubmit={handleAdminLogin} configured={Boolean(ADMIN_AUTH_EMAIL)} />}
         {!mobileBlocked && route === 'proyeccion' && <ProjectorView />}
         {!mobileBlocked && route === 'temporizadores' && <TimersView />}
         {route === 'inscripcion' && <RegistrationView />}
         {!mobileBlocked && route === 'qr' && <QrView />}
+        {!mobileBlocked && route === 'deckbuilder' && !adminLocked && <DeckBuilderView />}
 
-        {!mobileBlocked && route === 'admin' && activeTournament && (
+        {!mobileBlocked && route === 'admin' && !adminLocked && activeTournament && (
           <TournamentView
             tournament={activeTournament}
             innerTab={getInnerTab(activeTournament.id)}
@@ -222,14 +260,14 @@ export default function App() {
           />
         )}
 
-        {!mobileBlocked && route === 'admin' && syncEnabled && !syncLoaded && (
+        {!mobileBlocked && route === 'admin' && !adminLocked && syncEnabled && !syncLoaded && (
           <div className="empty-state">
             <i className="ti ti-loader-2" aria-hidden="true" />
             <div>Cargando torneos...</div>
           </div>
         )}
 
-        {!mobileBlocked && route === 'admin' && syncLoaded && !activeTournament && (
+        {!mobileBlocked && route === 'admin' && !adminLocked && syncLoaded && !activeTournament && (
           <div className="empty-state">
             <i className="ti ti-trophy-off" aria-hidden="true" />
             <div>No hay torneos creados</div>
@@ -244,15 +282,84 @@ export default function App() {
   )
 }
 
+function AdminLogin({ onSubmit, configured }: { onSubmit: (code: string) => Promise<boolean>; configured: boolean }) {
+  const [code, setCode] = useState('')
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!configured) {
+      setError('Falta configurar la clave de acceso.')
+      return
+    }
+    if (code.trim().length < MIN_ADMIN_CODE_LENGTH) {
+      setError(`Usa una clave de al menos ${MIN_ADMIN_CODE_LENGTH} caracteres.`)
+      return
+    }
+    setIsSubmitting(true)
+    try {
+      if (!await onSubmit(code)) {
+        setError('Clave incorrecta.')
+        setCode('')
+        return
+      }
+      setError('')
+    } catch {
+      setError('Clave incorrecta.')
+      setCode('')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <form className="admin-login-card" onSubmit={handleSubmit}>
+      <i className="ti ti-lock" aria-hidden="true" />
+      <h1>Acceso de tienda</h1>
+      <p>Introduce la clave para gestionar torneos.</p>
+      <input
+        value={code}
+        onChange={event => {
+          setCode(event.target.value)
+          setError('')
+        }}
+        type="password"
+        autoComplete="current-password"
+        placeholder="Clave segura"
+        aria-label="Clave de acceso"
+        autoFocus
+      />
+      <button type="submit" disabled={!configured || !code.trim() || isSubmitting}>
+        <i className={`ti ${isSubmitting ? 'ti-loader-2' : 'ti-login-2'}`} aria-hidden="true" />
+        {isSubmitting ? 'Comprobando...' : 'Entrar'}
+      </button>
+      {error && <div className="registration-feedback error">{error}</div>}
+      {!configured && (
+        <div className="registration-feedback error">
+          Define VITE_ADMIN_AUTH_EMAIL antes de publicar.
+        </div>
+      )}
+    </form>
+  )
+}
+
 function QrView() {
   // Pantalla publica y limpia para proyectar o abrir el QR de inscripcion en otra pestana.
   const tournamentId = new URLSearchParams(window.location.search).get('torneo') ?? ''
   const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
+  const isMobileDevice = useIsMobileDevice()
   const link = (() => {
-    const url = new URL('/inscripcion', window.location.origin)
+    const publicUrl = import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin
+    const url = new URL('/inscripcion', publicUrl)
     if (tournamentId) url.searchParams.set('torneo', tournamentId)
     return url.toString()
   })()
+
+  useEffect(() => {
+    if (!isMobileDevice || !tournamentId) return
+    window.location.replace(link)
+  }, [isMobileDevice, link, tournamentId])
 
   return (
     <div className="qr-display-page">
@@ -355,6 +462,7 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
       {status === 'active' && innerTab === 'organizar' && <Round tournamentId={id} mode="organize" />}
       {status === 'active' && innerTab === 'clasificacion' && <Standings tournamentId={id} />}
       {status === 'finished' && <Results tournamentId={id} />}
+      <SnapshotPanel tournamentId={id} />
     </div>
   )
 }

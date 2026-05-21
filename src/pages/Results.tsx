@@ -21,6 +21,12 @@ export function Results({ tournamentId }: ResultsProps) {
 
   if (!exists) return null
 
+  function openDeckBuilder() {
+    const url = new URL('/deckbuilder', window.location.origin)
+    url.searchParams.set('torneo', tournamentId)
+    window.open(url.toString(), '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <div>
       <div style={exportHiddenStyle}>
@@ -49,6 +55,13 @@ export function Results({ tournamentId }: ResultsProps) {
         style={primaryActionStyle}
       >
         <i className="ti ti-download" aria-hidden="true" /> Exportar standing final
+      </button>
+
+      <button
+        onClick={openDeckBuilder}
+        style={primaryActionStyle}
+      >
+        <i className="ti ti-cards" aria-hidden="true" /> Abrir constructor de decks
       </button>
 
       <Standings tournamentId={tournamentId} showPodium={false} />

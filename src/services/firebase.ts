@@ -4,6 +4,8 @@ import {
   getAuth,
   setPersistence,
   signInAnonymously,
+  signInWithEmailAndPassword,
+  signOut,
   type Auth,
   type User,
 } from 'firebase/auth'
@@ -98,6 +100,21 @@ export async function ensureFirebaseAuth() {
   return authPromise
 }
 
+export async function signInAdmin(accessCode: string) {
+  const firebaseAuth = await getFirebaseAuth()
+  const adminEmail = import.meta.env.VITE_ADMIN_AUTH_EMAIL?.trim()
+  if (!firebaseAuth || !adminEmail) return null
+  const credential = await signInWithEmailAndPassword(firebaseAuth, adminEmail, accessCode)
+  return credential.user
+}
+
+export async function signOutAdmin() {
+  const firebaseAuth = await getFirebaseAuth()
+  if (!firebaseAuth) return
+  await signOut(firebaseAuth)
+  await ensureFirebaseAuth()
+}
+
 export function getCurrentUserId() {
   return auth?.currentUser?.uid ?? null
 }
@@ -182,6 +199,8 @@ function normalizeTournament(data: Partial<Tournament> & { id: string }): Tourna
     players: data.players ?? [],
     rounds: data.rounds ?? [],
     pendingResults: data.pendingResults ?? [],
+    decklists: data.decklists ?? [],
+    snapshots: data.snapshots ?? [],
     currentRound: data.currentRound ?? 0,
     status: data.status ?? 'setup',
     timerDuration: data.timerDuration ?? 50 * 60,

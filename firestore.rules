@@ -6,14 +6,135 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return signedIn() && request.auth.token.email == 'admin@subterra-torneos.local';
+    }
+
+    function onlyChanged(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    function validPublicPlayer(player) {
+      return player.keys().hasOnly([
+          'id',
+          'uid',
+          'name',
+          'points',
+          'wins',
+          'losses',
+          'draws',
+          'byes',
+          'timeoutLosses',
+          'opponents'
+        ])
+        && player.id is string
+        && player.uid == request.auth.uid
+        && player.name is string
+        && player.name.size() >= 1
+        && player.name.size() <= 60
+        && player.points == 0
+        && player.wins == 0
+        && player.losses == 0
+        && player.draws == 0
+        && player.byes == 0
+        && player.timeoutLosses == 0
+        && player.opponents is list
+        && player.opponents.size() == 0;
+    }
+
+    function publicPlayerRegistration() {
+      let newPlayer = request.resource.data.players[resource.data.players.size()];
+      return signedIn()
+        && resource.data.status == 'setup'
+        && onlyChanged(['players', 'updatedAt'])
+        && request.resource.data.players is list
+        && request.resource.data.players.size() == resource.data.players.size() + 1
+        && validPublicPlayer(newPlayer);
+    }
+
+    function validPublicPendingResult(pendingResult) {
+      return pendingResult.keys().hasOnly([
+          'id',
+          'submittedByUid',
+          'roundNumber',
+          'matchId',
+          'playerId',
+          'result',
+          'createdAt'
+        ])
+        && pendingResult.id is string
+        && pendingResult.submittedByUid == request.auth.uid
+        && pendingResult.roundNumber == resource.data.currentRound
+        && pendingResult.matchId is string
+        && pendingResult.playerId is string
+        && pendingResult.createdAt is number
+        && pendingResult.result in ['p1', 'p2', 'draw']
+        && (resource.data.tcg != 'yugioh' || pendingResult.result != 'draw');
+    }
+
+    function publicPendingResult() {
+      let pendingResult = request.resource.data.pendingResults[resource.data.pendingResults.size()];
+      return signedIn()
+        && resource.data.status == 'active'
+        && onlyChanged(['pendingResults', 'updatedAt'])
+        && request.resource.data.pendingResults is list
+        && request.resource.data.pendingResults.size() == resource.data.pendingResults.size() + 1
+        && validPublicPendingResult(pendingResult);
+    }
+
+    function validPublicDecklist(decklist) {
+      return decklist.keys().hasOnly([
+          'id',
+          'playerId',
+          'ownerUid',
+          'playerName',
+          'game',
+          'name',
+          'list',
+          'notes',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ])
+        && decklist.id is string
+        && decklist.playerId is string
+        && decklist.ownerUid == request.auth.uid
+        && decklist.playerName is string
+        && decklist.playerName.size() >= 1
+        && decklist.playerName.size() <= 60
+        && decklist.game in ['magic', 'riftbound', 'pokemon', 'yugioh', 'lorcana', 'one-piece']
+        && decklist.name is string
+        && decklist.name.size() >= 1
+        && decklist.name.size() <= 80
+        && decklist.list is string
+        && decklist.list.size() >= 1
+        && decklist.list.size() <= 12000
+        && decklist.notes is string
+        && decklist.notes.size() <= 1000
+        && decklist.status == 'submitted'
+        && decklist.createdAt is number
+        && decklist.updatedAt is number;
+    }
+
+    function publicDeckSubmission() {
+      let decklist = request.resource.data.decklists[resource.data.decklists.size()];
+      return signedIn()
+        && resource.data.status == 'finished'
+        && onlyChanged(['decklists', 'updatedAt'])
+        && request.resource.data.decklists is list
+        && request.resource.data.decklists.size() == resource.data.decklists.size() + 1
+        && validPublicDecklist(decklist);
+    }
+
     match /tournaments/{tournamentId} {
       allow read: if signedIn();
-      allow create, update, delete: if signedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || publicPlayerRegistration() || publicPendingResult() || publicDeckSubmission();
     }
 
     match /timers/{timerId} {
       allow read: if signedIn();
-      allow create, update, delete: if signedIn();
+      allow create, update, delete: if isAdmin();
     }
   }
 }

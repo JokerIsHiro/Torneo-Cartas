@@ -24,6 +24,7 @@ const tcgOptions: Array<{ label: string; value: TournamentTCG }> = [
   { label: 'Riftbound', value: 'riftbound' },
   { label: 'Pokemon', value: 'pokemon' },
   { label: 'YuGiOh', value: 'yugioh' },
+  { label: 'Lorcana', value: 'lorcana' },
   { label: 'One Piece', value: 'one-piece' },
 ]
 

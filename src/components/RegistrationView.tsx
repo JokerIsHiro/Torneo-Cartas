@@ -20,6 +20,7 @@ export function RegistrationView() {
   )
   const addPlayer = useTournamentsStore(s => s.addPlayer)
   const submitPlayerResult = useTournamentsStore(s => s.submitPlayerResult)
+  const submitDecklist = useTournamentsStore(s => s.submitDecklist)
   const [name, setName] = useState('')
   const [createdSession, setCreatedSession] = useState<PlayerSession | null>(null)
   const [message, setMessage] = useState('')
@@ -73,6 +74,11 @@ export function RegistrationView() {
         onSubmitResult={(matchId, result) => {
           submitPlayerResult(tournament.id, matchId, registeredPlayer.id, result)
           setMessage('Resultado enviado al organizador.')
+          setError('')
+        }}
+        onSubmitDeck={(deck) => {
+          submitDecklist(tournament.id, registeredPlayer.id, deck)
+          setMessage('Lista de mazo guardada.')
           setError('')
         }}
       />
@@ -153,15 +159,21 @@ function PlayerPortal({
   player,
   tournament,
   onSubmitResult,
+  onSubmitDeck,
   message,
   error,
 }: {
   player: Player
   tournament: Tournament
   onSubmitResult: (matchId: string, result: Exclude<MatchResult, 'bye' | null>) => void
+  onSubmitDeck: (deck: { name: string; list: string; notes: string }) => void
   message: string
   error: string
 }) {
+  const existingDeck = [...(tournament.decklists ?? [])].reverse().find(deck => deck.playerId === player.id)
+  const [deckName, setDeckName] = useState(existingDeck?.name ?? '')
+  const [deckList, setDeckList] = useState(existingDeck?.list ?? '')
+  const [deckNotes, setDeckNotes] = useState(existingDeck?.notes ?? '')
   const round = tournament.rounds[tournament.currentRound - 1]
   const match = round?.matches.find(m => m.p1Id === player.id || m.p2Id === player.id)
   const opponentId = match?.p1Id === player.id ? match.p2Id : match?.p1Id
@@ -251,6 +263,43 @@ function PlayerPortal({
           <span>{player.points} puntos finales</span>
         </div>
       )}
+
+      <form
+        className="player-panel deck-submit-panel"
+        onSubmit={event => {
+          event.preventDefault()
+          onSubmitDeck({ name: deckName, list: deckList, notes: deckNotes })
+        }}
+      >
+        <strong>Mazo del torneo</strong>
+        <span>Envia tu lista para que la tienda pueda publicarla en redes.</span>
+        <input
+          value={deckName}
+          onChange={event => setDeckName(event.target.value)}
+          placeholder="Nombre del mazo"
+        />
+        <textarea
+          value={deckList}
+          onChange={event => setDeckList(event.target.value)}
+          placeholder="Lista del mazo"
+          rows={8}
+        />
+        <textarea
+          value={deckNotes}
+          onChange={event => setDeckNotes(event.target.value)}
+          placeholder="Notas opcionales"
+          rows={3}
+        />
+        <button type="submit" disabled={!deckName.trim() || !deckList.trim()}>
+          <i className="ti ti-device-floppy" aria-hidden="true" />
+          {existingDeck ? 'Actualizar mazo' : 'Enviar mazo'}
+        </button>
+        {existingDeck && (
+          <div className="registration-meta">
+            Estado: {existingDeck.status === 'published' ? 'publicado' : 'recibido'}
+          </div>
+        )}
+      </form>
 
       {(message || error) && (
         <div className={error ? 'registration-feedback error' : 'registration-feedback'}>

@@ -2,10 +2,14 @@ import { create } from 'zustand'
 import type {
   Tournament,
   Player,
+  DeckList,
   Match,
   Round,
   MatchResult,
   PendingMatchResult,
+  TournamentSnapshot,
+  TournamentSnapshotAction,
+  TournamentSnapshotData,
   TournamentTCG,
 } from '../types/tournament'
 import { deleteRemoteTournament, getCurrentUserId, saveRemoteTournament } from '../services/firebase'
@@ -196,6 +200,26 @@ function touchTournament<T extends Tournament>(tournament: T): T {
   return { ...tournament, updatedAt: Date.now() }
 }
 
+function snapshotData(tournament: Tournament): TournamentSnapshotData {
+  const { snapshots: _snapshots, ...data } = tournament
+  return data
+}
+
+function withSnapshot(tournament: Tournament, action: TournamentSnapshotAction, label: string): Tournament {
+  const snapshot: TournamentSnapshot = {
+    id: crypto.randomUUID(),
+    action,
+    label,
+    createdAt: Date.now(),
+    data: snapshotData(tournament),
+  }
+
+  return {
+    ...tournament,
+    snapshots: [snapshot, ...(tournament.snapshots ?? [])].slice(0, 12),
+  }
+}
+
 function applyPendingWrites(remoteTournaments: Tournament[]) {
   const byId = new Map(remoteTournaments.map(tournament => [tournament.id, tournament]))
 
@@ -275,8 +299,12 @@ interface TournamentsStore {
   // Jugadores
   addPlayer: (id: string, name: string) => string | null
   removePlayer: (id: string, playerId: string) => void
+  submitDecklist: (id: string, playerId: string, deck: { name: string; list: string; notes: string }) => void
+  publishDecklist: (id: string, deckId: string, published: boolean) => void
 
   // Torneo
+  createSnapshot: (id: string, action: TournamentSnapshotAction, label: string) => void
+  restoreSnapshot: (id: string, snapshotId: string) => void
   startTournament: (id: string) => void
   nextRound: (id: string) => void
   setMatchResult: (id: string, matchId: string, result: MatchResult) => void
@@ -306,6 +334,8 @@ export const useTournamentsStore = create<TournamentsStore>()(
           players: [],
           rounds: [],
           pendingResults: [],
+          decklists: [],
+          snapshots: [],
           currentRound: 0,
           status: 'setup',
           timerDuration: 50 * 60,
@@ -394,7 +424,81 @@ export const useTournamentsStore = create<TournamentsStore>()(
         commitTournament(set, touchTournament({
           ...tournament,
           players: tournament.players.filter(p => p.id !== playerId),
+          decklists: (tournament.decklists ?? []).filter(deck => deck.playerId !== playerId),
         }))
+      },
+
+      submitDecklist: (id, playerId, deck) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        const player = tournament?.players.find(p => p.id === playerId)
+        if (!tournament || !player || tournament.status !== 'finished') return
+
+        const now = Date.now()
+        const existing = [...(tournament.decklists ?? [])]
+          .reverse()
+          .find(candidate => candidate.playerId === playerId)
+        const decklist: DeckList = {
+          id: crypto.randomUUID(),
+          playerId,
+          ownerUid: player.uid ?? getCurrentUserId() ?? undefined,
+          playerName: player.name,
+          game: tournament.tcg,
+          name: deck.name.trim(),
+          list: deck.list.trim(),
+          notes: deck.notes.trim(),
+          status: 'submitted',
+          createdAt: existing?.createdAt ?? now,
+          updatedAt: now,
+        }
+
+        if (!decklist.name || !decklist.list) return
+
+        commitTournament(set, touchTournament({
+          ...tournament,
+          decklists: [...(tournament.decklists ?? []), decklist].slice(-120),
+        }))
+      },
+
+      publishDecklist: (id, deckId, published) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament) return
+
+        commitTournament(set, touchTournament({
+          ...tournament,
+          decklists: (tournament.decklists ?? []).map(deck =>
+            deck.id === deckId
+              ? { ...deck, status: published ? 'published' : 'submitted', updatedAt: Date.now() }
+              : deck
+          ),
+        }))
+      },
+
+      createSnapshot: (id, action, label) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament) return
+        commitTournament(set, touchTournament(withSnapshot(tournament, action, label)))
+      },
+
+      restoreSnapshot: (id, snapshotId) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        const snapshot = tournament?.snapshots.find(candidate => candidate.id === snapshotId)
+        if (!tournament || !snapshot) return
+
+        const restored: Tournament = {
+          ...snapshot.data,
+          snapshots: [
+            {
+              id: crypto.randomUUID(),
+              action: 'restore' as TournamentSnapshotAction,
+              label: `Antes de restaurar: ${snapshot.label}`,
+              createdAt: Date.now(),
+              data: snapshotData(tournament),
+            },
+            ...(tournament.snapshots ?? []),
+          ].slice(0, 12),
+          updatedAt: Date.now(),
+        }
+        commitTournament(set, restored)
       },
 
       startTournament: (id) => {
@@ -414,7 +518,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         }
 
         commitTournament(set, touchTournament({
-          ...tournament,
+          ...withSnapshot(tournament, 'start-tournament', 'Antes de iniciar torneo'),
           players: updatedPlayers,
           rounds: [firstRound],
           currentRound: 1,
@@ -464,7 +568,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         })
 
         commitTournament(set, touchTournament({
-          ...tournament,
+          ...withSnapshot(tournament, 'manual-pairings', `Antes de reorganizar ronda ${tournament.currentRound}`),
           pendingResults: [],
           rounds: tournament.rounds.map(candidate =>
             candidate.number === tournament.currentRound
@@ -585,7 +689,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const pendingResults = (tournament.pendingResults ?? []).filter(p => p.matchId !== matchId)
 
         commitTournament(set, touchTournament({
-          ...tournament,
+          ...withSnapshot(tournament, 'edit-result', `Antes de corregir ronda ${roundNumber}`),
           players: rebuildPlayersFromRounds(tournament.players, updatedRounds),
           rounds: updatedRounds,
           pendingResults,
@@ -693,7 +797,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         }
 
         commitTournament(set, touchTournament({
-          ...tournament,
+          ...withSnapshot(tournament, 'next-round', `Antes de iniciar ronda ${nextRoundNumber}`),
           players: updatedPlayers,
           rounds: [...closedRounds, newRound],
           pendingResults: [],
@@ -713,7 +817,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         )
 
         commitTournament(set, touchTournament({
-          ...tournament,
+          ...withSnapshot(tournament, 'finish-tournament', 'Antes de finalizar torneo'),
           rounds: closedRounds,
           pendingResults: [],
           status: 'finished',
