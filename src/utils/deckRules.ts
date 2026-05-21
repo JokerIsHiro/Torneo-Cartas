@@ -28,7 +28,7 @@ export const deckRuleConfigs: Record<TournamentTCG, DeckRuleConfig> = {
   magic: {
     label: 'Magic',
     sections: [
-      { id: 'Main', label: 'Main Deck', min: 60 },
+      { id: 'Main', label: 'Mazo principal', min: 60 },
       { id: 'Sideboard', label: 'Sideboard', max: 15 },
     ],
     copyLimit: 4,
@@ -36,8 +36,11 @@ export const deckRuleConfigs: Record<TournamentTCG, DeckRuleConfig> = {
   riftbound: {
     label: 'Riftbound',
     sections: [
-      { id: 'Main', label: 'Main Deck' },
+      { id: 'Legend', label: 'Leyenda', max: 1 },
+      { id: 'Champion', label: 'Campeon', max: 1 },
+      { id: 'Main', label: 'Mazo principal', min: 40, max: 40 },
       { id: 'Rune', label: 'Mazo de runas' },
+      { id: 'Battlefield', label: 'Campos de batalla', max: 3 },
       { id: 'Sideboard', label: 'Sideboard' },
     ],
   },
@@ -45,8 +48,8 @@ export const deckRuleConfigs: Record<TournamentTCG, DeckRuleConfig> = {
     label: 'Pokemon',
     sections: [
       { id: 'Pokemon', label: 'Pokemon' },
-      { id: 'Trainers', label: 'Trainers' },
-      { id: 'Energy', label: 'Energy' },
+      { id: 'Trainers', label: 'Entrenadores' },
+      { id: 'Energy', label: 'Energia' },
     ],
     exactDeckSize: 60,
     copyLimit: 4,
@@ -54,7 +57,7 @@ export const deckRuleConfigs: Record<TournamentTCG, DeckRuleConfig> = {
   yugioh: {
     label: 'YuGiOh',
     sections: [
-      { id: 'Main', label: 'Main Deck', min: 40, max: 60 },
+      { id: 'Main', label: 'Mazo principal', min: 40, max: 60 },
       { id: 'Extra', label: 'Extra Deck', max: 15 },
       { id: 'Side', label: 'Side Deck', max: 15 },
     ],
@@ -63,14 +66,15 @@ export const deckRuleConfigs: Record<TournamentTCG, DeckRuleConfig> = {
   lorcana: {
     label: 'Lorcana',
     sections: [
-      { id: 'Main', label: 'Main Deck', min: 60 },
+      { id: 'Main', label: 'Mazo principal', min: 60 },
     ],
     copyLimit: 4,
   },
   'one-piece': {
     label: 'One Piece',
     sections: [
-      { id: 'Main', label: 'Main Deck', min: 50, max: 50 },
+      { id: 'Leader', label: 'Lider', max: 1 },
+      { id: 'Main', label: 'Mazo principal', min: 50, max: 50 },
     ],
     copyLimit: 4,
   },
@@ -93,7 +97,13 @@ export function getDefaultSection(game: TournamentTCG, card?: Pick<CardSuggestio
     if (text.includes('trainer') || text.includes('item') || text.includes('supporter') || text.includes('stadium')) return 'Trainers'
     return 'Pokemon'
   }
-  if (game === 'riftbound' && text.includes('rune')) return 'Rune'
+  if (game === 'riftbound') {
+    if (text.includes('rune')) return 'Rune'
+    if (text.includes('legend')) return 'Legend'
+    if (text.includes('champion')) return 'Champion'
+    if (text.includes('battlefield')) return 'Battlefield'
+  }
+  if (game === 'one-piece' && text.includes('leader')) return 'Leader'
 
   return deckRuleConfigs[game].sections[0].id
 }

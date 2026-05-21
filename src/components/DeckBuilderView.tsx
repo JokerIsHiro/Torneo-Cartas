@@ -10,17 +10,9 @@ import {
 import { useExportImage } from '../hooks/useExportImage'
 import type { DeckList, TournamentTCG } from '../types/tournament'
 import { deckRuleConfigs, getDefaultSection, validateDeck } from '../utils/deckRules'
+import { formatDeckCards, parseDeckImport, parseSavedDeckCards, type ImportedDeckCard } from '../utils/deckImport'
 
-interface DeckCard {
-  id: string
-  cardId: string
-  name: string
-  subtitle?: string
-  imageUrl?: string
-  kind?: string
-  section: string
-  quantity: number
-}
+type DeckCard = ImportedDeckCard
 
 export function DeckBuilderView() {
   const tournamentId = new URLSearchParams(window.location.search).get('torneo') ?? ''
@@ -92,7 +84,7 @@ export function DeckBuilderView() {
     const existingDeck = [...(currentTournament.decklists ?? [])].reverse().find(deck => deck.playerId === nextPlayerId)
     setDeckName(existingDeck?.name ?? '')
     setDeckNotes(existingDeck?.notes ?? '')
-    setCards(existingDeck ? parseDeckCards(existingDeck.list, sections[0]) : [])
+    setCards(existingDeck ? parseSavedDeckCards(currentTournament.tcg, existingDeck.list) : [])
   }
 
   function addCard(card: CardSuggestion, section = getDefaultSection(currentTournament.tcg, card)) {
@@ -213,7 +205,14 @@ export function DeckBuilderView() {
   function importDeckText() {
     const text = window.prompt('Pega una decklist en texto')
     if (!text) return
-    setCards(parseDeckCards(text, sections[0]))
+    const result = parseDeckImport(currentTournament.tcg, text)
+    setCards(result.cards)
+    const importedTotal = result.cards.reduce((sum, card) => sum + card.quantity, 0)
+    setSaveStatus(result.ignoredLines.length
+      ? `Importadas ${importedTotal} cartas. ${result.ignoredLines.length} lineas sin reconocer.`
+      : `Importadas ${importedTotal} cartas.`
+    )
+    window.setTimeout(() => setSaveStatus(''), 3500)
   }
 
   async function exportCurrentDeckImage() {
@@ -237,7 +236,7 @@ export function DeckBuilderView() {
   }
 
   async function exportSavedDeckImage(deck: DeckList) {
-    const hydratedCards = await hydrateMissingImages(parseDeckCards(deck.list, sections[0]), currentTournament.tcg)
+    const hydratedCards = await hydrateMissingImages(parseSavedDeckCards(currentTournament.tcg, deck.list), currentTournament.tcg)
     setExportDeck(deck)
     setExportCards(hydratedCards)
     await waitFrame()
@@ -602,73 +601,6 @@ function DeckImageExport({
   )
 }
 
-function parseDeckCards(list: string, fallbackSection: string): DeckCard[] {
-  const cards: DeckCard[] = []
-  let section = fallbackSection
-
-  list.split('\n').forEach(rawLine => {
-    const line = rawLine.trim()
-    if (!line) return
-    if (line.endsWith(':')) {
-      section = line.slice(0, -1)
-      return
-    }
-
-    const match = line.match(/^(\d+)\s+(.+)$/)
-    const rawName = match?.[2] ?? line
-    const metadataMatch = rawName.match(/^(.*?)\s+\[(.+?)\]$/)
-    const name = metadataMatch?.[1] ?? rawName
-    const metadata = metadataMatch ? parseCardMetadata(metadataMatch[2]) : {}
-    cards.push({
-      id: crypto.randomUUID(),
-      cardId: metadata.cardId ?? `saved:${section}:${name}`,
-      section,
-      quantity: Number(match?.[1] ?? 1),
-      name,
-      subtitle: metadata.subtitle,
-      imageUrl: metadata.imageUrl,
-      kind: metadata.kind,
-    })
-  })
-
-  return cards
-}
-
-function formatDeckCards(cards: DeckCard[], sections: string[], includeMetadata = false) {
-  return sections
-    .map(section => {
-      const sectionCards = cards.filter(card => card.section === section)
-      if (!sectionCards.length) return ''
-      return [
-        `${section}:`,
-        ...sectionCards.map(card => `${card.quantity} ${formatDeckCardLine(card, includeMetadata)}`),
-      ].join('\n')
-    })
-    .filter(Boolean)
-    .join('\n\n')
-}
-
-function formatDeckCardLine(card: DeckCard, includeMetadata: boolean) {
-  if (!includeMetadata) return card.name
-  const metadata = [
-    `id=${encodeURIComponent(card.cardId)}`,
-    card.imageUrl ? `img=${encodeURIComponent(card.imageUrl)}` : '',
-    card.subtitle ? `sub=${encodeURIComponent(card.subtitle)}` : '',
-    card.kind ? `kind=${encodeURIComponent(card.kind)}` : '',
-  ].filter(Boolean).join('|')
-
-  return metadata ? `${card.name} [${metadata}]` : card.name
-}
-
-function parseCardMetadata(value: string) {
-  return Object.fromEntries(
-    value.split('|').map(part => {
-      const [key, raw = ''] = part.split('=')
-      return [key === 'id' ? 'cardId' : key === 'img' ? 'imageUrl' : key === 'sub' ? 'subtitle' : key, decodeURIComponent(raw)]
-    })
-  ) as Partial<Pick<DeckCard, 'cardId' | 'imageUrl' | 'subtitle' | 'kind'>>
-}
-
 function expandCards(cards: DeckCard[]) {
   return cards.flatMap(card => Array.from({ length: card.quantity }, () => card))
 }
@@ -682,6 +614,9 @@ async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG) {
       const exportableImageUrl = await toDataUrl(imageUrl).catch(() => imageUrl)
       return { ...card, imageUrl: exportableImageUrl }
     }
+
+    const cardById = await hydrateKnownCardById(card, game).catch(() => null)
+    if (cardById) return cardById
 
     const exactSuggestions = await searchCards(game, card.name, undefined, { onlyImages: true, exact: true }).catch(() => [])
     const looseSuggestions = exactSuggestions.length
@@ -705,6 +640,34 @@ async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG) {
   }))
 
   return hydrated
+}
+
+async function hydrateKnownCardById(card: DeckCard, game: TournamentTCG): Promise<DeckCard | null> {
+  if (game !== 'yugioh') return null
+  const numericId = card.cardId.split(':').pop()
+  if (!numericId || !/^\d+$/.test(numericId)) return null
+
+  const url = new URL('https://db.ygoprodeck.com/api/v7/cardinfo.php')
+  url.searchParams.set('id', numericId)
+  const response = await fetch(url.toString(), { headers: { Accept: 'application/json' } })
+  if (!response.ok) return null
+  const payload = await response.json() as {
+    data?: Array<{ id: number; name: string; type?: string; race?: string; attribute?: string; card_images?: Array<{ image_url?: string; image_url_small?: string }> }>
+  }
+  const match = payload.data?.[0]
+  if (!match) return null
+
+  const imageUrl = normalizeExportImageUrl(match.card_images?.[0]?.image_url ?? match.card_images?.[0]?.image_url_small ?? getKnownImageUrl(game, String(match.id)) ?? '')
+  const exportableImageUrl = imageUrl ? await toDataUrl(imageUrl).catch(() => imageUrl) : undefined
+
+  return {
+    ...card,
+    cardId: `yugioh:${match.id}`,
+    name: match.name,
+    subtitle: match.type,
+    kind: [match.type, match.race, match.attribute].filter(Boolean).join(' - '),
+    imageUrl: exportableImageUrl,
+  }
 }
 
 async function toDataUrl(url: string) {
