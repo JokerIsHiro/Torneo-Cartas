@@ -674,59 +674,88 @@ function DeckImageExport({
 }) {
   if (!deck) return <div ref={ref} />
   const standing = standings.find(row => row.player.id === deck.playerId || row.player.name === deck.playerName)
+  const rankLabel = standing ? `TOP ${standing.position}` : 'DECK PROFILE'
 
   return (
     <div ref={ref} className="deck-export-card">
-      <header>
-        <img src="/subterra-logo.jpg" alt="" />
-        <div>
-          <span>{tournamentName}</span>
-          <h2>{deck.name}</h2>
-          <p>{deck.playerName} · {deckRuleConfigs[deck.game].label}</p>
+      <header className="deck-export-hero">
+        <div className="deck-export-hero-mark">
+          <img src="/subterra-logo.jpg" alt="" />
         </div>
-        <div className="deck-export-rank">
-          <strong>{standing ? `#${standing.position}` : '--'}</strong>
-          <span>{standing ? `${standing.player.points} pts` : 'Puesto'}</span>
+        <div className="deck-export-hero-title">
+          <strong>{rankLabel}</strong>
+          <h2>{deck.name}</h2>
+          <p>{deck.playerName}</p>
+        </div>
+        <div className="deck-export-hero-meta">
+          <span>{deckRuleConfigs[deck.game].label}</span>
+          <strong>{standing ? `${standing.player.points} pts` : 'Finalizado'}</strong>
         </div>
       </header>
 
-      {deck.notes && (
-        <section className="deck-export-social-note">
-          <span>Nota para redes</span>
-          <strong>{deck.notes}</strong>
-        </section>
-      )}
+      <div className="deck-export-layout">
+        <div className="deck-export-body">
+          {sections.map(section => {
+            const sectionCards = cards.filter(card => card.section === section)
+            if (!sectionCards.length) return null
+            return (
+              <section key={section} className={`deck-export-section deck-export-section-${section.toLowerCase()}`}>
+                <h3>
+                  <span>{getExportSectionLabel(deck.game, section)}</span>
+                  <strong>{sectionCards.reduce((sum, card) => sum + card.quantity, 0)} cartas</strong>
+                </h3>
+                <div className="deck-export-card-grid">
+                  {expandCards(sectionCards).map((card, index) => (
+                    <div
+                      key={`${card.id}-${index}`}
+                      className="deck-export-card-tile"
+                      style={card.imageUrl ? { backgroundImage: `url("${card.imageUrl}")` } : undefined}
+                    >
+                      <div className="deck-export-card-fallback">{card.name}</div>
+                      {card.imageUrl && <img src={card.imageUrl} alt="" crossOrigin="anonymous" />}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )
+          })}
+        </div>
 
-      <div className="deck-export-body">
-        {sections.map(section => {
-          const sectionCards = cards.filter(card => card.section === section)
-          if (!sectionCards.length) return null
-          return (
-            <section key={section}>
-              <h3>{section} · {sectionCards.reduce((sum, card) => sum + card.quantity, 0)}</h3>
-              <div className="deck-export-card-grid">
-                {expandCards(sectionCards).map((card, index) => (
-                  <div
-                    key={`${card.id}-${index}`}
-                    className="deck-export-card-tile"
-                    style={card.imageUrl ? { backgroundImage: `url("${card.imageUrl}")` } : undefined}
-                  >
-                    <div className="deck-export-card-fallback">{card.name}</div>
-                    {card.imageUrl && <img src={card.imageUrl} alt="" crossOrigin="anonymous" />}
-                  </div>
-                ))}
-              </div>
+        <aside className="deck-export-sidebar">
+          <div className="deck-export-player-card">
+            <span>Jugador</span>
+            <strong>{deck.playerName}</strong>
+            <small>{tournamentName}</small>
+          </div>
+
+          {deck.notes && (
+            <section className="deck-export-social-note">
+              <span>Nota para redes</span>
+              <strong>{deck.notes}</strong>
             </section>
-          )
-        })}
+          )}
+
+          <div className="deck-export-promo">
+            <img src="/subterra-logo.jpg" alt="" />
+            <div>
+              <span>Subterra TCG</span>
+              <strong>Comparte tu mazo</strong>
+              <small>y vuelve al proximo torneo</small>
+            </div>
+          </div>
+        </aside>
       </div>
 
       <footer>
-        <span>Subterra TCG</span>
-        <strong>Comparte tu mazo y tu resultado</strong>
+        <span>{tournamentName}</span>
+        <strong>{deckRuleConfigs[deck.game].label} · Decklist del torneo</strong>
       </footer>
     </div>
   )
+}
+
+function getExportSectionLabel(game: TournamentTCG, sectionId: string) {
+  return deckRuleConfigs[game].sections.find(section => section.id === sectionId)?.label ?? sectionId
 }
 
 function expandCards(cards: DeckCard[]) {
