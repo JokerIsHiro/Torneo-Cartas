@@ -105,6 +105,7 @@ export function DeckBuilderView() {
   const advancedFilterOptions = getAdvancedCardFilterOptions(currentTournament.tcg)
   const selectedPlayer = currentTournament.players.find(player => player.id === playerId) ?? null
   const visibleResults = currentTournament.tcg === 'riftbound' || query.trim().length < 2 ? [] : results
+  const quickSideSection = rules.sections.find(section => ['Side', 'Sideboard'].includes(section.id))
 
   function handlePlayerChange(nextPlayerId: string) {
     setPlayerId(nextPlayerId)
@@ -115,6 +116,11 @@ export function DeckBuilderView() {
   }
 
   function addCard(card: CardSuggestion, section = getDefaultSection(currentTournament.tcg, card)) {
+    if (!canPlaceCardInSection(currentTournament.tcg, card, section)) {
+      showDeckStatus(`Esa carta no pertenece a ${getSectionLabel(section)}.`)
+      return
+    }
+
     setCards(current => [
       ...current,
       {
@@ -138,7 +144,15 @@ export function DeckBuilderView() {
   }
 
   function moveCard(cardId: string, section: string) {
-    setCards(current => current.map(card => card.id === cardId ? { ...card, section } : card))
+    setCards(current => {
+      const card = current.find(candidate => candidate.id === cardId)
+      if (!card) return current
+      if (!canPlaceCardInSection(currentTournament.tcg, card, section)) {
+        showDeckStatus(`Movimiento rechazado: ${card.name} no pertenece a ${getSectionLabel(section)}.`)
+        return current
+      }
+      return current.map(candidate => candidate.id === cardId ? { ...candidate, section } : candidate)
+    })
   }
 
   function moveCardOrder(cardId: string, direction: -1 | 1) {
@@ -170,6 +184,10 @@ export function DeckBuilderView() {
 
       const moved = current[fromIndex]
       const target = current[targetIndex]
+      if (!canPlaceCardInSection(currentTournament.tcg, moved, target.section)) {
+        showDeckStatus(`Movimiento rechazado: ${moved.name} no pertenece a ${getSectionLabel(target.section)}.`)
+        return current
+      }
       const next = current.filter(card => card.id !== cardId)
       const insertIndex = next.findIndex(card => card.id === targetCardId)
       next.splice(insertIndex, 0, { ...moved, section: target.section })
@@ -246,6 +264,15 @@ export function DeckBuilderView() {
     window.setTimeout(() => setSaveStatus(''), 2200)
   }
 
+  function showDeckStatus(message: string) {
+    setSaveStatus(message)
+    window.setTimeout(() => setSaveStatus(''), 2600)
+  }
+
+  function getSectionLabel(sectionId: string) {
+    return rules.sections.find(section => section.id === sectionId)?.label ?? sectionId
+  }
+
   function applyImportedText(text: string) {
     if (!text) return
     const result = parseDeckImport(currentTournament.tcg, text)
@@ -306,8 +333,8 @@ export function DeckBuilderView() {
       list: formatDeckCards(hydratedCards, sections),
       notes: deckNotes,
       status: 'submitted',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now(),
+      updatedAt: now(),
     })
     setExportCards(hydratedCards)
     await waitFrame()
@@ -462,16 +489,27 @@ export function DeckBuilderView() {
 
           <div className="deck-search-results">
             {visibleResults.map(card => (
-              <button
+              <article
                 key={card.id}
                 draggable
                 onDragStart={event => event.dataTransfer.setData('application/x-card', JSON.stringify(card))}
-                onClick={() => addCard(card)}
                 className="deck-search-card"
               >
                 {card.imageUrl ? <img src={card.imageUrl} alt="" /> : <div className="deck-card-placeholder" />}
                 <span>{card.name}</span>
-              </button>
+                <div className="deck-search-card-actions">
+                  <button onClick={() => addCard(card)}>
+                    <i className="ti ti-plus" aria-hidden="true" />
+                    Mazo
+                  </button>
+                  {quickSideSection && (
+                    <button onClick={() => addCard(card, quickSideSection.id)}>
+                      <i className="ti ti-layout-sidebar-right" aria-hidden="true" />
+                      Side
+                    </button>
+                  )}
+                </div>
+              </article>
             ))}
           </div>
         </aside>
@@ -489,6 +527,7 @@ export function DeckBuilderView() {
               onQuantityChange={updateQuantity}
               getCopyWarning={getCopyWarning}
               onSort={mode => sortSection(section.id, mode)}
+              canDropCard={card => canPlaceCardInSection(currentTournament.tcg, card, section.id)}
             />
           ))}
         </main>
@@ -559,6 +598,7 @@ function DeckZone({
   onQuantityChange,
   getCopyWarning,
   onSort,
+  canDropCard,
 }: {
   label: string
   cards: DeckCard[]
@@ -569,20 +609,38 @@ function DeckZone({
   onQuantityChange: (cardId: string, quantity: number) => void
   getCopyWarning: (card: DeckCard) => string
   onSort: (mode: 'name' | 'quantity' | 'type') => void
+  canDropCard: (card: Pick<CardSuggestion, 'name' | 'kind' | 'subtitle'>) => boolean
 }) {
   const total = cards.reduce((sum, card) => sum + card.quantity, 0)
   const [dragTargetId, setDragTargetId] = useState('')
+  const [dropState, setDropState] = useState<'valid' | 'invalid' | ''>('')
 
   return (
     <section
-      className="deck-zone"
-      onDragOver={event => event.preventDefault()}
+      className={dropState ? `deck-zone ${dropState === 'invalid' ? 'drop-invalid' : 'drop-valid'}` : 'deck-zone'}
+      onDragOver={event => {
+        event.preventDefault()
+        const cardPayload = event.dataTransfer.getData('application/x-card')
+        const deckCardId = event.dataTransfer.getData('application/x-deck-card')
+        if (cardPayload) {
+          const card = JSON.parse(cardPayload) as CardSuggestion
+          setDropState(canDropCard(card) ? 'valid' : 'invalid')
+        } else if (deckCardId) {
+          const dragged = cards.find(card => card.id === deckCardId)
+          setDropState(dragged && canDropCard(dragged) ? 'valid' : '')
+        }
+      }}
+      onDragLeave={() => setDropState('')}
       onDrop={event => {
         event.preventDefault()
         const cardPayload = event.dataTransfer.getData('application/x-card')
         const deckCardId = event.dataTransfer.getData('application/x-deck-card')
-        if (cardPayload) onDropCard(JSON.parse(cardPayload) as CardSuggestion)
+        if (cardPayload) {
+          const card = JSON.parse(cardPayload) as CardSuggestion
+          if (canDropCard(card)) onDropCard(card)
+        }
         if (deckCardId) onMoveCard(deckCardId)
+        setDropState('')
       }}
     >
       <header>
@@ -609,8 +667,13 @@ function DeckZone({
             }}
             onDragOver={event => {
               event.preventDefault()
+              const cardPayload = event.dataTransfer.getData('application/x-card')
               const deckCardId = event.dataTransfer.getData('application/x-deck-card')
-              if (deckCardId && deckCardId !== card.id) setDragTargetId(card.id)
+              if (cardPayload) {
+                const dragged = JSON.parse(cardPayload) as CardSuggestion
+                if (canDropCard(dragged)) setDragTargetId(card.id)
+              }
+              if (deckCardId && deckCardId !== card.id && canDropCard(card)) setDragTargetId(card.id)
             }}
             onDragLeave={() => {
               if (dragTargetId === card.id) setDragTargetId('')
@@ -618,7 +681,12 @@ function DeckZone({
             onDrop={event => {
               event.preventDefault()
               event.stopPropagation()
+              const cardPayload = event.dataTransfer.getData('application/x-card')
               const deckCardId = event.dataTransfer.getData('application/x-deck-card')
+              if (cardPayload) {
+                const dragged = JSON.parse(cardPayload) as CardSuggestion
+                if (canDropCard(dragged)) onDropCard(dragged)
+              }
               if (deckCardId) onReorderCard(deckCardId, card.id)
               setDragTargetId('')
             }}
@@ -674,7 +742,7 @@ function DeckImageExport({
 }) {
   if (!deck) return <div ref={ref} />
   const standing = standings.find(row => row.player.id === deck.playerId || row.player.name === deck.playerName)
-  const rankLabel = standing ? `TOP ${standing.position}` : 'DECK PROFILE'
+  const rankLabel = getPlacementLabel(standing?.position)
 
   return (
     <div ref={ref} className="deck-export-card">
@@ -739,7 +807,7 @@ function DeckImageExport({
             <img src="/subterra-logo.jpg" alt="" />
           <div>
             <span>Subterra TCG</span>
-            <strong>Comparte tu mazo</strong>
+            <strong>Deck profile</strong>
               <small>@subterra_oficial</small>
           </div>
         </div>
@@ -756,6 +824,30 @@ function DeckImageExport({
 
 function getExportSectionLabel(game: TournamentTCG, sectionId: string) {
   return deckRuleConfigs[game].sections.find(section => section.id === sectionId)?.label ?? sectionId
+}
+
+function getPlacementLabel(position?: number) {
+  if (!position) return 'DECK PROFILE'
+  if (position === 1) return 'WINNER'
+  if (position === 2) return 'RUNNER-UP'
+  if (position <= 4) return 'TOP 4'
+  if (position <= 8) return 'TOP 8'
+  if (position <= 16) return 'TOP 16'
+  if (position <= 32) return 'TOP 32'
+  if (position <= 64) return 'TOP 64'
+  return `TOP ${position}`
+}
+
+function canPlaceCardInSection(game: TournamentTCG, card: Pick<CardSuggestion, 'name' | 'kind' | 'subtitle'>, section: string) {
+  if (['Side', 'Sideboard'].includes(section)) return true
+
+  const defaultSection = getDefaultSection(game, card)
+  if (section === defaultSection) return true
+
+  if (game === 'magic') return section === 'Main'
+  if (game === 'lorcana') return section === 'Main'
+  if (game === 'one-piece') return section === 'Main' && defaultSection !== 'Leader'
+  return false
 }
 
 function expandCards(cards: DeckCard[]) {
