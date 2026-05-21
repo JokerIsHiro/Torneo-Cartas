@@ -1797,7 +1797,8 @@ button:disabled {
   min-height: 1200px;
   padding: 44px;
   background:
-    radial-gradient(circle at 50% -10%, rgba(88, 215, 255, 0.14), transparent 380px),
+    radial-gradient(circle at 50% -10%, rgba(88, 215, 255, 0.18), transparent 380px),
+    radial-gradient(circle at 92% 8%, rgba(255, 209, 102, 0.12), transparent 280px),
     linear-gradient(90deg, rgba(7, 16, 31, 0.86), rgba(5, 7, 12, 0.92)),
     #05070c;
   color: var(--color-text-primary);
@@ -1811,6 +1812,11 @@ button:disabled {
   gap: 22px;
   padding-bottom: 24px;
   border-bottom: 1px solid #164a96;
+}
+
+.deck-export-card header > div:nth-child(2) {
+  min-width: 0;
+  flex: 1;
 }
 
 .deck-export-card header img {
@@ -1834,6 +1840,69 @@ button:disabled {
 .deck-export-card footer {
   color: #7c9ad0;
   font-size: 22px;
+}
+
+.deck-export-rank {
+  width: 126px;
+  min-height: 98px;
+  border: 1px solid #806319;
+  background:
+    linear-gradient(135deg, rgba(255, 209, 102, 0.18), rgba(36, 26, 5, 0.86)),
+    #241a05;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.deck-export-rank strong {
+  color: #ffd166;
+  font-size: 44px;
+  line-height: 1;
+}
+
+.deck-export-rank span {
+  color: #f2f7ff;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.deck-export-social-note {
+  margin-top: 24px;
+  padding: 22px 26px;
+  border: 1px solid rgba(88, 215, 255, 0.42);
+  background:
+    linear-gradient(90deg, rgba(14, 42, 92, 0.86), rgba(7, 16, 31, 0.92)),
+    #07101f;
+  position: relative;
+  overflow: hidden;
+}
+
+.deck-export-social-note::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 7px;
+  background: linear-gradient(#58d7ff, #ffd166);
+}
+
+.deck-export-social-note span {
+  display: block;
+  margin-bottom: 6px;
+  color: #58d7ff;
+  font-size: 16px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.deck-export-social-note strong {
+  display: block;
+  color: #f2f7ff;
+  font-size: 30px;
+  line-height: 1.16;
+  overflow-wrap: anywhere;
 }
 
 .deck-export-body {
@@ -1903,6 +1972,14 @@ button:disabled {
   margin-top: 28px;
   padding-top: 18px;
   border-top: 1px solid #0d274f;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.deck-export-card footer strong {
+  color: #f2f7ff;
+  font-size: 22px;
 }
 
 .admin-login-card {

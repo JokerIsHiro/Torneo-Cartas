@@ -8,6 +8,7 @@ import {
   type CardSuggestion,
 } from '../services/cardSearch'
 import { useExportImage } from '../hooks/useExportImage'
+import { useSwissPairings } from '../hooks/useSwissPairings'
 import type { DeckList, TournamentTCG } from '../types/tournament'
 import { deckRuleConfigs, getDefaultSection, validateDeck } from '../utils/deckRules'
 import { formatDeckCards, parseDeckImport, parseSavedDeckCards, type ImportedDeckCard } from '../utils/deckImport'
@@ -51,6 +52,7 @@ export function DeckBuilderView() {
   const [deckLibrary, setDeckLibrary] = useState<SavedDeckTemplate[]>(loadDeckLibrary)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const { ref: exportRef, exportImage } = useExportImage()
+  const { standings } = useSwissPairings(tournamentId)
 
   const latestDecks = useMemo(() => {
     const latestByPlayer = new Map<string, DeckList>()
@@ -540,6 +542,7 @@ export function DeckBuilderView() {
           deck={exportDeck}
           cards={exportCards}
           sections={sections}
+          standings={standings}
         />
       </div>
     </div>
@@ -660,14 +663,17 @@ function DeckImageExport({
   deck,
   cards,
   sections,
+  standings,
 }: {
   ref: React.RefObject<HTMLDivElement | null>
   tournamentName: string
   deck: DeckList | null
   cards: DeckCard[]
   sections: string[]
+  standings: ReturnType<typeof useSwissPairings>['standings']
 }) {
   if (!deck) return <div ref={ref} />
+  const standing = standings.find(row => row.player.id === deck.playerId || row.player.name === deck.playerName)
 
   return (
     <div ref={ref} className="deck-export-card">
@@ -678,7 +684,18 @@ function DeckImageExport({
           <h2>{deck.name}</h2>
           <p>{deck.playerName} · {deckRuleConfigs[deck.game].label}</p>
         </div>
+        <div className="deck-export-rank">
+          <strong>{standing ? `#${standing.position}` : '--'}</strong>
+          <span>{standing ? `${standing.player.points} pts` : 'Puesto'}</span>
+        </div>
       </header>
+
+      {deck.notes && (
+        <section className="deck-export-social-note">
+          <span>Nota para redes</span>
+          <strong>{deck.notes}</strong>
+        </section>
+      )}
 
       <div className="deck-export-body">
         {sections.map(section => {
@@ -704,7 +721,10 @@ function DeckImageExport({
         })}
       </div>
 
-      {deck.notes && <footer>{deck.notes}</footer>}
+      <footer>
+        <span>Subterra TCG</span>
+        <strong>Comparte tu mazo y tu resultado</strong>
+      </footer>
     </div>
   )
 }
