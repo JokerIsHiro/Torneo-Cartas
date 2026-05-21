@@ -737,18 +737,18 @@ function DeckImageExport({
 
           <div className="deck-export-promo">
             <img src="/subterra-logo.jpg" alt="" />
-            <div>
-              <span>Subterra TCG</span>
-              <strong>Comparte tu mazo</strong>
-              <small>y vuelve al proximo torneo</small>
-            </div>
+          <div>
+            <span>Subterra TCG</span>
+            <strong>Comparte tu mazo</strong>
+              <small>@subterra_oficial</small>
           </div>
-        </aside>
+        </div>
+      </aside>
       </div>
 
       <footer>
         <span>{tournamentName}</span>
-        <strong>{deckRuleConfigs[deck.game].label} · Decklist del torneo</strong>
+        <strong>{deckRuleConfigs[deck.game].label} · @subterra_oficial</strong>
       </footer>
     </div>
   )
