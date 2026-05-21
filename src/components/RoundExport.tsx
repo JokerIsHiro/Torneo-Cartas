@@ -67,9 +67,7 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
               <div key={row.player.id} style={{
                 ...standingRowStyle,
                 gridTemplateColumns: exportStandingsColumns,
-                background: row.position % 2 === 0
-                  ? 'var(--color-background-secondary)'
-                  : 'var(--color-background-primary)',
+                background: row.position % 2 === 0 ? '#000000' : '#05070c',
               }}>
                 <span style={positionStyle}>{row.position}</span>
                 <span style={{ fontWeight: 600 }}>{row.player.name}</span>
@@ -117,10 +115,10 @@ function ExportHeader({
 
 const exportShellStyle: React.CSSProperties = {
   width: '720px',
-  background: 'var(--color-background-primary)',
+  background: '#05070c',
   padding: '2rem',
   fontFamily: 'system-ui, sans-serif',
-  color: 'var(--color-text-primary)',
+  color: '#f2f7ff',
 }
 
 const headerStyle: React.CSSProperties = {
@@ -130,12 +128,12 @@ const headerStyle: React.CSSProperties = {
   gap: '1rem',
   marginBottom: '1.5rem',
   paddingBottom: '1rem',
-  borderBottom: '1px solid var(--color-border-tertiary)',
+  borderBottom: '1px solid #0d274f',
 }
 
 const tournamentNameStyle: React.CSSProperties = {
   fontSize: '15px',
-  color: 'var(--color-text-secondary)',
+  color: '#7c9ad0',
   marginBottom: '6px',
 }
 
@@ -143,17 +141,18 @@ const titleStyle: React.CSSProperties = {
   fontSize: '28px',
   fontWeight: 700,
   lineHeight: 1,
+  color: '#f2f7ff',
 }
 
 const subtitleStyle: React.CSSProperties = {
   fontSize: '13px',
-  color: 'var(--color-text-secondary)',
+  color: '#7c9ad0',
   marginTop: '8px',
 }
 
 const dateStyle: React.CSSProperties = {
   fontSize: '12px',
-  color: 'var(--color-text-muted)',
+  color: '#516b9a',
   textAlign: 'right',
 }
 
@@ -164,14 +163,14 @@ const pairingRowStyle: React.CSSProperties = {
   gap: '14px',
   padding: '15px 16px',
   marginBottom: '8px',
-  border: '1px solid var(--color-border-tertiary)',
+  border: '1px solid #0d274f',
   borderRadius: '8px',
-  background: 'var(--color-background-secondary)',
+  background: '#000000',
 }
 
 const tableNumberStyle: React.CSSProperties = {
   fontSize: '12px',
-  color: 'var(--color-accent-secondary)',
+  color: '#58d7ff',
   fontWeight: 700,
   textTransform: 'uppercase',
 }
@@ -179,12 +178,13 @@ const tableNumberStyle: React.CSSProperties = {
 const playerNameStyle: React.CSSProperties = {
   fontSize: '18px',
   fontWeight: 650,
+  color: '#f2f7ff',
   minWidth: 0,
 }
 
 const vsStyle: React.CSSProperties = {
   fontSize: '12px',
-  color: 'var(--color-text-muted)',
+  color: '#516b9a',
   fontWeight: 700,
   textTransform: 'uppercase',
 }
@@ -195,7 +195,7 @@ const standingsHeaderStyle: React.CSSProperties = {
   gap: '6px',
   padding: '6px 12px',
   fontSize: '11px',
-  color: 'var(--color-text-secondary)',
+  color: '#7c9ad0',
   fontWeight: 700,
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
@@ -209,10 +209,11 @@ const standingRowStyle: React.CSSProperties = {
   padding: '10px 12px',
   borderRadius: '7px',
   fontSize: '15px',
+  color: '#f2f7ff',
 }
 
 const positionStyle: React.CSSProperties = {
-  color: 'var(--color-accent-secondary)',
+  color: '#58d7ff',
   textAlign: 'center',
   fontSize: '13px',
   fontWeight: 700,
@@ -221,19 +222,19 @@ const positionStyle: React.CSSProperties = {
 const scoreStyle: React.CSSProperties = {
   textAlign: 'center',
   fontWeight: 750,
-  color: 'var(--color-text-primary)',
+  color: '#f2f7ff',
 }
 
 const mutedScoreStyle: React.CSSProperties = {
   textAlign: 'center',
-  color: 'var(--color-text-secondary)',
+  color: '#7c9ad0',
 }
 
 const footerStyle: React.CSSProperties = {
   marginTop: '1.5rem',
   paddingTop: '1rem',
-  borderTop: '1px solid var(--color-border-tertiary)',
+  borderTop: '1px solid #0d274f',
   fontSize: '11px',
-  color: 'var(--color-text-muted)',
+  color: '#516b9a',
   textAlign: 'center',
 }
