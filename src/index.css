@@ -1932,10 +1932,11 @@ button:disabled {
 .deck-export-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 292px;
+  align-items: start;
   min-height: 0;
   background:
     radial-gradient(circle at 22% 8%, rgba(88, 215, 255, 0.08), transparent 300px),
-    linear-gradient(90deg, rgba(7, 16, 31, 0.82), rgba(5, 7, 12, 0.68) 75%, transparent 75%),
+    linear-gradient(90deg, rgba(7, 16, 31, 0.82), rgba(5, 7, 12, 0.68)),
     #05070c;
 }
 
@@ -2098,20 +2099,16 @@ button:disabled {
   display: grid;
   gap: 12px;
   align-content: start;
+  align-self: start;
+  height: auto;
   background:
     radial-gradient(circle at 50% 0%, rgba(88, 215, 255, 0.11), transparent 240px),
     linear-gradient(160deg, rgba(10, 31, 70, 0.86), rgba(5, 7, 12, 0.98));
   border-left: 2px solid rgba(88, 215, 255, 0.3);
 }
 
-.deck-export-card-normal .deck-export-sidebar,
-.deck-export-card-feed .deck-export-sidebar,
-.deck-export-card-story .deck-export-sidebar {
-  align-self: stretch;
-}
-
 .deck-export-player-card {
-  min-height: 132px;
+  min-height: 116px;
   padding: 18px;
   display: grid;
   align-content: center;
@@ -2147,7 +2144,7 @@ button:disabled {
 }
 
 .deck-export-promo {
-  margin-top: auto;
+  margin-top: 0;
   display: grid;
   gap: 12px;
   padding: 18px;
@@ -2183,6 +2180,12 @@ button:disabled {
   height: auto;
 }
 
+.deck-export-card-feed .deck-export-sidebar,
+.deck-export-card-normal .deck-export-sidebar {
+  margin: 18px 18px 0 0;
+  border: 1px solid rgba(88, 215, 255, 0.28);
+}
+
 .deck-export-card-feed .deck-export-card-grid {
   grid-template-columns: repeat(9, 1fr);
 }
@@ -2199,12 +2202,14 @@ button:disabled {
 }
 
 .deck-export-card-story .deck-export-layout {
-  grid-template-columns: minmax(0, 1fr) 260px;
-  grid-template-rows: 1fr;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
   height: auto;
 }
 
 .deck-export-card-story .deck-export-body {
+  grid-column: 1;
+  grid-row: 2;
   padding: 18px;
   align-content: start;
 }
@@ -2222,15 +2227,17 @@ button:disabled {
 }
 
 .deck-export-card-story .deck-export-sidebar {
-  grid-template-columns: 1fr;
+  grid-column: 1;
+  grid-row: 1;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.86fr) minmax(0, 1fr);
   align-content: start;
-  border-left: 2px solid rgba(88, 215, 255, 0.3);
-  border-top: 0;
-  padding: 18px 16px;
-}
-
-.deck-export-card-story .deck-export-promo {
-  margin-top: auto;
+  align-items: stretch;
+  border-left: 0;
+  border-bottom: 2px solid rgba(88, 215, 255, 0.3);
+  padding: 16px 18px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(88, 215, 255, 0.11), transparent 240px),
+    linear-gradient(90deg, rgba(10, 31, 70, 0.72), rgba(5, 7, 12, 0.94));
 }
 
 .deck-export-card-story .deck-export-hero-title strong {
@@ -2256,6 +2263,23 @@ button:disabled {
 .deck-export-card-story .deck-export-social-note strong,
 .deck-export-card-story .deck-export-promo strong {
   font-size: 21px;
+}
+
+.deck-export-card-story .deck-export-player-card,
+.deck-export-card-story .deck-export-social-note,
+.deck-export-card-story .deck-export-promo {
+  min-height: 104px;
+  padding: 14px 16px;
+}
+
+.deck-export-card-story .deck-export-promo {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.deck-export-card-story .deck-export-promo img {
+  width: 72px;
+  height: 72px;
 }
 
 .admin-login-card {
