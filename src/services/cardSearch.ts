@@ -255,9 +255,9 @@ async function searchPokemon(query: string, signal?: AbortSignal, filters: CardS
   const type = filters.cardType ? ` types:${filters.cardType}` : ''
   const nameQuery = filters.exact ? `name:"${escapePokemonQuery(query)}"` : `name:${escapePokemonQuery(query)}*`
   url.searchParams.set('q', `${nameQuery}${supertype}${type}`)
-  url.searchParams.set('pageSize', '10')
-  url.searchParams.set('orderBy', 'name')
-  url.searchParams.set('select', 'id,name,set,images,rules,attacks,abilities')
+  url.searchParams.set('pageSize', filters.exact ? '250' : '40')
+  url.searchParams.set('orderBy', '-set.releaseDate,name')
+  url.searchParams.set('select', 'id,name,set,images,rarity,tcgplayer,rules,attacks,abilities')
 
   const response = await fetch(url, {
     signal,
@@ -269,19 +269,21 @@ async function searchPokemon(query: string, signal?: AbortSignal, filters: CardS
     data?: Array<{
       id: string
       name: string
-      set?: { name?: string }
+      set?: { name?: string; releaseDate?: string }
       types?: string[]
       images?: { small?: string; large?: string }
+      rarity?: string
+      tcgplayer?: { prices?: Record<string, { market?: number; low?: number; mid?: number }> }
       rules?: string[]
       attacks?: Array<{ text?: string }>
       abilities?: Array<{ text?: string }>
     }>
   }
 
-  return filterByText((payload.data ?? []).map(card => ({
+  return filterByText(sortPokemonPrintings(payload.data ?? []).map(card => ({
     id: `pokemon:${card.id}`,
     name: card.name,
-    subtitle: card.set?.name,
+    subtitle: [card.set?.name, card.rarity].filter(Boolean).join(' - '),
     imageUrl: card.images?.large ?? card.images?.small,
     kind: card.types?.join(', ') ?? filters.kind,
     text: [
@@ -290,6 +292,52 @@ async function searchPokemon(query: string, signal?: AbortSignal, filters: CardS
       ...(card.abilities ?? []).map(ability => ability.text ?? ''),
     ].filter(Boolean).join('\n'),
   })), filters.text).slice(0, 12)
+}
+
+type PokemonPrinting = {
+  id: string
+  name: string
+  set?: { name?: string; releaseDate?: string }
+  types?: string[]
+  images?: { small?: string; large?: string }
+  rarity?: string
+  tcgplayer?: { prices?: Record<string, { market?: number; low?: number; mid?: number }> }
+  rules?: string[]
+  attacks?: Array<{ text?: string }>
+  abilities?: Array<{ text?: string }>
+}
+
+function sortPokemonPrintings(cards: PokemonPrinting[]) {
+  return [...cards].sort((a, b) => {
+    const rarityScore = getPokemonRarityScore(a) - getPokemonRarityScore(b)
+    if (rarityScore !== 0) return rarityScore
+
+    const dateScore = getPokemonReleaseTime(b) - getPokemonReleaseTime(a)
+    if (dateScore !== 0) return dateScore
+
+    return getPokemonPrice(a) - getPokemonPrice(b)
+  })
+}
+
+function getPokemonRarityScore(card: PokemonPrinting) {
+  const text = `${card.id} ${card.rarity ?? ''}`.toLowerCase()
+  if (/promo|secret|rainbow|hyper|shiny|illustration|special|trainer gallery|gold|rare holo vmax|rare holo vstar|rare ultra|rare secret/.test(text)) return 3
+  if (/rare holo|double rare|ace spec|amazing rare|radiant/.test(text)) return 2
+  if (/rare/.test(text)) return 1
+  return 0
+}
+
+function getPokemonReleaseTime(card: PokemonPrinting) {
+  const raw = card.set?.releaseDate
+  const time = raw ? Date.parse(raw) : 0
+  return Number.isFinite(time) ? time : 0
+}
+
+function getPokemonPrice(card: PokemonPrinting) {
+  const values = Object.values(card.tcgplayer?.prices ?? {})
+    .flatMap(price => [price.market, price.low, price.mid])
+    .filter((price): price is number => typeof price === 'number' && Number.isFinite(price))
+  return values.length ? Math.min(...values) : Number.MAX_SAFE_INTEGER
 }
 
 async function searchYugioh(query: string, signal?: AbortSignal, filters: CardSearchFilters = {}): Promise<CardSuggestion[]> {

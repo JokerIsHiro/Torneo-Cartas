@@ -777,6 +777,7 @@ function DeckImageExport({
             const groupedExport = shouldGroupExportCards(deck.game)
             const visualCards = groupedExport ? groupDeckCards(sectionCards) : expandCards(sectionCards)
             const stackedExport = shouldStackExportCards(deck.game)
+            const compactFallback = shouldUseCompactFallback(deck.game, section)
             return (
               <section key={section} className={`deck-export-section deck-export-section-${section.toLowerCase()}`}>
                 <h3>
@@ -794,7 +795,7 @@ function DeckImageExport({
                         ? <StackedCardImage card={card} />
                         : (
                           <>
-                            <div className="deck-export-card-fallback">{card.name}</div>
+                            <div className={`deck-export-card-fallback${compactFallback ? ' deck-export-card-fallback-compact' : ''}`}>{card.name}</div>
                             {card.imageUrl && <img src={card.imageUrl} alt="" crossOrigin="anonymous" />}
                             {groupedExport && <span className="deck-export-copy-badge">{card.quantity}</span>}
                           </>
@@ -832,6 +833,7 @@ function StackedCardImage({ card }: { card: DeckCard }) {
   const copies = Math.max(1, Math.min(card.quantity, 4))
   return (
     <>
+      <div className="deck-export-card-fallback">{card.name}</div>
       {Array.from({ length: copies }).map((_, index) => (
         <img
           key={index}
@@ -909,6 +911,10 @@ function shouldStackExportCards(game: TournamentTCG) {
   return game === 'magic'
 }
 
+function shouldUseCompactFallback(game: TournamentTCG, section: string) {
+  return game === 'magic' && ['Sideboard', 'Side'].includes(section)
+}
+
 function splitCardCopies(cards: DeckCard[]) {
   return cards.flatMap(card =>
     Array.from({ length: Math.max(1, card.quantity) }, () => ({
@@ -936,7 +942,7 @@ async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forE
 
   const hydrated = await mapWithConcurrency(cards, 4, async card => {
     if (card.imageUrl) {
-      const usableImageUrl = forExport ? await cachedDataUrl(card.imageUrl, imageCache).catch(() => '') : card.imageUrl
+      const usableImageUrl = forExport ? await cachedDataUrl(card.imageUrl, imageCache).catch(() => card.imageUrl) : card.imageUrl
       return { ...card, imageUrl: usableImageUrl }
     }
 
@@ -953,7 +959,7 @@ async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forE
     const rawImageUrl = match?.imageUrl ?? getKnownImageUrl(game, match?.id ?? card.cardId)
     if (!match || !rawImageUrl) return card
 
-    const usableImageUrl = forExport ? await cachedDataUrl(rawImageUrl, imageCache).catch(() => '') : rawImageUrl
+    const usableImageUrl = forExport ? await cachedDataUrl(rawImageUrl, imageCache).catch(() => rawImageUrl) : rawImageUrl
 
     return {
       ...card,
@@ -1038,7 +1044,8 @@ async function toDataUrl(url: string) {
       const response = await fetch(candidate, { mode: 'cors', cache: 'force-cache' })
       if (!response.ok) continue
       blob = await response.blob()
-      if (blob.size > 0) break
+      if (blob.size > 0 && blob.type.startsWith('image/')) break
+      blob = null
     } catch {
       // Prueba el siguiente candidato: proxy, URL normalizada o URL original.
     }
@@ -1057,7 +1064,7 @@ function getExportImageCandidates(url: string) {
   if (!/^https?:\/\//i.test(url)) return [url]
 
   const proxied = proxiedImageUrl(url)
-  return [...new Set([proxied, url])]
+  return [...new Set([url, proxied])]
 }
 
 function proxiedImageUrl(url: string) {
