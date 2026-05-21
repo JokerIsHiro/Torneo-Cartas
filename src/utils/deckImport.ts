@@ -10,6 +10,7 @@ export interface ImportedDeckCard {
   subtitle?: string
   imageUrl?: string
   kind?: string
+  legalities?: Record<string, string>
   section: string
   quantity: number
 }

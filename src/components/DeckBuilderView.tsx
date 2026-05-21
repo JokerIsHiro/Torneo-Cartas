@@ -15,6 +15,17 @@ import { formatDeckCards, parseDeckImport, parseSavedDeckCards, type ImportedDec
 
 type DeckCard = ImportedDeckCard
 type DeckExportFormat = 'normal' | 'feed' | 'story'
+type MagicFormat = 'standard' | 'pioneer' | 'modern' | 'pauper' | 'commander' | 'legacy' | 'vintage'
+
+const magicFormatOptions: Array<{ value: MagicFormat; label: string }> = [
+  { value: 'standard', label: 'Standard' },
+  { value: 'pioneer', label: 'Pioneer' },
+  { value: 'modern', label: 'Modern' },
+  { value: 'pauper', label: 'Pauper' },
+  { value: 'commander', label: 'Commander' },
+  { value: 'legacy', label: 'Legacy' },
+  { value: 'vintage', label: 'Vintage' },
+]
 
 interface SavedDeckTemplate {
   id: string
@@ -50,6 +61,7 @@ export function DeckBuilderView() {
   const [exportDeck, setExportDeck] = useState<DeckList | null>(null)
   const [exportCards, setExportCards] = useState<DeckCard[]>([])
   const [exportFormat, setExportFormat] = useState<DeckExportFormat>('feed')
+  const [magicFormat, setMagicFormat] = useState<MagicFormat>('pauper')
   const [saveStatus, setSaveStatus] = useState('')
   const [deckLibrary, setDeckLibrary] = useState<SavedDeckTemplate[]>(loadDeckLibrary)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -79,7 +91,13 @@ export function DeckBuilderView() {
 
     const controller = new AbortController()
     const timeout = window.setTimeout(() => {
-      void searchCards(tournament.tcg, query, controller.signal, { ...advancedFilters, kind: searchKind, onlyImages, text: searchText })
+      void searchCards(tournament.tcg, query, controller.signal, {
+        ...advancedFilters,
+        kind: searchKind,
+        onlyImages,
+        text: searchText,
+        format: tournament.tcg === 'magic' ? magicFormat : undefined,
+      })
         .then(setResults)
         .catch(error => {
           if (error instanceof DOMException && error.name === 'AbortError') return
@@ -91,7 +109,7 @@ export function DeckBuilderView() {
       window.clearTimeout(timeout)
       controller.abort()
     }
-  }, [advancedFilters, onlyImages, query, searchKind, searchText, tournament])
+  }, [advancedFilters, magicFormat, onlyImages, query, searchKind, searchText, tournament])
 
   if (!tournamentId) return <BuilderEmpty icon="ti-link-off" title="Falta torneo" text="Abre el constructor desde un torneo finalizado." />
   if (!tournament) return <BuilderEmpty icon="ti-loader-2" title="Cargando torneo" text="Sincronizando datos del evento." />
@@ -102,7 +120,10 @@ export function DeckBuilderView() {
   const currentTournament = tournament
   const rules = deckRuleConfigs[currentTournament.tcg]
   const sections = rules.sections.map(section => section.id)
-  const warnings = validateDeck(currentTournament.tcg, cards)
+  const warnings = [
+    ...validateDeck(currentTournament.tcg, cards),
+    ...(currentTournament.tcg === 'magic' ? getMagicFormatWarnings(cards, magicFormat) : []),
+  ]
   const filterOptions = getCardFilterOptions(currentTournament.tcg)
   const advancedFilterOptions = getAdvancedCardFilterOptions(currentTournament.tcg)
   const selectedPlayer = currentTournament.players.find(player => player.id === playerId) ?? null
@@ -406,6 +427,13 @@ export function DeckBuilderView() {
         </select>
         <input value={deckName} onChange={event => setDeckName(event.target.value)} placeholder="Nombre del mazo" />
         <input value={deckNotes} onChange={event => setDeckNotes(event.target.value)} placeholder="Notas para redes" />
+        {currentTournament.tcg === 'magic' && (
+          <select value={magicFormat} onChange={event => setMagicFormat(event.target.value as MagicFormat)}>
+            {magicFormatOptions.map(option => (
+              <option key={option.value} value={option.value}>Formato: {option.label}</option>
+            ))}
+          </select>
+        )}
         <select value={exportFormat} onChange={event => setExportFormat(event.target.value as DeckExportFormat)}>
           <option value="feed">Feed vertical 4:5</option>
           <option value="story">Historias / Reels 9:16</option>
@@ -885,6 +913,38 @@ function canPlaceCardInSection(game: TournamentTCG, card: Pick<CardSuggestion, '
   return false
 }
 
+function getMagicFormatWarnings(cards: DeckCard[], format: MagicFormat) {
+  const warnings: string[] = []
+  const mainTotal = cards.filter(card => card.section === 'Main').reduce((sum, card) => sum + card.quantity, 0)
+  const sideTotal = cards.filter(card => card.section === 'Sideboard').reduce((sum, card) => sum + card.quantity, 0)
+
+  if (format === 'commander') {
+    const total = mainTotal + sideTotal
+    if (total !== 100) warnings.push('Commander: exactamente 100 cartas')
+    cards.forEach(card => {
+      if (card.quantity > 1 && !isBasicMagicLand(card.name)) warnings.push(`${card.name}: singleton en Commander`)
+    })
+  } else {
+    if (mainTotal < 60) warnings.push(`${getMagicFormatLabel(format)}: minimo 60 cartas en main`)
+    if (sideTotal > 15) warnings.push(`${getMagicFormatLabel(format)}: maximo 15 cartas en sideboard`)
+  }
+
+  const illegalCards = cards
+    .filter(card => card.legalities?.[format] && card.legalities[format] !== 'legal')
+    .map(card => `${card.name} (${card.legalities?.[format]})`)
+
+  if (illegalCards.length) warnings.push(`No legales en ${getMagicFormatLabel(format)}: ${illegalCards.slice(0, 4).join(', ')}`)
+  return [...new Set(warnings)]
+}
+
+function getMagicFormatLabel(format: MagicFormat) {
+  return magicFormatOptions.find(option => option.value === format)?.label ?? format
+}
+
+function isBasicMagicLand(name: string) {
+  return ['plains', 'island', 'swamp', 'mountain', 'forest', 'wastes'].includes(name.toLowerCase())
+}
+
 function expandCards(cards: DeckCard[]) {
   return cards.flatMap(card => Array.from({ length: card.quantity }, () => card))
 }
@@ -966,6 +1026,7 @@ async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forE
       cardId: match.id,
       subtitle: match.subtitle,
       kind: match.kind,
+      legalities: match.legalities,
       imageUrl: usableImageUrl,
     }
   })

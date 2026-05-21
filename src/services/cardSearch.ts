@@ -7,6 +7,7 @@ export interface CardSuggestion {
   imageUrl?: string
   kind?: string
   text?: string
+  legalities?: Record<string, string>
 }
 
 export interface CardSearchFilters {
@@ -17,6 +18,7 @@ export interface CardSearchFilters {
   onlyImages?: boolean
   exact?: boolean
   text?: string
+  format?: string
 }
 
 export async function searchCards(
@@ -197,6 +199,7 @@ async function searchMagic(query: string, signal?: AbortSignal, filters: CardSea
         set_name?: string
         type_line?: string
         oracle_text?: string
+        legalities?: Record<string, string>
         image_uris?: { small?: string; normal?: string }
         card_faces?: Array<{ oracle_text?: string; image_uris?: { small?: string; normal?: string } }>
       }
@@ -207,6 +210,7 @@ async function searchMagic(query: string, signal?: AbortSignal, filters: CardSea
         imageUrl: card.image_uris?.normal ?? card.image_uris?.small ?? card.card_faces?.[0]?.image_uris?.normal ?? card.card_faces?.[0]?.image_uris?.small,
         kind: card.type_line,
         text: card.oracle_text ?? card.card_faces?.map(face => face.oracle_text).filter(Boolean).join('\n'),
+        legalities: card.legalities,
       }]
     }
   }
@@ -215,8 +219,9 @@ async function searchMagic(query: string, signal?: AbortSignal, filters: CardSea
   const baseQuery = filters.exact ? `!"${escapeScryfallQuery(query)}"` : query
   const typeQuery = filters.kind ? ` t:${filters.kind}` : ''
   const colorQuery = filters.color ? ` c:${filters.color}` : ''
+  const formatQuery = filters.format ? ` f:${filters.format}` : ''
   const textQuery = filters.text?.trim() ? ` o:"${escapeScryfallQuery(filters.text.trim())}"` : ''
-  url.searchParams.set('q', `${baseQuery}${typeQuery}${colorQuery}${textQuery}`)
+  url.searchParams.set('q', `${baseQuery}${typeQuery}${colorQuery}${formatQuery}${textQuery}`)
   url.searchParams.set('unique', 'cards')
   url.searchParams.set('order', 'name')
   url.searchParams.set('include_extras', 'false')
@@ -234,6 +239,7 @@ async function searchMagic(query: string, signal?: AbortSignal, filters: CardSea
       set_name?: string
       type_line?: string
       oracle_text?: string
+      legalities?: Record<string, string>
       image_uris?: { small?: string; normal?: string }
       card_faces?: Array<{ oracle_text?: string; image_uris?: { small?: string; normal?: string } }>
     }>
@@ -246,6 +252,7 @@ async function searchMagic(query: string, signal?: AbortSignal, filters: CardSea
     imageUrl: card.image_uris?.normal ?? card.image_uris?.small ?? card.card_faces?.[0]?.image_uris?.normal ?? card.card_faces?.[0]?.image_uris?.small,
     kind: card.type_line,
     text: card.oracle_text ?? card.card_faces?.map(face => face.oracle_text).filter(Boolean).join('\n'),
+    legalities: card.legalities,
   }))).slice(0, 12)
 }
 

@@ -2099,6 +2099,16 @@ button:disabled {
   z-index: 1;
 }
 
+.deck-export-card-fallback-compact {
+  place-items: center start;
+  padding: 6px 7px;
+  font-size: 10px;
+  line-height: 1.05;
+  text-align: left;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
 .deck-export-copy-badge {
   position: absolute;
   top: -10px;
@@ -2268,6 +2278,22 @@ button:disabled {
   background:
     radial-gradient(circle at 8% 0%, rgba(88, 215, 255, 0.11), transparent 240px),
     linear-gradient(90deg, rgba(10, 31, 70, 0.72), rgba(5, 7, 12, 0.94));
+}
+
+.deck-export-card-story .deck-export-player-card,
+.deck-export-card-story .deck-export-promo {
+  min-height: 96px;
+  padding: 14px 16px;
+}
+
+.deck-export-card-story .deck-export-promo {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.deck-export-card-story .deck-export-promo img {
+  width: 72px;
+  height: 72px;
 }
 
 .deck-export-card-story .deck-export-hero-title strong {
@@ -2665,11 +2691,6 @@ button:disabled {
   grid-template-columns: repeat(5, 1fr);
 }
 
-.deck-export-card-story.deck-export-game-lorcana .deck-export-sidebar {
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-
 .deck-export-card-feed.deck-export-game-lorcana .deck-export-card-grid {
   grid-template-columns: repeat(6, 1fr);
 }
@@ -2691,7 +2712,8 @@ button:disabled {
 
 .deck-export-card-feed.deck-export-game-magic .deck-export-card-grid,
 .deck-export-card-story.deck-export-game-magic .deck-export-card-grid {
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(10, 1fr);
+  gap: 5px;
 }
 
 .deck-export-game-magic {
@@ -2798,15 +2820,28 @@ button:disabled {
 }
 
 .deck-export-game-magic .deck-export-section-sideboard .deck-export-card-grid {
-  grid-template-columns: repeat(15, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 6px;
+}
+
+.deck-export-game-magic .deck-export-section-sideboard .deck-export-card-tile {
+  aspect-ratio: 1.08;
+  overflow: hidden;
+  background: #07101f;
+  border: 1px solid rgba(88, 215, 255, 0.18);
+  box-shadow: none;
+}
+
+.deck-export-game-magic .deck-export-section-sideboard .deck-export-card-tile img {
+  object-fit: cover;
+  object-position: top center;
 }
 
 .deck-export-game-magic .deck-export-card-tile {
   overflow: visible;
-  border: 1px solid rgba(31, 122, 255, 0.46);
+  border: 0;
   border-radius: 4px;
-  background: #07101f;
+  background: transparent;
   box-shadow: 0 8px 13px rgba(0, 0, 0, 0.34);
 }
 
@@ -2835,6 +2870,42 @@ button:disabled {
     radial-gradient(circle at 50% 0%, rgba(88, 215, 255, 0.11), transparent 240px),
     linear-gradient(160deg, rgba(10, 31, 70, 0.86), rgba(5, 7, 12, 0.98));
   border: 1px solid rgba(88, 215, 255, 0.28);
+}
+
+.deck-export-card-story.deck-export-game-magic .deck-export-sidebar,
+.deck-export-card-story.deck-export-game-lorcana .deck-export-sidebar,
+.deck-export-card-story.deck-export-game-one-piece .deck-export-sidebar,
+.deck-export-card-story.deck-export-game-pokemon .deck-export-sidebar,
+.deck-export-card-story.deck-export-game-riftbound .deck-export-sidebar {
+  grid-column: 1;
+  grid-row: 1;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  margin: 0;
+  padding: 16px 18px;
+  border-left: 0;
+  border-bottom: 2px solid rgba(88, 215, 255, 0.3);
+}
+
+.deck-export-card-story.deck-export-game-magic .deck-export-body {
+  grid-column: 1;
+  grid-row: 2;
+  padding: 18px;
+}
+
+.deck-export-card-story.deck-export-game-magic .deck-export-player-card,
+.deck-export-card-story.deck-export-game-magic .deck-export-promo {
+  min-height: 96px;
+  padding: 14px 16px;
+}
+
+.deck-export-card-story.deck-export-game-magic .deck-export-promo {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.deck-export-card-story.deck-export-game-magic .deck-export-promo img {
+  width: 72px;
+  height: 72px;
 }
 
 .deck-export-game-magic .deck-export-player-card {
