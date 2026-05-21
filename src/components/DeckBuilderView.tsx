@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
-import { getCardFilterOptions, searchCards, type CardSuggestion } from '../services/cardSearch'
+import {
+  getAdvancedCardFilterOptions,
+  getCardFilterOptions,
+  searchCards,
+  type CardSearchFilters,
+  type CardSuggestion,
+} from '../services/cardSearch'
 import { useExportImage } from '../hooks/useExportImage'
 import type { DeckList, TournamentTCG } from '../types/tournament'
 import { deckRuleConfigs, getDefaultSection, validateDeck } from '../utils/deckRules'
@@ -26,11 +32,14 @@ export function DeckBuilderView() {
   const [deckNotes, setDeckNotes] = useState('')
   const [query, setQuery] = useState('')
   const [searchKind, setSearchKind] = useState('')
+  const [searchText, setSearchText] = useState('')
+  const [advancedFilters, setAdvancedFilters] = useState<Partial<CardSearchFilters>>({})
   const [onlyImages, setOnlyImages] = useState(true)
   const [results, setResults] = useState<CardSuggestion[]>([])
   const [cards, setCards] = useState<DeckCard[]>([])
   const [exportDeck, setExportDeck] = useState<DeckList | null>(null)
   const [exportCards, setExportCards] = useState<DeckCard[]>([])
+  const [saveStatus, setSaveStatus] = useState('')
   const { ref: exportRef, exportImage } = useExportImage()
 
   const latestDecks = useMemo(() => {
@@ -50,7 +59,7 @@ export function DeckBuilderView() {
 
     const controller = new AbortController()
     const timeout = window.setTimeout(() => {
-      void searchCards(tournament.tcg, query, controller.signal, { kind: searchKind, onlyImages })
+      void searchCards(tournament.tcg, query, controller.signal, { ...advancedFilters, kind: searchKind, onlyImages, text: searchText })
         .then(setResults)
         .catch(error => {
           if (error instanceof DOMException && error.name === 'AbortError') return
@@ -62,7 +71,7 @@ export function DeckBuilderView() {
       window.clearTimeout(timeout)
       controller.abort()
     }
-  }, [onlyImages, query, searchKind, tournament])
+  }, [advancedFilters, onlyImages, query, searchKind, searchText, tournament])
 
   if (!tournamentId) return <BuilderEmpty icon="ti-link-off" title="Falta torneo" text="Abre el constructor desde un torneo finalizado." />
   if (!tournament) return <BuilderEmpty icon="ti-loader-2" title="Cargando torneo" text="Sincronizando datos del evento." />
@@ -75,6 +84,7 @@ export function DeckBuilderView() {
   const sections = rules.sections.map(section => section.id)
   const warnings = validateDeck(currentTournament.tcg, cards)
   const filterOptions = getCardFilterOptions(currentTournament.tcg)
+  const advancedFilterOptions = getAdvancedCardFilterOptions(currentTournament.tcg)
   const selectedPlayer = currentTournament.players.find(player => player.id === playerId) ?? null
 
   function handlePlayerChange(nextPlayerId: string) {
@@ -163,6 +173,19 @@ export function DeckBuilderView() {
     setCards(current => current.map(card => card.id === cardId ? { ...card, quantity } : card))
   }
 
+  function sortSection(section: string, mode: 'name' | 'quantity' | 'type') {
+    setCards(current => {
+      const target = current.filter(card => card.section === section)
+      const sorted = [...target].sort((a, b) => {
+        if (mode === 'quantity') return b.quantity - a.quantity || a.name.localeCompare(b.name)
+        if (mode === 'type') return (a.kind ?? '').localeCompare(b.kind ?? '') || a.name.localeCompare(b.name)
+        return a.name.localeCompare(b.name)
+      })
+      let index = 0
+      return current.map(card => card.section === section ? sorted[index++] : card)
+    })
+  }
+
   function getCopyWarning(card: DeckCard) {
     const limit = rules.copyLimit
     if (!limit) return ''
@@ -173,12 +196,18 @@ export function DeckBuilderView() {
   }
 
   function saveDeck() {
-    if (!selectedPlayer || !deckName.trim() || cards.length === 0) return
+    if (!selectedPlayer || !deckName.trim() || cards.length === 0) {
+      setSaveStatus('Completa jugador, nombre y cartas.')
+      return
+    }
+    setSaveStatus('Guardando...')
     submitDecklist(currentTournament.id, selectedPlayer.id, {
       name: deckName,
       list: formatDeckCards(cards, sections, true),
       notes: deckNotes,
     })
+    setSaveStatus('Guardado')
+    window.setTimeout(() => setSaveStatus(''), 2200)
   }
 
   function importDeckText() {
@@ -232,19 +261,19 @@ export function DeckBuilderView() {
       <div className="deck-builder-toolbar">
         <button onClick={importDeckText}>
           <i className="ti ti-file-import" aria-hidden="true" />
-          Import
+          Importar
         </button>
         <button onClick={exportCurrentDeckImage} disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}>
           <i className="ti ti-photo-down" aria-hidden="true" />
-          Export
+          Exportar
         </button>
         <button onClick={saveDeck} disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}>
           <i className="ti ti-edit" aria-hidden="true" />
-          Save
+          Guardar
         </button>
         <button onClick={() => setCards([])} disabled={cards.length === 0}>
           <i className="ti ti-trash" aria-hidden="true" />
-          Clear
+          Vaciar
         </button>
       </div>
 
@@ -265,6 +294,7 @@ export function DeckBuilderView() {
           <i className="ti ti-photo-down" aria-hidden="true" />
           Imagen
         </button>
+        {saveStatus && <span className="deck-save-status">{saveStatus}</span>}
       </section>
 
       <section className="deck-builder-rulebar">
@@ -317,6 +347,30 @@ export function DeckBuilderView() {
             </label>
           </div>
 
+          {advancedFilterOptions.length > 0 && (
+            <div className="deck-search-advanced-filters">
+              {advancedFilterOptions.map(filter => (
+                <select
+                  key={filter.key}
+                  value={String(advancedFilters[filter.key] ?? '')}
+                  onChange={event => setAdvancedFilters(current => ({ ...current, [filter.key]: event.target.value }))}
+                  aria-label={filter.label}
+                >
+                  {filter.options.map(option => (
+                    <option key={option.value} value={option.value}>{filter.label}: {option.label}</option>
+                  ))}
+                </select>
+              ))}
+            </div>
+          )}
+
+          <input
+            className="deck-search-text-filter"
+            value={searchText}
+            onChange={event => setSearchText(event.target.value)}
+            placeholder="Texto en la descripcion"
+          />
+
           <div className="deck-search-results">
             {results.map(card => (
               <button
@@ -345,6 +399,7 @@ export function DeckBuilderView() {
               onMoveOrder={moveCardOrder}
               onQuantityChange={updateQuantity}
               getCopyWarning={getCopyWarning}
+              onSort={mode => sortSection(section.id, mode)}
             />
           ))}
         </main>
@@ -392,6 +447,7 @@ function DeckZone({
   onMoveOrder,
   onQuantityChange,
   getCopyWarning,
+  onSort,
 }: {
   label: string
   cards: DeckCard[]
@@ -401,6 +457,7 @@ function DeckZone({
   onMoveOrder: (cardId: string, direction: -1 | 1) => void
   onQuantityChange: (cardId: string, quantity: number) => void
   getCopyWarning: (card: DeckCard) => string
+  onSort: (mode: 'name' | 'quantity' | 'type') => void
 }) {
   const total = cards.reduce((sum, card) => sum + card.quantity, 0)
   const [dragTargetId, setDragTargetId] = useState('')
@@ -419,7 +476,12 @@ function DeckZone({
     >
       <header>
         <strong>{label}</strong>
-        <span>{total}</span>
+        <div className="deck-zone-tools">
+          <button onClick={() => onSort('name')}>Nombre</button>
+          <button onClick={() => onSort('quantity')}>Copias</button>
+          <button onClick={() => onSort('type')}>Tipo</button>
+          <span>{total}</span>
+        </div>
       </header>
       <div className="deck-card-grid">
         {cards.flatMap(card => Array.from({ length: card.quantity }, (_, copyIndex) => ({ card, copyIndex }))).map(({ card, copyIndex }) => {

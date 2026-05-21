@@ -1485,6 +1485,14 @@ button:disabled {
   padding: 8px 10px;
 }
 
+.deck-save-status {
+  align-self: center;
+  color: var(--color-accent-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .deck-builder-layout {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr) 300px;
@@ -1534,6 +1542,23 @@ button:disabled {
   color: var(--color-text-primary);
 }
 
+.deck-search-advanced-filters {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.deck-search-advanced-filters select {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+}
+
 .deck-search-filters label {
   display: inline-flex;
   align-items: center;
@@ -1541,6 +1566,19 @@ button:disabled {
   color: var(--color-text-secondary);
   font-size: 12px;
   white-space: nowrap;
+}
+
+.deck-search-text-filter {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  margin-bottom: 10px;
+  padding: 7px 9px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  outline: none;
 }
 
 .deck-search-results {
@@ -1596,6 +1634,7 @@ button:disabled {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
+  gap: 10px;
 }
 
 .deck-zone > header strong {
@@ -1603,7 +1642,26 @@ button:disabled {
   font-size: 15px;
 }
 
-.deck-zone > header span {
+.deck-zone-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.deck-zone-tools button {
+  min-height: 26px;
+  padding: 4px 8px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.deck-zone-tools span {
   min-width: 32px;
   padding: 3px 8px;
   border-radius: var(--border-radius-md);

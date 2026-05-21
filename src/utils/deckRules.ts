@@ -82,9 +82,12 @@ const unlimitedMagicNames = ['plains', 'island', 'swamp', 'mountain', 'forest', 
 export function getDefaultSection(game: TournamentTCG, card?: Pick<CardSuggestion, 'name' | 'kind' | 'subtitle'>) {
   if (!card) return deckRuleConfigs[game].sections[0].id
 
-  const text = `${card.name} ${card.kind ?? ''} ${card.subtitle ?? ''}`.toLowerCase()
+  const name = card.name.toLowerCase()
+  const kind = (card.kind ?? '').toLowerCase()
+  const subtitle = (card.subtitle ?? '').toLowerCase()
+  const text = `${name} ${kind} ${subtitle}`
 
-  if (game === 'yugioh' && yugiohExtraTypes.some(type => text.includes(type))) return 'Extra'
+  if (game === 'yugioh' && kind.includes('monster') && yugiohExtraTypes.some(type => kind.includes(type))) return 'Extra'
   if (game === 'pokemon') {
     if (text.includes('energy')) return 'Energy'
     if (text.includes('trainer') || text.includes('item') || text.includes('supporter') || text.includes('stadium')) return 'Trainers'
