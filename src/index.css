@@ -1928,7 +1928,7 @@ button:disabled {
 .deck-export-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 292px;
-  height: calc(100% - 198px);
+  height: calc(100% - 140px);
   background:
     radial-gradient(circle at 22% 8%, rgba(88, 215, 255, 0.08), transparent 300px),
     linear-gradient(90deg, rgba(7, 16, 31, 0.82), rgba(5, 7, 12, 0.68) 75%, transparent 75%),
@@ -2158,28 +2158,13 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
-.deck-export-card footer {
-  min-height: 58px;
-  padding: 12px 32px;
-  background:
-    linear-gradient(90deg, rgba(5, 7, 12, 0.96), rgba(10, 31, 70, 0.96)),
-    #05070c;
-  border-top: 4px solid #164a96;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  color: #7c9ad0;
-  font-size: 22px;
-}
-
 .deck-export-card-feed .deck-export-hero {
   min-height: 150px;
 }
 
 .deck-export-card-feed .deck-export-layout {
   grid-template-columns: minmax(0, 1fr) 276px;
-  height: calc(100% - 208px);
+  height: calc(100% - 150px);
 }
 
 .deck-export-card-feed .deck-export-card-grid {
@@ -2198,47 +2183,63 @@ button:disabled {
 }
 
 .deck-export-card-story .deck-export-layout {
-  grid-template-columns: 1fr;
-  grid-template-rows: minmax(0, 1fr) auto;
-  height: calc(100% - 234px);
+  grid-template-columns: minmax(0, 1fr) 260px;
+  grid-template-rows: 1fr;
+  height: calc(100% - 176px);
 }
 
 .deck-export-card-story .deck-export-body {
-  padding: 22px;
+  padding: 18px;
+  align-content: start;
 }
 
 .deck-export-card-story .deck-export-card-grid {
-  grid-template-columns: repeat(10, 1fr);
+  grid-template-columns: repeat(8, 1fr);
+  gap: 5px;
 }
 
 .deck-export-card-story .deck-export-section-extra .deck-export-card-grid,
 .deck-export-card-story .deck-export-section-side .deck-export-card-grid,
 .deck-export-card-story .deck-export-section-sideboard .deck-export-card-grid {
-  grid-template-columns: repeat(15, 1fr);
+  grid-template-columns: repeat(10, 1fr);
+  gap: 5px;
 }
 
 .deck-export-card-story .deck-export-sidebar {
-  grid-template-columns: 1fr 1fr 1fr;
-  align-items: stretch;
-  border-left: 0;
-  border-top: 2px solid rgba(88, 215, 255, 0.3);
+  grid-template-columns: 1fr;
+  align-content: start;
+  border-left: 2px solid rgba(88, 215, 255, 0.3);
+  border-top: 0;
+  padding: 18px 16px;
 }
 
 .deck-export-card-story .deck-export-promo {
-  margin-top: 0;
+  margin-top: auto;
 }
 
 .deck-export-card-story .deck-export-hero-title strong {
-  font-size: 56px;
+  font-size: 50px;
 }
 
 .deck-export-card-story .deck-export-hero-title h2 {
-  font-size: 58px;
+  font-size: 50px;
 }
 
-.deck-export-card footer strong {
-  color: #f2f7ff;
-  font-size: 22px;
+.deck-export-card-story .deck-export-section {
+  padding: 12px;
+}
+
+.deck-export-card-story .deck-export-body h3 span {
+  font-size: 26px;
+}
+
+.deck-export-card-story .deck-export-player-card strong {
+  font-size: 30px;
+}
+
+.deck-export-card-story .deck-export-social-note strong,
+.deck-export-card-story .deck-export-promo strong {
+  font-size: 21px;
 }
 
 .admin-login-card {

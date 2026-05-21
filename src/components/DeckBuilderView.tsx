@@ -817,10 +817,6 @@ function DeckImageExport({
       </aside>
       </div>
 
-      <footer>
-        <span>Subterra TCG</span>
-        <strong>{deckRuleConfigs[deck.game].label} · @subterra_oficial</strong>
-      </footer>
     </div>
   )
 }
