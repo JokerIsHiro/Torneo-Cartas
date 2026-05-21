@@ -776,6 +776,7 @@ function DeckImageExport({
             if (!sectionCards.length) return null
             const groupedExport = shouldGroupExportCards(deck.game)
             const visualCards = groupedExport ? groupDeckCards(sectionCards) : expandCards(sectionCards)
+            const stackedExport = shouldStackExportCards(deck.game)
             return (
               <section key={section} className={`deck-export-section deck-export-section-${section.toLowerCase()}`}>
                 <h3>
@@ -789,9 +790,15 @@ function DeckImageExport({
                       className={`deck-export-card-tile${groupedExport ? ' deck-export-card-tile-grouped' : ''}`}
                       style={card.imageUrl ? { backgroundImage: `url("${card.imageUrl}")` } : undefined}
                     >
-                      <div className="deck-export-card-fallback">{card.name}</div>
-                      {card.imageUrl && <img src={card.imageUrl} alt="" crossOrigin="anonymous" />}
-                      {groupedExport && <span className="deck-export-copy-badge">{card.quantity}</span>}
+                      {stackedExport && card.imageUrl
+                        ? <StackedCardImage card={card} />
+                        : (
+                          <>
+                            <div className="deck-export-card-fallback">{card.name}</div>
+                            {card.imageUrl && <img src={card.imageUrl} alt="" crossOrigin="anonymous" />}
+                            {groupedExport && <span className="deck-export-copy-badge">{card.quantity}</span>}
+                          </>
+                        )}
                     </div>
                   ))}
                 </div>
@@ -818,6 +825,24 @@ function DeckImageExport({
       </div>
 
     </div>
+  )
+}
+
+function StackedCardImage({ card }: { card: DeckCard }) {
+  const copies = Math.max(1, Math.min(card.quantity, 4))
+  return (
+    <>
+      {Array.from({ length: copies }).map((_, index) => (
+        <img
+          key={index}
+          src={card.imageUrl}
+          alt=""
+          crossOrigin="anonymous"
+          className="deck-export-stack-copy"
+          style={{ '--stack-index': index } as React.CSSProperties}
+        />
+      ))}
+    </>
   )
 }
 
@@ -878,6 +903,10 @@ function groupDeckCards(cards: DeckCard[]) {
 
 function shouldGroupExportCards(game: TournamentTCG) {
   return game !== 'yugioh'
+}
+
+function shouldStackExportCards(game: TournamentTCG) {
+  return game === 'magic'
 }
 
 function splitCardCopies(cards: DeckCard[]) {

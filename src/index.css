@@ -2083,6 +2083,10 @@ button:disabled {
   z-index: 2;
 }
 
+.deck-export-stack-copy {
+  transform: translateY(calc(var(--stack-index) * 17px));
+}
+
 .deck-export-card-fallback {
   width: 100%;
   height: 100%;
@@ -2310,26 +2314,22 @@ button:disabled {
   height: 72px;
 }
 
-.deck-export-game-magic .deck-export-card-grid,
 .deck-export-game-pokemon .deck-export-card-grid,
 .deck-export-game-riftbound .deck-export-card-grid {
   grid-template-columns: repeat(8, 1fr);
   gap: 14px 10px;
 }
 
-.deck-export-game-magic .deck-export-section-sideboard .deck-export-card-grid,
 .deck-export-game-pokemon .deck-export-section-energy .deck-export-card-grid,
 .deck-export-game-riftbound .deck-export-section-sideboard .deck-export-card-grid {
   grid-template-columns: repeat(10, 1fr);
 }
 
-.deck-export-game-magic .deck-export-card-tile,
 .deck-export-game-pokemon .deck-export-card-tile,
 .deck-export-game-riftbound .deck-export-card-tile {
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.42);
 }
 
-.deck-export-game-magic .deck-export-copy-badge,
 .deck-export-game-pokemon .deck-export-copy-badge,
 .deck-export-game-riftbound .deck-export-copy-badge {
   top: -9px;
@@ -2343,6 +2343,145 @@ button:disabled {
   border-radius: 999px;
   background: #f2f7ff;
   color: #05070c;
+}
+
+.deck-export-game-magic {
+  background: #d8e2ee;
+  color: #0e1724;
+  border-color: #293645;
+}
+
+.deck-export-game-magic .deck-export-hero {
+  min-height: 118px;
+  padding: 22px 28px;
+  background: linear-gradient(135deg, #2d3846, #425160);
+  border-bottom: 0;
+}
+
+.deck-export-game-magic .deck-export-hero::after,
+.deck-export-game-magic .deck-export-hero-mark {
+  display: none;
+}
+
+.deck-export-game-magic .deck-export-hero-title strong {
+  color: #f7fbff;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.deck-export-game-magic .deck-export-hero-title h2 {
+  margin-top: 8px;
+  color: #f7fbff;
+  font-size: 34px;
+  text-shadow: none;
+}
+
+.deck-export-game-magic .deck-export-title-main,
+.deck-export-game-magic .deck-export-title-accent {
+  color: #f7fbff;
+}
+
+.deck-export-game-magic .deck-export-layout {
+  grid-template-columns: minmax(0, 1fr) 230px;
+  align-items: start;
+  background: #d8e2ee;
+}
+
+.deck-export-game-magic .deck-export-body {
+  padding: 28px 26px 34px;
+  background: transparent;
+}
+
+.deck-export-game-magic .deck-export-section {
+  padding: 0;
+  background: transparent;
+  border-bottom: 0;
+  box-shadow: none;
+}
+
+.deck-export-game-magic .deck-export-body h3 {
+  display: none;
+}
+
+.deck-export-game-magic .deck-export-card-grid {
+  grid-template-columns: repeat(5, 1fr);
+  gap: 34px 24px;
+  align-items: start;
+}
+
+.deck-export-game-magic .deck-export-section-sideboard {
+  grid-column: 2;
+  grid-row: 1;
+  padding: 28px 20px 34px 0;
+}
+
+.deck-export-game-magic .deck-export-section-sideboard .deck-export-card-grid {
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.deck-export-game-magic .deck-export-card-tile {
+  overflow: visible;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.deck-export-game-magic .deck-export-card-tile img {
+  border-radius: 7px;
+  box-shadow: 0 8px 13px rgba(0, 0, 0, 0.34);
+}
+
+.deck-export-game-magic .deck-export-card-tile-grouped {
+  margin-bottom: 51px;
+}
+
+.deck-export-game-magic .deck-export-copy-badge {
+  display: none;
+}
+
+.deck-export-game-magic .deck-export-sidebar {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 14px 26px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  background: #05070c;
+  border: 0;
+}
+
+.deck-export-game-magic .deck-export-player-card {
+  min-height: 0;
+  padding: 0;
+  display: block;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.deck-export-game-magic .deck-export-player-card span {
+  color: #7c9ad0;
+  font-size: 12px;
+}
+
+.deck-export-game-magic .deck-export-player-card strong {
+  color: #f2f7ff;
+  font-size: 24px;
+}
+
+.deck-export-game-magic .deck-export-promo {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.deck-export-game-magic .deck-export-promo img {
+  width: 54px;
+  height: 54px;
 }
 
 .deck-export-game-one-piece {
@@ -2552,7 +2691,6 @@ button:disabled {
   grid-template-columns: repeat(6, 1fr);
 }
 
-.deck-export-card-feed.deck-export-game-magic .deck-export-card-grid,
 .deck-export-card-feed.deck-export-game-pokemon .deck-export-card-grid,
 .deck-export-card-feed.deck-export-game-riftbound .deck-export-card-grid {
   grid-template-columns: repeat(7, 1fr);
@@ -2562,11 +2700,15 @@ button:disabled {
   grid-template-columns: repeat(5, 1fr);
 }
 
-.deck-export-card-story.deck-export-game-magic .deck-export-card-grid,
 .deck-export-card-story.deck-export-game-pokemon .deck-export-card-grid,
 .deck-export-card-story.deck-export-game-riftbound .deck-export-card-grid,
 .deck-export-card-story.deck-export-game-one-piece .deck-export-card-grid {
   grid-template-columns: repeat(5, 1fr);
+}
+
+.deck-export-card-feed.deck-export-game-magic .deck-export-card-grid,
+.deck-export-card-story.deck-export-game-magic .deck-export-card-grid {
+  grid-template-columns: repeat(4, 1fr);
 }
 
 .admin-login-card {
