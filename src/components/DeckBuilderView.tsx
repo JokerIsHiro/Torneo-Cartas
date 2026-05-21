@@ -902,28 +902,29 @@ function loadDeckLibrary(): SavedDeckTemplate[] {
 }
 
 async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forExport = false) {
+  const imageCache = new Map<string, Promise<string>>()
+  const searchCache = new Map<string, Promise<CardSuggestion[]>>()
+
   const hydrated = await mapWithConcurrency(cards, 4, async card => {
     if (card.imageUrl) {
-      const imageUrl = normalizeExportImageUrl(card.imageUrl)
-      const usableImageUrl = forExport ? await toDataUrl(imageUrl).catch(() => imageUrl) : imageUrl
+      const usableImageUrl = forExport ? await cachedDataUrl(card.imageUrl, imageCache).catch(() => '') : card.imageUrl
       return { ...card, imageUrl: usableImageUrl }
     }
 
     const cardById = await hydrateKnownCardById(card, game, forExport).catch(() => null)
     if (cardById) return cardById
 
-    const exactSuggestions = await searchCards(game, card.name, undefined, { onlyImages: true, exact: true }).catch(() => [])
+    const exactSuggestions = await cachedCardSearch(game, card.name, true, searchCache).catch(() => [])
     const looseSuggestions = exactSuggestions.length
       ? exactSuggestions
-      : await searchCards(game, card.name, undefined, { onlyImages: true }).catch(() => [])
+      : await cachedCardSearch(game, card.name, false, searchCache).catch(() => [])
     const suggestions = looseSuggestions
     const exact = suggestions.find(candidate => candidate.name.toLowerCase() === card.name.toLowerCase())
     const match = exact ?? suggestions[0]
     const rawImageUrl = match?.imageUrl ?? getKnownImageUrl(game, match?.id ?? card.cardId)
     if (!match || !rawImageUrl) return card
-    const imageUrl = normalizeExportImageUrl(rawImageUrl)
 
-    const usableImageUrl = forExport ? await toDataUrl(imageUrl).catch(() => imageUrl) : imageUrl
+    const usableImageUrl = forExport ? await cachedDataUrl(rawImageUrl, imageCache).catch(() => '') : rawImageUrl
 
     return {
       ...card,
@@ -935,6 +936,24 @@ async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forE
   })
 
   return hydrated
+}
+
+function cachedCardSearch(game: TournamentTCG, name: string, exact: boolean, cache: Map<string, Promise<CardSuggestion[]>>) {
+  const key = `${game}:${exact ? 'exact' : 'loose'}:${name.toLowerCase()}`
+  const current = cache.get(key)
+  if (current) return current
+  const next = searchCards(game, name, undefined, { onlyImages: true, exact })
+  cache.set(key, next)
+  return next
+}
+
+function cachedDataUrl(url: string, cache: Map<string, Promise<string>>) {
+  const key = url
+  const current = cache.get(key)
+  if (current) return current
+  const next = toDataUrl(url)
+  cache.set(key, next)
+  return next
 }
 
 async function mapWithConcurrency<T, R>(items: T[], limit: number, mapper: (item: T) => Promise<R>) {
@@ -968,8 +987,8 @@ async function hydrateKnownCardById(card: DeckCard, game: TournamentTCG, forExpo
   const match = payload.data?.[0]
   if (!match) return null
 
-  const imageUrl = normalizeExportImageUrl(match.card_images?.[0]?.image_url ?? match.card_images?.[0]?.image_url_small ?? getKnownImageUrl(game, String(match.id)) ?? '')
-  const usableImageUrl = imageUrl && forExport ? await toDataUrl(imageUrl).catch(() => imageUrl) : imageUrl
+  const imageUrl = match.card_images?.[0]?.image_url ?? match.card_images?.[0]?.image_url_small ?? getKnownImageUrl(game, String(match.id)) ?? ''
+  const usableImageUrl = imageUrl && forExport ? await toDataUrl(imageUrl).catch(() => '') : imageUrl
 
   return {
     ...card,
@@ -982,9 +1001,21 @@ async function hydrateKnownCardById(card: DeckCard, game: TournamentTCG, forExpo
 }
 
 async function toDataUrl(url: string) {
-  const response = await fetch(normalizeExportImageUrl(url), { mode: 'cors' })
-  if (!response.ok) throw new Error('No se pudo cargar la imagen')
-  const blob = await response.blob()
+  if (url.startsWith('data:')) return url
+
+  let blob: Blob | null = null
+  for (const candidate of getExportImageCandidates(url)) {
+    try {
+      const response = await fetch(candidate, { mode: 'cors', cache: 'force-cache' })
+      if (!response.ok) continue
+      blob = await response.blob()
+      if (blob.size > 0) break
+    } catch {
+      // Prueba el siguiente candidato: proxy, URL normalizada o URL original.
+    }
+  }
+
+  if (!blob) throw new Error('No se pudo cargar la imagen')
   return await new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result))
@@ -993,8 +1024,14 @@ async function toDataUrl(url: string) {
   })
 }
 
-function normalizeExportImageUrl(url: string) {
-  if (!url.includes('ygoprodeck.com')) return url
+function getExportImageCandidates(url: string) {
+  if (!/^https?:\/\//i.test(url)) return [url]
+
+  const proxied = proxiedImageUrl(url)
+  return [...new Set([proxied, url])]
+}
+
+function proxiedImageUrl(url: string) {
   if (url.includes('images.weserv.nl')) return url
   const cleanUrl = url.replace(/^https?:\/\//, '')
   return `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl)}`
