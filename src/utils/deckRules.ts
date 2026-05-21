@@ -71,7 +71,6 @@ export const deckRuleConfigs: Record<TournamentTCG, DeckRuleConfig> = {
     label: 'One Piece',
     sections: [
       { id: 'Main', label: 'Main Deck', min: 50, max: 50 },
-      { id: 'DON!!', label: 'DON!! Deck', min: 10, max: 10 },
     ],
     copyLimit: 4,
   },
@@ -92,7 +91,6 @@ export function getDefaultSection(game: TournamentTCG, card?: Pick<CardSuggestio
     return 'Pokemon'
   }
   if (game === 'riftbound' && text.includes('rune')) return 'Rune'
-  if (game === 'one-piece' && text.includes('don')) return 'DON!!'
 
   return deckRuleConfigs[game].sections[0].id
 }
@@ -132,7 +130,6 @@ export function validateDeck(game: TournamentTCG, cards: RuleDeckCard[]) {
 function isUnlimited(game: TournamentTCG, name: string) {
   if (game === 'magic') return unlimitedMagicNames.includes(name)
   if (game === 'pokemon') return name.includes('basic') && name.includes('energy')
-  if (game === 'one-piece') return name.includes('don')
   return false
 }
 

@@ -221,6 +221,7 @@ export function DeckBuilderView() {
         <div>
           <span>{rules.label}</span>
           <h1>{currentTournament.name}</h1>
+          <p>Constructor bloqueado al juego del torneo</p>
         </div>
         <button onClick={() => window.close()}>
           <i className="ti ti-x" aria-hidden="true" />
@@ -402,6 +403,7 @@ function DeckZone({
   getCopyWarning: (card: DeckCard) => string
 }) {
   const total = cards.reduce((sum, card) => sum + card.quantity, 0)
+  const [dragTargetId, setDragTargetId] = useState('')
 
   return (
     <section
@@ -420,47 +422,52 @@ function DeckZone({
         <span>{total}</span>
       </header>
       <div className="deck-card-grid">
-        {cards.map(card => {
+        {cards.flatMap(card => Array.from({ length: card.quantity }, (_, copyIndex) => ({ card, copyIndex }))).map(({ card, copyIndex }) => {
           const copyWarning = getCopyWarning(card)
+          const isDropTarget = dragTargetId === card.id && copyIndex === 0
           return (
           <article
-            key={card.id}
-            className="deck-card-tile"
+            key={`${card.id}-${copyIndex}`}
+            className={isDropTarget ? 'deck-card-tile compact drop-target' : 'deck-card-tile compact'}
             draggable
-            onDragStart={event => event.dataTransfer.setData('application/x-deck-card', card.id)}
-            onDragOver={event => event.preventDefault()}
+            onDragStart={event => {
+              event.dataTransfer.setData('application/x-deck-card', card.id)
+              event.dataTransfer.effectAllowed = 'move'
+            }}
+            onDragOver={event => {
+              event.preventDefault()
+              const deckCardId = event.dataTransfer.getData('application/x-deck-card')
+              if (deckCardId && deckCardId !== card.id) setDragTargetId(card.id)
+            }}
+            onDragLeave={() => {
+              if (dragTargetId === card.id) setDragTargetId('')
+            }}
             onDrop={event => {
               event.preventDefault()
               const deckCardId = event.dataTransfer.getData('application/x-deck-card')
               if (deckCardId) onReorderCard(deckCardId, card.id)
+              setDragTargetId('')
             }}
+            onDragEnd={() => setDragTargetId('')}
           >
-            <div className="deck-card-copy-stack">
-              {Array.from({ length: card.quantity }).map((_, index) => (
-                <div key={index} className="deck-card-copy">
-                  {card.imageUrl ? <img src={card.imageUrl} alt="" /> : <div className="deck-card-placeholder" />}
-                </div>
-              ))}
-            </div>
-            <div>
-              <strong>{card.name}</strong>
-              {card.subtitle && <span>{card.subtitle}</span>}
-              {copyWarning && <em>{copyWarning}</em>}
-            </div>
-            <input
-              value={card.quantity}
-              onChange={event => onQuantityChange(card.id, Number(event.target.value) || 0)}
-              inputMode="numeric"
-              aria-label={`Cantidad de ${card.name}`}
-            />
-            <div className="deck-card-order">
-              <button onClick={() => onMoveOrder(card.id, -1)} aria-label={`Subir ${card.name}`}>
+            {card.imageUrl ? <img src={card.imageUrl} alt="" /> : <div className="deck-card-placeholder">{card.name}</div>}
+            {copyWarning && copyIndex === 0 && <em>{copyWarning}</em>}
+            {copyIndex === 0 && (
+              <div className="deck-card-order">
+                <button onClick={() => onMoveOrder(card.id, -1)} aria-label={`Subir ${card.name}`}>
                 <i className="ti ti-chevron-up" aria-hidden="true" />
-              </button>
-              <button onClick={() => onMoveOrder(card.id, 1)} aria-label={`Bajar ${card.name}`}>
+                </button>
+                <button onClick={() => onMoveOrder(card.id, 1)} aria-label={`Bajar ${card.name}`}>
                 <i className="ti ti-chevron-down" aria-hidden="true" />
-              </button>
-            </div>
+                </button>
+                <button onClick={() => onQuantityChange(card.id, card.quantity + 1)} aria-label={`Anadir copia de ${card.name}`}>
+                  <i className="ti ti-plus" aria-hidden="true" />
+                </button>
+                <button onClick={() => onQuantityChange(card.id, card.quantity - 1)} aria-label={`Quitar copia de ${card.name}`}>
+                  <i className="ti ti-minus" aria-hidden="true" />
+                </button>
+              </div>
+            )}
           </article>
         )})}
       </div>
