@@ -8,6 +8,8 @@ import {
 import { useTimerStore } from '../store/timerStore'
 import { useTournamentsStore } from '../store/tournamentsStore'
 
+// Conecta la app local con Firestore. Si Firebase no esta configurado,
+// la UI queda cargada igualmente para evitar una pantalla bloqueada.
 export function useFirebaseSync() {
   useEffect(() => {
     let isMounted = true
@@ -19,6 +21,8 @@ export function useFirebaseSync() {
       return
     }
 
+    // Los torneos antiguos se guardaban en localStorage. Al activar Firebase,
+    // eliminamos ese cache para que no compita con la fuente remota.
     localStorage.removeItem('torneos-storage')
     store.setSyncEnabled(true)
     store.setSyncLoaded(false)

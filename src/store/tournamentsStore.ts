@@ -200,9 +200,30 @@ function touchTournament<T extends Tournament>(tournament: T): T {
   return { ...tournament, updatedAt: Date.now() }
 }
 
+function createEmptyTournament(): Tournament {
+  const now = Date.now()
+  return {
+    id: crypto.randomUUID(),
+    organizerUid: getCurrentUserId() ?? undefined,
+    name: 'Nuevo torneo',
+    tcg: 'magic',
+    players: [],
+    rounds: [],
+    pendingResults: [],
+    decklists: [],
+    snapshots: [],
+    currentRound: 0,
+    status: 'setup',
+    timerDuration: 50 * 60,
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
 function snapshotData(tournament: Tournament): TournamentSnapshotData {
-  const { snapshots: _snapshots, ...data } = tournament
-  return data
+  const data: Partial<Tournament> = { ...tournament }
+  delete data.snapshots
+  return data as TournamentSnapshotData
 }
 
 function withSnapshot(tournament: Tournament, action: TournamentSnapshotAction, label: string): Tournament {
@@ -245,6 +266,28 @@ function commitTournament(
   set(s => ({
     tournaments: s.tournaments.map(t => t.id === tournament.id ? tournament : t),
   }))
+  void saveRemoteTournament(tournament)
+    .then(() => {
+      const pendingTournament = pendingTournamentWrites.get(tournament.id)
+      if (pendingTournament?.updatedAt === tournament.updatedAt) {
+        pendingTournamentWrites.delete(tournament.id)
+      }
+    })
+    .catch(error => {
+      const pendingTournament = pendingTournamentWrites.get(tournament.id)
+      if (pendingTournament?.updatedAt === tournament.updatedAt) {
+        pendingTournamentWrites.delete(tournament.id)
+      }
+      console.error('No se ha podido sincronizar el torneo con Firebase', error)
+    })
+}
+
+function commitNewTournament(
+  set: (partial: TournamentsStore | Partial<TournamentsStore> | ((state: TournamentsStore) => TournamentsStore | Partial<TournamentsStore>)) => void,
+  tournament: Tournament
+) {
+  pendingTournamentWrites.set(tournament.id, tournament)
+  set(s => ({ tournaments: [...s.tournaments, tournament] }))
   void saveRemoteTournament(tournament)
     .then(() => {
       const pendingTournament = pendingTournamentWrites.get(tournament.id)
@@ -325,40 +368,9 @@ export const useTournamentsStore = create<TournamentsStore>()(
       syncLoaded: false,
 
       createTournament: () => {
-        const id = crypto.randomUUID()
-        const newTournament: Tournament = {
-          id,
-          organizerUid: getCurrentUserId() ?? undefined,
-          name: 'Nuevo torneo',
-          tcg: 'magic',
-          players: [],
-          rounds: [],
-          pendingResults: [],
-          decklists: [],
-          snapshots: [],
-          currentRound: 0,
-          status: 'setup',
-          timerDuration: 50 * 60,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        }
-        set(s => ({ tournaments: [...s.tournaments, newTournament] }))
-        pendingTournamentWrites.set(newTournament.id, newTournament)
-        void saveRemoteTournament(newTournament)
-          .then(() => {
-            const pendingTournament = pendingTournamentWrites.get(newTournament.id)
-            if (pendingTournament?.updatedAt === newTournament.updatedAt) {
-              pendingTournamentWrites.delete(newTournament.id)
-            }
-          })
-          .catch(error => {
-            const pendingTournament = pendingTournamentWrites.get(newTournament.id)
-            if (pendingTournament?.updatedAt === newTournament.updatedAt) {
-              pendingTournamentWrites.delete(newTournament.id)
-            }
-            console.error('No se ha podido sincronizar el torneo con Firebase', error)
-          })
-        return id
+        const newTournament = createEmptyTournament()
+        commitNewTournament(set, newTournament)
+        return newTournament.id
       },
 
       deleteTournament: (id) => {

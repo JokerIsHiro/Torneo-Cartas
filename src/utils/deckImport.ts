@@ -1,6 +1,8 @@
 import type { TournamentTCG } from '../types/tournament'
 import { deckRuleConfigs } from './deckRules'
 
+// Importador tolerante por juego. La idea es aceptar el texto que el usuario
+// copia desde herramientas externas, no obligarle a aprender un formato propio.
 export interface ImportedDeckCard {
   id: string
   cardId: string
@@ -169,6 +171,8 @@ export function formatDeckCards(cards: ImportedDeckCard[], sections: string[], i
 }
 
 function parseYdk(list: string): DeckImportResult {
+  // Los .ydk no guardan nombres, solo passcodes. El constructor los hidrata
+  // despues contra YGOPRODeck para mostrar nombre e imagen cuando sea posible.
   const cards: ImportedDeckCard[] = []
   let section = 'Main'
 
@@ -250,6 +254,8 @@ function cleanCardName(game: TournamentTCG, rawName: string): { name: string; ca
 
   const metadataMatch = name.match(/^(.*?)\s+\[(.+?)\]$/)
   if (metadataMatch) {
+    // Formato interno guardado por la app: conserva imagen, tipo y subtitulo
+    // para no depender de la API cada vez que se reabre una lista.
     const metadata = parseCardMetadata(metadataMatch[2])
     return {
       name: metadataMatch[1].trim(),
@@ -259,16 +265,21 @@ function cleanCardName(game: TournamentTCG, rawName: string): { name: string; ca
   }
 
   if (game === 'magic' || game === 'lorcana') {
+    // Arena/Dreamborn suelen anadir set y numero. Para buscar por nombre
+    // conviene quitar esa cola, pero mantener el nombre de la carta intacto.
     name = name.replace(/\s+\([A-Z0-9]{2,6}\)\s+\d+[a-z]?$/i, '')
     name = name.replace(/\s+\([A-Z0-9]{2,6}\)$/i, '')
     name = name.replace(/\s+\*F\*$/i, '')
   }
 
   if (game === 'pokemon') {
+    // Pokemon exporta muchas listas como "Nombre SET 123".
     name = name.replace(/\s+[A-Z]{2,5}\s+\d+[a-z]?$/i, '')
   }
 
   if (game === 'one-piece') {
+    // En One Piece el codigo OP/ST/EB es muy importante; si no hay nombre,
+    // se usa el codigo como etiqueta visible.
     const codeMatch = name.match(/\b([A-Z]{2,4}\d{2}-\d{3}[a-z]?)\b/i)
     if (codeMatch) {
       cardCode = codeMatch[1].toUpperCase()

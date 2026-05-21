@@ -1,6 +1,8 @@
 import type { CardSuggestion } from '../services/cardSearch'
 import type { TournamentTCG } from '../types/tournament'
 
+// Reglas locales del constructor de mazos. Estan pensadas para avisar rapido
+// en tienda, no para sustituir banlists oficiales o formatos sancionados.
 export interface DeckRuleSection {
   id: string
   label: string
@@ -84,6 +86,8 @@ const yugiohExtraTypes = ['fusion', 'synchro', 'xyz', 'link']
 const unlimitedMagicNames = ['plains', 'island', 'swamp', 'mountain', 'forest', 'wastes']
 
 export function getDefaultSection(game: TournamentTCG, card?: Pick<CardSuggestion, 'name' | 'kind' | 'subtitle'>) {
+  // Las APIs no comparten taxonomia, asi que usamos una heuristica pequena
+  // basada en nombre/tipo/subtitulo para mandar cada carta a su zona natural.
   if (!card) return deckRuleConfigs[game].sections[0].id
 
   const name = card.name.toLowerCase()
@@ -109,6 +113,8 @@ export function getDefaultSection(game: TournamentTCG, card?: Pick<CardSuggestio
 }
 
 export function validateDeck(game: TournamentTCG, cards: RuleDeckCard[]) {
+  // Devuelve avisos, no bloqueos: el administrador puede guardar listas
+  // incompletas mientras corrige datos o espera confirmacion del jugador.
   const config = deckRuleConfigs[game]
   const warnings: string[] = []
   const totals = new Map<string, number>()

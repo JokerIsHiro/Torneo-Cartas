@@ -1,4 +1,5 @@
-// Reloj circular reutilizable. Solo pinta UI; la logica del tiempo vive en timerStore.
+// Reloj circular reutilizable. Este componente es deliberadamente "tonto":
+// recibe tiempo/progreso ya calculados y solo se encarga de pintar el SVG.
 interface CircularTimerProps {
   formatted: string
   progress: number
@@ -12,6 +13,9 @@ interface CircularTimerProps {
   timeColor?: string
   timeSize?: string
 }
+
+const VIEWBOX_SIZE = 100
+const VIEWBOX_CENTER = VIEWBOX_SIZE / 2
 
 export function CircularTimer({
   formatted,
@@ -27,7 +31,7 @@ export function CircularTimer({
   timeSize = '42px',
 }: CircularTimerProps) {
   const clampedProgress = Math.max(0, Math.min(1, progress))
-  const radius = 50 - strokeWidth / 2
+  const radius = VIEWBOX_CENTER - strokeWidth / 2
   const circumference = 2 * Math.PI * radius
   const dashOffset = circumference * (1 - clampedProgress)
 
@@ -42,7 +46,7 @@ export function CircularTimer({
       filter: `drop-shadow(0 0 20px ${glowColor})`,
     }}>
       <svg
-        viewBox="0 0 100 100"
+        viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
         aria-hidden="true"
         style={{
           position: 'absolute',
@@ -53,22 +57,22 @@ export function CircularTimer({
         }}
       >
         <circle
-          cx="50"
-          cy="50"
-          r={50 - strokeWidth}
+          cx={VIEWBOX_CENTER}
+          cy={VIEWBOX_CENTER}
+          r={VIEWBOX_CENTER - strokeWidth}
           fill="var(--color-background-primary)"
         />
         <circle
-          cx="50"
-          cy="50"
+          cx={VIEWBOX_CENTER}
+          cy={VIEWBOX_CENTER}
           r={radius}
           fill="none"
           stroke={trackColor}
           strokeWidth={strokeWidth}
         />
         <circle
-          cx="50"
-          cy="50"
+          cx={VIEWBOX_CENTER}
+          cy={VIEWBOX_CENTER}
           r={radius}
           fill="none"
           stroke={color}

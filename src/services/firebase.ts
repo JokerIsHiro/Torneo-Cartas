@@ -33,6 +33,8 @@ const envFirebaseConfig = {
 
 const hasEnvFirebaseConfig = Object.values(envFirebaseConfig).every(Boolean)
 
+// Instancias lazy. Asi la app puede arrancar aunque falten variables y
+// decidir en runtime si usa Firebase Hosting init.json o .env.local.
 let app: FirebaseApp | null = null
 let auth: Auth | null = null
 let db: Firestore | null = null
@@ -191,6 +193,8 @@ export async function saveRemoteTimer(tournamentId: string, timer: SyncedTimerSt
 }
 
 function normalizeTournament(data: Partial<Tournament> & { id: string }): Tournament {
+  // Firestore puede tener documentos creados con versiones anteriores de la
+  // app. Normalizar aqui mantiene el resto del codigo con tipos completos.
   return {
     id: data.id,
     organizerUid: data.organizerUid,
@@ -210,6 +214,8 @@ function normalizeTournament(data: Partial<Tournament> & { id: string }): Tourna
 }
 
 function normalizeTimer(data: Partial<SyncedTimerState>): SyncedTimerState {
+  // Misma idea para temporizadores: cualquier campo antiguo o ausente vuelve
+  // a un estado seguro.
   return {
     secondsLeft: data.secondsLeft ?? 50 * 60,
     status: data.status ?? 'idle',

@@ -45,7 +45,6 @@ export function DeckBuilderView() {
 
   useEffect(() => {
     if (!tournament || tournament.tcg === 'riftbound' || query.trim().length < 2) {
-      setResults([])
       return
     }
 
@@ -78,6 +77,7 @@ export function DeckBuilderView() {
   const filterOptions = getCardFilterOptions(currentTournament.tcg)
   const advancedFilterOptions = getAdvancedCardFilterOptions(currentTournament.tcg)
   const selectedPlayer = currentTournament.players.find(player => player.id === playerId) ?? null
+  const visibleResults = currentTournament.tcg === 'riftbound' || query.trim().length < 2 ? [] : results
 
   function handlePlayerChange(nextPlayerId: string) {
     setPlayerId(nextPlayerId)
@@ -371,7 +371,7 @@ export function DeckBuilderView() {
           />
 
           <div className="deck-search-results">
-            {results.map(card => (
+            {visibleResults.map(card => (
               <button
                 key={card.id}
                 draggable
