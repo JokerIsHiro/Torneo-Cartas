@@ -577,7 +577,6 @@ export function DeckBuilderView() {
       <div style={exportHiddenStyle}>
         <DeckImageExport
           ref={exportRef}
-          tournamentName={currentTournament.name}
           deck={exportDeck}
           cards={exportCards}
           sections={sections}
@@ -727,14 +726,12 @@ function BuilderEmpty({ icon, title, text }: { icon: string; title: string; text
 
 function DeckImageExport({
   ref,
-  tournamentName,
   deck,
   cards,
   sections,
   standings,
 }: {
   ref: React.RefObject<HTMLDivElement | null>
-  tournamentName: string
   deck: DeckList | null
   cards: DeckCard[]
   sections: string[]
@@ -754,10 +751,6 @@ function DeckImageExport({
           <strong>{rankLabel}</strong>
           <h2>{deck.name}</h2>
           <p>{deck.playerName}</p>
-        </div>
-        <div className="deck-export-hero-meta">
-          <span>{deckRuleConfigs[deck.game].label}</span>
-          <strong>{standing ? `${standing.player.points} pts` : 'Finalizado'}</strong>
         </div>
       </header>
 
@@ -793,7 +786,7 @@ function DeckImageExport({
           <div className="deck-export-player-card">
             <span>Jugador</span>
             <strong>{deck.playerName}</strong>
-            <small>{tournamentName}</small>
+            <small>{deckRuleConfigs[deck.game].label}</small>
           </div>
 
           {deck.notes && (
@@ -807,15 +800,15 @@ function DeckImageExport({
             <img src="/subterra-logo.jpg" alt="" />
           <div>
             <span>Subterra TCG</span>
-            <strong>Deck profile</strong>
-              <small>@subterra_oficial</small>
+            <strong>@subterra_oficial</strong>
+            <small>Instagram oficial</small>
           </div>
         </div>
       </aside>
       </div>
 
       <footer>
-        <span>{tournamentName}</span>
+        <span>Subterra TCG</span>
         <strong>{deckRuleConfigs[deck.game].label} · @subterra_oficial</strong>
       </footer>
     </div>

@@ -1845,9 +1845,10 @@ button:disabled {
   align-items: center;
   gap: 26px;
   background:
-    linear-gradient(110deg, rgba(5, 7, 12, 0.92) 0 15%, rgba(14, 42, 92, 0.92) 15% 74%, rgba(5, 7, 12, 0.96) 74%),
+    radial-gradient(circle at 18% 0%, rgba(88, 215, 255, 0.12), transparent 260px),
+    linear-gradient(90deg, rgba(5, 7, 12, 0.98), rgba(7, 16, 31, 0.98)),
     #07101f;
-  border-bottom: 7px solid #58d7ff;
+  border-bottom: 2px solid #164a96;
   position: relative;
 }
 
@@ -1855,8 +1856,8 @@ button:disabled {
   content: "";
   position: absolute;
   inset: auto 0 0;
-  height: 8px;
-  background: linear-gradient(90deg, #58d7ff, #ffd166, #1f7aff);
+  height: 4px;
+  background: linear-gradient(90deg, #58d7ff, #164a96, transparent);
 }
 
 .deck-export-hero-mark {
@@ -1907,30 +1908,6 @@ button:disabled {
   text-transform: uppercase;
 }
 
-.deck-export-hero-meta {
-  width: 150px;
-  min-height: 92px;
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: 6px;
-  border: 1px solid rgba(255, 209, 102, 0.8);
-  background: rgba(5, 7, 12, 0.72);
-  flex-shrink: 0;
-}
-
-.deck-export-hero-meta span {
-  color: #58d7ff;
-  font-size: 18px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.deck-export-hero-meta strong {
-  color: #ffd166;
-  font-size: 28px;
-}
-
 .deck-export-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 292px;
@@ -1955,7 +1932,7 @@ button:disabled {
   position: absolute;
   inset: 0 auto 0 0;
   width: 7px;
-  background: linear-gradient(#58d7ff, #ffd166);
+  background: linear-gradient(#58d7ff, #164a96);
 }
 
 .deck-export-social-note span {
@@ -2133,12 +2110,12 @@ button:disabled {
   gap: 12px;
   padding: 18px;
   background: rgba(5, 7, 12, 0.46);
-  border: 1px solid rgba(255, 209, 102, 0.45);
+  border: 1px solid rgba(88, 215, 255, 0.32);
 }
 
 .deck-export-promo img {
-  width: 120px;
-  height: 74px;
+  width: 138px;
+  height: 58px;
   object-fit: contain;
   background: transparent;
   border: 0;
@@ -2146,9 +2123,10 @@ button:disabled {
 
 .deck-export-promo strong {
   display: block;
-  color: #ffd166;
-  font-size: 28px;
+  color: #f2f7ff;
+  font-size: 24px;
   line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .deck-export-card footer {
