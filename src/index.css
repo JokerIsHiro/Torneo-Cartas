@@ -1913,7 +1913,9 @@ button:disabled {
 
 .deck-export-hero-title h2 {
   margin: 6px 0 2px;
-  color: #ffd166;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 14px;
   font-size: 48px;
   line-height: 0.92;
   text-transform: uppercase;
@@ -1921,12 +1923,12 @@ button:disabled {
   text-shadow: 0 4px 12px rgba(0, 0, 0, 0.72);
 }
 
-.deck-export-hero-title p {
-  margin: 0;
+.deck-export-title-main {
   color: #f2f7ff;
-  font-size: 24px;
-  font-weight: 800;
-  text-transform: uppercase;
+}
+
+.deck-export-title-accent {
+  color: #1f9bff;
 }
 
 .deck-export-layout {
@@ -2093,6 +2095,28 @@ button:disabled {
   z-index: 1;
 }
 
+.deck-export-copy-badge {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  z-index: 3;
+  min-width: 48px;
+  height: 54px;
+  padding: 0 10px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1;
+  background:
+    linear-gradient(145deg, #2d3035, #06070a);
+  border: 5px solid rgba(255, 255, 255, 0.12);
+  clip-path: polygon(20% 0, 80% 0, 100% 24%, 100% 76%, 80% 100%, 20% 100%, 0 76%, 0 24%);
+  text-shadow: 0 3px 8px rgba(0, 0, 0, 0.75);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+}
+
 .deck-export-sidebar {
   min-width: 0;
   padding: 18px;
@@ -2108,7 +2132,7 @@ button:disabled {
 }
 
 .deck-export-player-card {
-  min-height: 116px;
+  min-height: 104px;
   padding: 18px;
   display: grid;
   align-content: center;
@@ -2147,11 +2171,12 @@ button:disabled {
   margin-top: 0;
   display: grid;
   gap: 12px;
-  padding: 18px;
+  padding: 16px;
   background:
     radial-gradient(circle at 100% 0%, rgba(88, 215, 255, 0.08), transparent 150px),
     rgba(5, 7, 12, 0.52);
   border: 1px solid rgba(88, 215, 255, 0.32);
+  border-left: 5px solid #1f9bff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
@@ -2166,9 +2191,10 @@ button:disabled {
 .deck-export-promo strong {
   display: block;
   color: #f2f7ff;
-  font-size: 24px;
-  line-height: 1;
+  font-size: 22px;
+  line-height: 1.05;
   overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 .deck-export-card-feed .deck-export-hero {
@@ -2229,7 +2255,7 @@ button:disabled {
 .deck-export-card-story .deck-export-sidebar {
   grid-column: 1;
   grid-row: 1;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.86fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
   align-content: start;
   align-items: stretch;
   border-left: 0;
@@ -2260,15 +2286,13 @@ button:disabled {
   font-size: 30px;
 }
 
-.deck-export-card-story .deck-export-social-note strong,
 .deck-export-card-story .deck-export-promo strong {
   font-size: 21px;
 }
 
 .deck-export-card-story .deck-export-player-card,
-.deck-export-card-story .deck-export-social-note,
 .deck-export-card-story .deck-export-promo {
-  min-height: 104px;
+  min-height: 96px;
   padding: 14px 16px;
 }
 
@@ -2280,6 +2304,165 @@ button:disabled {
 .deck-export-card-story .deck-export-promo img {
   width: 72px;
   height: 72px;
+}
+
+.deck-export-game-lorcana {
+  background:
+    radial-gradient(circle at 16% 20%, rgba(255, 232, 132, 0.24), transparent 360px),
+    linear-gradient(135deg, #f7a600 0%, #f47a13 48%, #e93034 100%);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.deck-export-game-lorcana .deck-export-hero {
+  min-height: 132px;
+  justify-content: center;
+  padding: 26px 34px 14px;
+  background: transparent;
+  border-bottom: 0;
+}
+
+.deck-export-game-lorcana .deck-export-hero::after {
+  display: none;
+}
+
+.deck-export-game-lorcana .deck-export-hero-mark {
+  display: none;
+}
+
+.deck-export-game-lorcana .deck-export-hero-title {
+  flex: initial;
+  text-align: center;
+}
+
+.deck-export-game-lorcana .deck-export-hero-title strong {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.deck-export-game-lorcana .deck-export-hero-title h2 {
+  justify-content: center;
+  margin-top: 10px;
+  font-size: 58px;
+  line-height: 0.96;
+  text-transform: none;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+}
+
+.deck-export-game-lorcana .deck-export-title-main,
+.deck-export-game-lorcana .deck-export-title-accent {
+  color: #fff;
+}
+
+.deck-export-game-lorcana .deck-export-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  background: transparent;
+}
+
+.deck-export-game-lorcana .deck-export-body {
+  padding: 18px 22px 22px;
+}
+
+.deck-export-game-lorcana .deck-export-section {
+  padding: 0;
+  background: transparent;
+  border-bottom: 0;
+  box-shadow: none;
+}
+
+.deck-export-game-lorcana .deck-export-body h3 {
+  display: none;
+}
+
+.deck-export-game-lorcana .deck-export-card-grid {
+  grid-template-columns: repeat(7, 1fr);
+  gap: 22px 14px;
+  align-items: start;
+}
+
+.deck-export-game-lorcana .deck-export-card-tile {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.46);
+}
+
+.deck-export-game-lorcana .deck-export-card-tile img {
+  border-radius: 2px;
+  object-fit: cover;
+}
+
+.deck-export-game-lorcana .deck-export-card-fallback {
+  background:
+    linear-gradient(160deg, rgba(7, 16, 31, 0.88), rgba(5, 7, 12, 0.94));
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.deck-export-game-lorcana .deck-export-sidebar {
+  margin: 0;
+  padding: 16px 24px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  background: #05070c;
+  border: 0;
+}
+
+.deck-export-game-lorcana .deck-export-player-card {
+  min-height: 0;
+  padding: 0;
+  display: block;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.deck-export-game-lorcana .deck-export-player-card span {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 13px;
+}
+
+.deck-export-game-lorcana .deck-export-player-card strong {
+  color: #fff;
+  font-size: 28px;
+}
+
+.deck-export-game-lorcana .deck-export-promo {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.deck-export-game-lorcana .deck-export-promo img {
+  width: 58px;
+  height: 58px;
+}
+
+.deck-export-game-lorcana .deck-export-promo span {
+  color: #58d7ff;
+  font-size: 13px;
+}
+
+.deck-export-game-lorcana .deck-export-promo strong {
+  font-size: 20px;
+}
+
+.deck-export-card-story.deck-export-game-lorcana .deck-export-card-grid {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.deck-export-card-story.deck-export-game-lorcana .deck-export-sidebar {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.deck-export-card-feed.deck-export-game-lorcana .deck-export-card-grid {
+  grid-template-columns: repeat(6, 1fr);
 }
 
 .admin-login-card {

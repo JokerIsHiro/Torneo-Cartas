@@ -180,10 +180,11 @@ export function getAdvancedCardFilterOptions(game: TournamentTCG): Array<{
 
 async function searchMagic(query: string, signal?: AbortSignal, filters: CardSearchFilters = {}): Promise<CardSuggestion[]> {
   const url = new URL('https://api.scryfall.com/cards/search')
+  const baseQuery = filters.exact ? `!"${escapeScryfallQuery(query)}"` : query
   const typeQuery = filters.kind ? ` t:${filters.kind}` : ''
   const colorQuery = filters.color ? ` c:${filters.color}` : ''
   const textQuery = filters.text?.trim() ? ` o:"${escapeScryfallQuery(filters.text.trim())}"` : ''
-  url.searchParams.set('q', `${query}${typeQuery}${colorQuery}${textQuery}`)
+  url.searchParams.set('q', `${baseQuery}${typeQuery}${colorQuery}${textQuery}`)
   url.searchParams.set('unique', 'cards')
   url.searchParams.set('order', 'name')
   url.searchParams.set('include_extras', 'false')
