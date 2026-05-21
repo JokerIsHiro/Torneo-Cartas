@@ -157,9 +157,10 @@ export function parseSavedDeckCards(game: TournamentTCG, list: string): Imported
 }
 
 export function formatDeckCards(cards: ImportedDeckCard[], sections: string[], includeMetadata = false) {
+  const groupedCards = mergeImportedCards(cards)
   return sections
     .map(section => {
-      const sectionCards = cards.filter(card => card.section === section)
+      const sectionCards = groupedCards.filter(card => card.section === section)
       if (!sectionCards.length) return ''
       return [
         `${section}:`,

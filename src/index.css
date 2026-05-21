@@ -1381,6 +1381,10 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.deck-file-input {
+  display: none;
+}
+
 .deck-builder-top {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import {
   getAdvancedCardFilterOptions,
@@ -13,6 +13,22 @@ import { deckRuleConfigs, getDefaultSection, validateDeck } from '../utils/deckR
 import { formatDeckCards, parseDeckImport, parseSavedDeckCards, type ImportedDeckCard } from '../utils/deckImport'
 
 type DeckCard = ImportedDeckCard
+
+interface SavedDeckTemplate {
+  id: string
+  game: TournamentTCG
+  playerName: string
+  name: string
+  list: string
+  notes: string
+  updatedAt: number
+}
+
+const DECK_LIBRARY_KEY = 'subterra-deck-library-v1'
+
+function now() {
+  return Date.now()
+}
 
 export function DeckBuilderView() {
   const tournamentId = new URLSearchParams(window.location.search).get('torneo') ?? ''
@@ -32,6 +48,8 @@ export function DeckBuilderView() {
   const [exportDeck, setExportDeck] = useState<DeckList | null>(null)
   const [exportCards, setExportCards] = useState<DeckCard[]>([])
   const [saveStatus, setSaveStatus] = useState('')
+  const [deckLibrary, setDeckLibrary] = useState<SavedDeckTemplate[]>(loadDeckLibrary)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const { ref: exportRef, exportImage } = useExportImage()
 
   const latestDecks = useMemo(() => {
@@ -42,6 +60,13 @@ export function DeckBuilderView() {
     }
     return [...latestByPlayer.values()].sort((a, b) => a.playerName.localeCompare(b.playerName))
   }, [tournament?.decklists])
+
+  const reusableDecks = useMemo(() => {
+    return deckLibrary
+      .filter(deck => deck.game === tournament?.tcg)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, 12)
+  }, [deckLibrary, tournament?.tcg])
 
   useEffect(() => {
     if (!tournament || tournament.tcg === 'riftbound' || query.trim().length < 2) {
@@ -84,30 +109,23 @@ export function DeckBuilderView() {
     const existingDeck = [...(currentTournament.decklists ?? [])].reverse().find(deck => deck.playerId === nextPlayerId)
     setDeckName(existingDeck?.name ?? '')
     setDeckNotes(existingDeck?.notes ?? '')
-    setCards(existingDeck ? parseSavedDeckCards(currentTournament.tcg, existingDeck.list) : [])
+    setCards(existingDeck ? splitCardCopies(parseSavedDeckCards(currentTournament.tcg, existingDeck.list)) : [])
   }
 
   function addCard(card: CardSuggestion, section = getDefaultSection(currentTournament.tcg, card)) {
-    setCards(current => {
-      const existing = current.find(item => item.cardId === card.id && item.section === section)
-      if (existing) {
-        return current.map(item => item.id === existing.id ? { ...item, quantity: item.quantity + 1 } : item)
-      }
-
-      return [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          cardId: card.id,
-          name: card.name,
-          subtitle: card.subtitle,
-          imageUrl: card.imageUrl,
-          kind: card.kind,
-          section,
-          quantity: 1,
-        },
-      ]
-    })
+    setCards(current => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        cardId: card.id,
+        name: card.name,
+        subtitle: card.subtitle,
+        imageUrl: card.imageUrl,
+        kind: card.kind,
+        section,
+        quantity: 1,
+      },
+    ])
   }
 
   function addManualCard(section = sections[0]) {
@@ -162,7 +180,21 @@ export function DeckBuilderView() {
       setCards(current => current.filter(card => card.id !== cardId))
       return
     }
-    setCards(current => current.map(card => card.id === cardId ? { ...card, quantity } : card))
+    setCards(current => {
+      const index = current.findIndex(card => card.id === cardId)
+      if (index === -1) return current
+      const card = current[index]
+      if (quantity <= card.quantity) return current.map(item => item.id === cardId ? { ...item, quantity } : item)
+
+      const copies = Array.from({ length: quantity - card.quantity }, () => ({
+        ...card,
+        id: crypto.randomUUID(),
+        quantity: 1,
+      }))
+      const next = [...current]
+      next.splice(index + 1, 0, ...copies)
+      return next
+    })
   }
 
   function sortSection(section: string, mode: 'name' | 'quantity' | 'type') {
@@ -193,26 +225,71 @@ export function DeckBuilderView() {
       return
     }
     setSaveStatus('Guardando...')
+    const formattedList = formatDeckCards(cards, sections, true)
     submitDecklist(currentTournament.id, selectedPlayer.id, {
       name: deckName,
-      list: formatDeckCards(cards, sections, true),
+      list: formattedList,
       notes: deckNotes,
+    })
+    saveReusableDeck({
+      id: `${currentTournament.tcg}:${selectedPlayer.name}:${deckName}`.toLowerCase(),
+      game: currentTournament.tcg,
+      playerName: selectedPlayer.name,
+      name: deckName.trim(),
+      list: formattedList,
+      notes: deckNotes.trim(),
+      updatedAt: now(),
     })
     setSaveStatus('Guardado')
     window.setTimeout(() => setSaveStatus(''), 2200)
   }
 
-  function importDeckText() {
-    const text = window.prompt('Pega una decklist en texto')
+  function applyImportedText(text: string) {
     if (!text) return
     const result = parseDeckImport(currentTournament.tcg, text)
-    setCards(result.cards)
+    setCards(splitCardCopies(result.cards))
     const importedTotal = result.cards.reduce((sum, card) => sum + card.quantity, 0)
     setSaveStatus(result.ignoredLines.length
       ? `Importadas ${importedTotal} cartas. ${result.ignoredLines.length} lineas sin reconocer.`
       : `Importadas ${importedTotal} cartas.`
     )
     window.setTimeout(() => setSaveStatus(''), 3500)
+  }
+
+  function importDeckText() {
+    const text = window.prompt('Pega una decklist en texto')
+    if (text) applyImportedText(text)
+  }
+
+  async function importDeckFile(file: File | undefined) {
+    if (!file) return
+    const text = await file.text()
+    applyImportedText(text)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function loadDeckList(deck: Pick<DeckList, 'name' | 'list' | 'notes'>) {
+    setDeckName(deck.name)
+    setDeckNotes(deck.notes)
+    setCards(splitCardCopies(parseSavedDeckCards(currentTournament.tcg, deck.list)))
+    setSaveStatus('Lista cargada')
+    window.setTimeout(() => setSaveStatus(''), 2200)
+  }
+
+  function saveReusableDeck(deck: SavedDeckTemplate) {
+    setDeckLibrary(current => {
+      const next = [deck, ...current.filter(candidate => candidate.id !== deck.id)].slice(0, 80)
+      localStorage.setItem(DECK_LIBRARY_KEY, JSON.stringify(next))
+      return next
+    })
+  }
+
+  function deleteReusableDeck(deckId: string) {
+    setDeckLibrary(current => {
+      const next = current.filter(deck => deck.id !== deckId)
+      localStorage.setItem(DECK_LIBRARY_KEY, JSON.stringify(next))
+      return next
+    })
   }
 
   async function exportCurrentDeckImage() {
@@ -260,8 +337,19 @@ export function DeckBuilderView() {
       <div className="deck-builder-toolbar">
         <button onClick={importDeckText}>
           <i className="ti ti-file-import" aria-hidden="true" />
-          Importar
+          Pegar
         </button>
+        <button onClick={() => fileInputRef.current?.click()}>
+          <i className="ti ti-upload" aria-hidden="true" />
+          Archivo
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".txt,.ydk,.dek,.csv,text/plain"
+          className="deck-file-input"
+          onChange={event => void importDeckFile(event.target.files?.[0])}
+        />
         <button onClick={exportCurrentDeckImage} disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}>
           <i className="ti ti-photo-down" aria-hidden="true" />
           Exportar
@@ -416,8 +504,29 @@ export function DeckBuilderView() {
               <button onClick={() => publishDecklist(currentTournament.id, deck.id, deck.status !== 'published')}>
                 {deck.status === 'published' ? 'Ocultar' : 'Publicar'}
               </button>
+              <button onClick={() => loadDeckList(deck)}>
+                Cargar
+              </button>
               <button onClick={() => void exportSavedDeckImage(deck)}>
                 Imagen
+              </button>
+            </article>
+          ))}
+
+          <strong>Biblioteca</strong>
+          {reusableDecks.length === 0 ? (
+            <span>No hay mazos reutilizables para este juego.</span>
+          ) : reusableDecks.map(deck => (
+            <article key={deck.id}>
+              <div>
+                <strong>{deck.name}</strong>
+                <span>{deck.playerName}</span>
+              </div>
+              <button onClick={() => loadDeckList(deck)}>
+                Cargar
+              </button>
+              <button onClick={() => deleteReusableDeck(deck.id)}>
+                Borrar
               </button>
             </article>
           ))}
@@ -483,12 +592,12 @@ function DeckZone({
         </div>
       </header>
       <div className="deck-card-grid">
-        {cards.flatMap(card => Array.from({ length: card.quantity }, (_, copyIndex) => ({ card, copyIndex }))).map(({ card, copyIndex }) => {
+        {cards.map(card => {
           const copyWarning = getCopyWarning(card)
-          const isDropTarget = dragTargetId === card.id && copyIndex === 0
+          const isDropTarget = dragTargetId === card.id
           return (
           <article
-            key={`${card.id}-${copyIndex}`}
+            key={card.id}
             className={isDropTarget ? 'deck-card-tile compact drop-target' : 'deck-card-tile compact'}
             draggable
             onDragStart={event => {
@@ -505,6 +614,7 @@ function DeckZone({
             }}
             onDrop={event => {
               event.preventDefault()
+              event.stopPropagation()
               const deckCardId = event.dataTransfer.getData('application/x-deck-card')
               if (deckCardId) onReorderCard(deckCardId, card.id)
               setDragTargetId('')
@@ -512,23 +622,21 @@ function DeckZone({
             onDragEnd={() => setDragTargetId('')}
           >
             {card.imageUrl ? <img src={card.imageUrl} alt="" /> : <div className="deck-card-placeholder">{card.name}</div>}
-            {copyWarning && copyIndex === 0 && <em>{copyWarning}</em>}
-            {copyIndex === 0 && (
-              <div className="deck-card-order">
-                <button onClick={() => onMoveOrder(card.id, -1)} aria-label={`Subir ${card.name}`}>
+            {copyWarning && <em>{copyWarning}</em>}
+            <div className="deck-card-order">
+              <button onClick={() => onMoveOrder(card.id, -1)} aria-label={`Subir ${card.name}`}>
                 <i className="ti ti-chevron-up" aria-hidden="true" />
-                </button>
-                <button onClick={() => onMoveOrder(card.id, 1)} aria-label={`Bajar ${card.name}`}>
+              </button>
+              <button onClick={() => onMoveOrder(card.id, 1)} aria-label={`Bajar ${card.name}`}>
                 <i className="ti ti-chevron-down" aria-hidden="true" />
-                </button>
-                <button onClick={() => onQuantityChange(card.id, card.quantity + 1)} aria-label={`Anadir copia de ${card.name}`}>
-                  <i className="ti ti-plus" aria-hidden="true" />
-                </button>
-                <button onClick={() => onQuantityChange(card.id, card.quantity - 1)} aria-label={`Quitar copia de ${card.name}`}>
-                  <i className="ti ti-minus" aria-hidden="true" />
-                </button>
-              </div>
-            )}
+              </button>
+              <button onClick={() => onQuantityChange(card.id, card.quantity + 1)} aria-label={`Anadir copia de ${card.name}`}>
+                <i className="ti ti-plus" aria-hidden="true" />
+              </button>
+              <button onClick={() => onQuantityChange(card.id, card.quantity - 1)} aria-label={`Quitar copia de ${card.name}`}>
+                <i className="ti ti-minus" aria-hidden="true" />
+              </button>
+            </div>
           </article>
         )})}
       </div>
@@ -603,6 +711,27 @@ function DeckImageExport({
 
 function expandCards(cards: DeckCard[]) {
   return cards.flatMap(card => Array.from({ length: card.quantity }, () => card))
+}
+
+function splitCardCopies(cards: DeckCard[]) {
+  return cards.flatMap(card =>
+    Array.from({ length: Math.max(1, card.quantity) }, () => ({
+      ...card,
+      id: crypto.randomUUID(),
+      quantity: 1,
+    }))
+  )
+}
+
+function loadDeckLibrary(): SavedDeckTemplate[] {
+  try {
+    const raw = localStorage.getItem(DECK_LIBRARY_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as SavedDeckTemplate[]
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
 }
 
 async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG) {
