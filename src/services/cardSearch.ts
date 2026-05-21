@@ -33,10 +33,17 @@ export async function searchCards(
     if (game === 'pokemon') return searchPokemon(term, signal, filters)
     if (game === 'yugioh') return searchYugioh(term, signal, filters)
     if (game === 'lorcana') return searchLorcana(term, signal, filters)
+    if (game === 'one-piece' || game === 'riftbound') return searchApiTcg(game, term, signal, filters)
     return Promise.resolve([])
   })()
 
-  return filters.onlyImages ? cards.filter(card => card.imageUrl) : cards
+  if ((!cards.length || (filters.onlyImages && !cards.some(card => card.imageUrl))) && game !== 'riftbound') {
+    const fallback = await searchApiTcg(game, term, signal, filters).catch(() => [])
+    const combined = uniqueCards([...cards, ...fallback])
+    return filters.onlyImages ? combined.filter(card => card.imageUrl) : combined
+  }
+
+  return filters.onlyImages ? uniqueCards(cards).filter(card => card.imageUrl) : uniqueCards(cards)
 }
 
 export function getCardFilterOptions(game: TournamentTCG): Array<{ label: string; value: string }> {
@@ -179,6 +186,31 @@ export function getAdvancedCardFilterOptions(game: TournamentTCG): Array<{
 }
 
 async function searchMagic(query: string, signal?: AbortSignal, filters: CardSearchFilters = {}): Promise<CardSuggestion[]> {
+  if (filters.exact && !filters.kind && !filters.color && !filters.text?.trim()) {
+    const exactUrl = new URL('https://api.scryfall.com/cards/named')
+    exactUrl.searchParams.set('exact', query)
+    const exactResponse = await fetch(exactUrl, { signal, headers: { Accept: 'application/json' } })
+    if (exactResponse.ok) {
+      const card = await exactResponse.json() as {
+        id: string
+        name: string
+        set_name?: string
+        type_line?: string
+        oracle_text?: string
+        image_uris?: { small?: string; normal?: string }
+        card_faces?: Array<{ oracle_text?: string; image_uris?: { small?: string; normal?: string } }>
+      }
+      return [{
+        id: `magic:${card.id}`,
+        name: card.name,
+        subtitle: card.set_name,
+        imageUrl: card.image_uris?.normal ?? card.image_uris?.small ?? card.card_faces?.[0]?.image_uris?.normal ?? card.card_faces?.[0]?.image_uris?.small,
+        kind: card.type_line,
+        text: card.oracle_text ?? card.card_faces?.map(face => face.oracle_text).filter(Boolean).join('\n'),
+      }]
+    }
+  }
+
   const url = new URL('https://api.scryfall.com/cards/search')
   const baseQuery = filters.exact ? `!"${escapeScryfallQuery(query)}"` : query
   const typeQuery = filters.kind ? ` t:${filters.kind}` : ''
@@ -211,7 +243,7 @@ async function searchMagic(query: string, signal?: AbortSignal, filters: CardSea
     id: `magic:${card.id}`,
     name: card.name,
     subtitle: card.set_name,
-    imageUrl: card.image_uris?.small ?? card.card_faces?.[0]?.image_uris?.small,
+    imageUrl: card.image_uris?.normal ?? card.image_uris?.small ?? card.card_faces?.[0]?.image_uris?.normal ?? card.card_faces?.[0]?.image_uris?.small,
     kind: card.type_line,
     text: card.oracle_text ?? card.card_faces?.map(face => face.oracle_text).filter(Boolean).join('\n'),
   }))).slice(0, 12)
@@ -221,7 +253,8 @@ async function searchPokemon(query: string, signal?: AbortSignal, filters: CardS
   const url = new URL('https://api.pokemontcg.io/v2/cards')
   const supertype = filters.kind ? ` supertype:${filters.kind}` : ''
   const type = filters.cardType ? ` types:${filters.cardType}` : ''
-  url.searchParams.set('q', `name:${escapePokemonQuery(query)}*${supertype}${type}`)
+  const nameQuery = filters.exact ? `name:"${escapePokemonQuery(query)}"` : `name:${escapePokemonQuery(query)}*`
+  url.searchParams.set('q', `${nameQuery}${supertype}${type}`)
   url.searchParams.set('pageSize', '10')
   url.searchParams.set('orderBy', 'name')
   url.searchParams.set('select', 'id,name,set,images,rules,attacks,abilities')
@@ -238,7 +271,7 @@ async function searchPokemon(query: string, signal?: AbortSignal, filters: CardS
       name: string
       set?: { name?: string }
       types?: string[]
-      images?: { small?: string }
+      images?: { small?: string; large?: string }
       rules?: string[]
       attacks?: Array<{ text?: string }>
       abilities?: Array<{ text?: string }>
@@ -249,7 +282,7 @@ async function searchPokemon(query: string, signal?: AbortSignal, filters: CardS
     id: `pokemon:${card.id}`,
     name: card.name,
     subtitle: card.set?.name,
-    imageUrl: card.images?.small,
+    imageUrl: card.images?.large ?? card.images?.small,
     kind: card.types?.join(', ') ?? filters.kind,
     text: [
       ...(card.rules ?? []),
@@ -317,6 +350,93 @@ async function searchLorcana(query: string, signal?: AbortSignal, filters: CardS
     kind: filters.kind,
     text: card.fullText ?? card.text,
   }))), filters.text).slice(0, 12)
+}
+
+async function searchApiTcg(game: TournamentTCG, query: string, signal?: AbortSignal, filters: CardSearchFilters = {}): Promise<CardSuggestion[]> {
+  const gameSlug = getApiTcgGameSlug(game)
+  if (!gameSlug) return []
+
+  const url = new URL(`https://apitcg.com/api/${gameSlug}/cards`)
+  url.searchParams.set('name', query)
+  url.searchParams.set('limit', filters.exact ? '12' : '20')
+
+  const response = await fetch(url, { signal, headers: { Accept: 'application/json' } })
+  if (!response.ok) return []
+
+  const payload = await response.json() as {
+    data?: Array<{
+      id?: string | number
+      name?: string
+      title?: string
+      images?: { small?: string; large?: string; full?: string }
+      image?: string
+      imageUrl?: string
+      type?: string
+      cardType?: string
+      supertype?: string
+      color?: string | string[]
+      colors?: string[]
+      types?: string[]
+      family?: string
+      ability?: string
+      text?: string
+      effect?: string
+      set?: { name?: string }
+      setName?: string
+    }>
+  } | Array<{
+    id?: string | number
+    name?: string
+    title?: string
+    images?: { small?: string; large?: string; full?: string }
+    image?: string
+    imageUrl?: string
+    type?: string
+    cardType?: string
+    supertype?: string
+    color?: string | string[]
+    colors?: string[]
+    types?: string[]
+    family?: string
+    ability?: string
+    text?: string
+    effect?: string
+    set?: { name?: string }
+    setName?: string
+  }>
+
+  const rows = Array.isArray(payload) ? payload : payload.data ?? []
+  return filterByText(rows.map(card => {
+    const name = card.name ?? card.title ?? ''
+    const rawImage = card.images?.large ?? card.images?.full ?? card.images?.small ?? card.imageUrl ?? card.image
+    const kind = [
+      card.supertype,
+      card.type,
+      card.cardType,
+      Array.isArray(card.color) ? card.color.join(', ') : card.color,
+      card.colors?.join(', '),
+      card.types?.join(', '),
+      card.family,
+    ].filter(Boolean).join(' - ')
+    return {
+      id: `${game}:${String(card.id ?? name)}`,
+      name,
+      subtitle: card.set?.name ?? card.setName,
+      imageUrl: rawImage ? proxiedImageUrl(rawImage) : undefined,
+      kind,
+      text: card.text ?? card.effect ?? card.ability,
+    }
+  }).filter(card => card.name), filters.text)
+    .filter(card => !filters.exact || card.name.toLowerCase() === query.toLowerCase())
+    .slice(0, 12)
+}
+
+function getApiTcgGameSlug(game: TournamentTCG) {
+  if (game === 'one-piece') return 'one-piece'
+  if (game === 'pokemon') return 'pokemon'
+  if (game === 'magic') return 'magic'
+  if (game === 'riftbound') return 'riftbound'
+  return ''
 }
 
 function filterByText(cards: CardSuggestion[], text?: string) {

@@ -73,7 +73,7 @@ export function DeckBuilderView() {
   }, [deckLibrary, tournament?.tcg])
 
   useEffect(() => {
-    if (!tournament || tournament.tcg === 'riftbound' || query.trim().length < 2) {
+    if (!tournament || query.trim().length < 2) {
       return
     }
 
@@ -106,7 +106,7 @@ export function DeckBuilderView() {
   const filterOptions = getCardFilterOptions(currentTournament.tcg)
   const advancedFilterOptions = getAdvancedCardFilterOptions(currentTournament.tcg)
   const selectedPlayer = currentTournament.players.find(player => player.id === playerId) ?? null
-  const visibleResults = currentTournament.tcg === 'riftbound' || query.trim().length < 2 ? [] : results
+  const visibleResults = query.trim().length < 2 ? [] : results
   const quickSideSection = rules.sections.find(section => ['Side', 'Sideboard'].includes(section.id))
 
   function handlePlayerChange(nextPlayerId: string) {
@@ -447,7 +447,7 @@ export function DeckBuilderView() {
             <input
               value={query}
               onChange={event => setQuery(event.target.value)}
-              placeholder={currentTournament.tcg === 'riftbound' ? 'Carta manual' : 'Buscar carta'}
+              placeholder="Buscar carta"
             />
             <button onClick={() => addManualCard()} disabled={!query.trim()}>
               <i className="ti ti-plus" aria-hidden="true" />
@@ -774,7 +774,7 @@ function DeckImageExport({
           {sections.map(section => {
             const sectionCards = cards.filter(card => card.section === section)
             if (!sectionCards.length) return null
-            const groupedExport = ['lorcana', 'one-piece'].includes(deck.game)
+            const groupedExport = shouldGroupExportCards(deck.game)
             const visualCards = groupedExport ? groupDeckCards(sectionCards) : expandCards(sectionCards)
             return (
               <section key={section} className={`deck-export-section deck-export-section-${section.toLowerCase()}`}>
@@ -876,6 +876,10 @@ function groupDeckCards(cards: DeckCard[]) {
   return [...grouped.values()]
 }
 
+function shouldGroupExportCards(game: TournamentTCG) {
+  return game !== 'yugioh'
+}
+
 function splitCardCopies(cards: DeckCard[]) {
   return cards.flatMap(card =>
     Array.from({ length: Math.max(1, card.quantity) }, () => ({
@@ -898,9 +902,7 @@ function loadDeckLibrary(): SavedDeckTemplate[] {
 }
 
 async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forExport = false) {
-  if (game === 'riftbound') return cards
-
-  const hydrated = await Promise.all(cards.map(async card => {
+  const hydrated = await mapWithConcurrency(cards, 4, async card => {
     if (card.imageUrl) {
       const imageUrl = normalizeExportImageUrl(card.imageUrl)
       const usableImageUrl = forExport ? await toDataUrl(imageUrl).catch(() => imageUrl) : imageUrl
@@ -930,9 +932,25 @@ async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forE
       kind: match.kind,
       imageUrl: usableImageUrl,
     }
-  }))
+  })
 
   return hydrated
+}
+
+async function mapWithConcurrency<T, R>(items: T[], limit: number, mapper: (item: T) => Promise<R>) {
+  const results: R[] = []
+  let cursor = 0
+
+  async function worker() {
+    while (cursor < items.length) {
+      const index = cursor
+      cursor += 1
+      results[index] = await mapper(items[index])
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return results
 }
 
 async function hydrateKnownCardById(card: DeckCard, game: TournamentTCG, forExport: boolean): Promise<DeckCard | null> {
