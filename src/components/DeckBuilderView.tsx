@@ -804,7 +804,6 @@ function DeckImageExport({
             if (!sectionCards.length) return null
             const groupedExport = shouldGroupExportCards(deck.game)
             const visualCards = groupedExport ? groupDeckCards(sectionCards) : expandCards(sectionCards)
-            const stackedExport = shouldStackExportCards(deck.game)
             const compactFallback = shouldUseCompactFallback(deck.game, section)
             return (
               <section key={section} className={`deck-export-section deck-export-section-${section.toLowerCase()}`}>
@@ -819,15 +818,9 @@ function DeckImageExport({
                       className={`deck-export-card-tile${groupedExport ? ' deck-export-card-tile-grouped' : ''}`}
                       style={card.imageUrl ? { backgroundImage: `url("${card.imageUrl}")` } : undefined}
                     >
-                      {stackedExport && card.imageUrl
-                        ? <StackedCardImage card={card} />
-                        : (
-                          <>
-                            <div className={`deck-export-card-fallback${compactFallback ? ' deck-export-card-fallback-compact' : ''}`}>{card.name}</div>
-                            {card.imageUrl && <img src={card.imageUrl} alt="" crossOrigin="anonymous" />}
-                            {groupedExport && <span className="deck-export-copy-badge">{card.quantity}</span>}
-                          </>
-                        )}
+                      <div className={`deck-export-card-fallback${compactFallback ? ' deck-export-card-fallback-compact' : ''}`}>{card.name}</div>
+                      {card.imageUrl && <img src={card.imageUrl} alt="" crossOrigin="anonymous" />}
+                      {groupedExport && <span className="deck-export-copy-badge">{card.quantity}</span>}
                     </div>
                   ))}
                 </div>
@@ -854,25 +847,6 @@ function DeckImageExport({
       </div>
 
     </div>
-  )
-}
-
-function StackedCardImage({ card }: { card: DeckCard }) {
-  const copies = Math.max(1, Math.min(card.quantity, 4))
-  return (
-    <>
-      <div className="deck-export-card-fallback">{card.name}</div>
-      {Array.from({ length: copies }).map((_, index) => (
-        <img
-          key={index}
-          src={card.imageUrl}
-          alt=""
-          crossOrigin="anonymous"
-          className="deck-export-stack-copy"
-          style={{ '--stack-index': index } as React.CSSProperties}
-        />
-      ))}
-    </>
   )
 }
 
@@ -964,11 +938,7 @@ function groupDeckCards(cards: DeckCard[]) {
 }
 
 function shouldGroupExportCards(game: TournamentTCG) {
-  return game !== 'yugioh'
-}
-
-function shouldStackExportCards(game: TournamentTCG) {
-  return game === 'magic'
+  return game !== 'yugioh' && game !== 'magic'
 }
 
 function shouldUseCompactFallback(game: TournamentTCG, section: string) {

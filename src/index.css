@@ -2825,16 +2825,16 @@ button:disabled {
 }
 
 .deck-export-game-magic .deck-export-section-sideboard .deck-export-card-tile {
-  aspect-ratio: 1.08;
+  aspect-ratio: 0.716;
   overflow: hidden;
-  background: #07101f;
-  border: 1px solid rgba(88, 215, 255, 0.18);
-  box-shadow: none;
+  background: transparent;
+  border: 0;
+  box-shadow: 0 8px 13px rgba(0, 0, 0, 0.34);
 }
 
 .deck-export-game-magic .deck-export-section-sideboard .deck-export-card-tile img {
   object-fit: cover;
-  object-position: top center;
+  object-position: center;
 }
 
 .deck-export-game-magic .deck-export-card-tile {
@@ -2853,12 +2853,19 @@ button:disabled {
   margin-bottom: 0;
 }
 
-.deck-export-game-magic .deck-export-stack-copy {
-  transform: translateY(calc(var(--stack-index) * 7px));
-}
-
 .deck-export-game-magic .deck-export-copy-badge {
-  display: none;
+  display: grid;
+  top: -9px;
+  right: -7px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+  font-size: 20px;
+  border-width: 3px;
+  clip-path: none;
+  border-radius: 999px;
+  background: #f2f7ff;
+  color: #05070c;
 }
 
 .deck-export-game-magic .deck-export-sidebar {
