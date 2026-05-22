@@ -1159,20 +1159,7 @@ async function hydrateKnownCardById(card: DeckCard, game: TournamentTCG, forExpo
       subtitle: match.subtitle,
       kind: match.kind,
       legalities: match.legalities,
-      imageUrl: usableImageUrl,
-    }
-  }
-
-  if (game !== 'yugioh') return null
-  const numericId = card.cardId.split(':').pop()
-  if (!numericId || !/^\d+$/.test(numericId)) return null
-
-  const url = new URL('https://db.ygoprodeck.com/api/v7/cardinfo.php')
-  url.searchParams.set('id', numericId)
-  const response = await fetch(url.toString(), { headers: { Accept: 'application/json' } })
-  if (!response.ok) return null
-  const payload = await response.json() as {
-    data?: Array<{ id: number; name: string; type?: string; race?: string; attribute?: string; card_images?: Array<{ image_url?: string; image_url_small?: string }> }>
+        section: getDefaultSection(game, match),
   }
   const match = payload.data?.[0]
   if (!match) return null

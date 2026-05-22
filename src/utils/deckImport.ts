@@ -153,6 +153,7 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     md: 'Main',
     deck: 'Main',
     'main deck': 'Main',
+    maindeck: 'Main',
     mainboard: 'Main',
     mazo: 'Main',
     'mazo principal': 'Main',
