@@ -1,5 +1,6 @@
 import type { TournamentTCG } from '../types/tournament'
 import { deckRuleConfigs } from './deckRules'
+import { extractOnePieceCardCode, ONE_PIECE_CARD_CODE_PATTERN } from './onePieceCardCode'
 
 // Importador tolerante por juego. La idea es aceptar el texto que el usuario
 // copia desde herramientas externas, no obligarle a aprender un formato propio.
@@ -199,7 +200,7 @@ export function parseDeckImport(game: TournamentTCG, list: string): DeckImportRe
 
     const forcedSection = getForcedSection(game, section)
     cards.push({
-      ...createImportedCard(parsed.name, parsed.quantity, forcedSection, parsed.cardCode),
+      ...createImportedCard(game, parsed.name, parsed.quantity, forcedSection, parsed.cardCode),
       ...parsed.metadata,
     })
   }
@@ -211,16 +212,20 @@ export function parseSavedDeckCards(game: TournamentTCG, list: string): Imported
   return parseDeckImport(game, list).cards
 }
 
-export function formatDeckCards(cards: ImportedDeckCard[], sections: string[], includeMetadata = false) {
+export function formatDeckCards(
+  cards: ImportedDeckCard[],
+  sections: string[],
+  includeMetadata = false,
+  game?: TournamentTCG,
+) {
   const groupedCards = mergeImportedCards(cards)
   return sections
     .map(section => {
       const sectionCards = groupedCards.filter(card => card.section === section)
       if (!sectionCards.length) return ''
-      return [
-        `${section}:`,
-        ...sectionCards.map(card => `${card.quantity} ${formatDeckCardLine(card, includeMetadata)}`),
-      ].join('\n')
+      const lines = sectionCards.map(card => `${card.quantity} ${formatDeckCardLine(card, includeMetadata, game)}`)
+      if (game === 'one-piece') return lines.join('\n')
+      return [`${section}:`, ...lines].join('\n')
     })
     .filter(Boolean)
     .join('\n\n')
@@ -248,7 +253,7 @@ function parseYdk(list: string): DeckImportResult {
       continue
     }
     if (/^\d+$/.test(line)) {
-      cards.push(createImportedCard(`Carta ${line}`, 1, section, line))
+      cards.push(createImportedCard('yugioh', `Carta ${line}`, 1, section, line))
     }
   }
 
@@ -368,9 +373,8 @@ function cleanCardName(game: TournamentTCG, rawName: string): { name: string; ca
   }
 
   if (game === 'one-piece') {
-    // En One Piece el codigo OP/ST/EB es muy importante; si no hay nombre,
-    // se usa el codigo como etiqueta visible.
-    const codeMatch = name.match(/\b([A-Z]{2,4}\d{2}-\d{3}[a-z]?)\b/i)
+    // Formato habitual: "4 OP12-071 Charlotte Pudding" o "OP15-058 Enel".
+    const codeMatch = name.match(ONE_PIECE_CARD_CODE_PATTERN)
     if (codeMatch) {
       cardCode = codeMatch[1].toUpperCase()
       name = name.replace(codeMatch[0], '').replace(/^[-:]\s*/, '').trim()
@@ -393,8 +397,19 @@ function getForcedSection(game: TournamentTCG, currentSection: string) {
   return currentSection
 }
 
-function createImportedCard(name: string, quantity: number, section: string, cardCode?: string): ImportedDeckCard {
-  const cardId = cardCode ? `import:${cardCode}` : `import:${section}:${name.toLowerCase()}`
+function createImportedCard(
+  game: TournamentTCG,
+  name: string,
+  quantity: number,
+  section: string,
+  cardCode?: string,
+): ImportedDeckCard {
+  const normalizedCode = cardCode?.toUpperCase()
+  const cardId = normalizedCode
+    ? game === 'one-piece'
+      ? `one-piece:${normalizedCode}`
+      : `import:${normalizedCode}`
+    : `import:${section}:${name.toLowerCase()}`
   return {
     id: crypto.randomUUID(),
     cardId,
@@ -418,8 +433,12 @@ function mergeImportedCards(cards: ImportedDeckCard[]) {
   return [...merged.values()]
 }
 
-function formatDeckCardLine(card: ImportedDeckCard, includeMetadata: boolean) {
-  if (!includeMetadata) return card.name
+function formatDeckCardLine(card: ImportedDeckCard, includeMetadata: boolean, game?: TournamentTCG) {
+  if (!includeMetadata) {
+    const code = game === 'one-piece' ? extractOnePieceCardCode(card.cardId) ?? extractOnePieceCardCode(card.name) : undefined
+    if (code) return `${code} ${card.name}`
+    return card.name
+  }
   const metadata = [
     `id=${encodeURIComponent(card.cardId)}`,
     card.imageUrl ? `img=${encodeURIComponent(card.imageUrl)}` : '',

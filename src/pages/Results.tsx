@@ -54,15 +54,16 @@ export function Results({ tournamentId }: ResultsProps) {
         onClick={() => exportStandingsImage(`standing-final-${name || 'torneo'}`)}
         style={primaryActionStyle}
       >
-        <i className="ti ti-download" aria-hidden="true" /> Exportar standing final
+        <i className="ti ti-download" aria-hidden="true" /> Descargar clasificacion final
       </button>
 
       {tcg !== 'chess' && (
         <button
           onClick={openDeckBuilder}
           style={primaryActionStyle}
+          title="Monta y exporta las listas de los jugadores"
         >
-          <i className="ti ti-cards" aria-hidden="true" /> Abrir constructor de decks
+          <i className="ti ti-cards" aria-hidden="true" /> Abrir constructor de mazos
         </button>
       )}
 

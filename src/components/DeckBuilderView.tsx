@@ -12,6 +12,10 @@ import { useSwissPairings } from '../hooks/useSwissPairings'
 import type { DeckList, TournamentTCG } from '../types/tournament'
 import { deckRuleConfigs, getDefaultSection, validateDeck } from '../utils/deckRules'
 import { formatDeckCards, parseDeckImport, parseSavedDeckCards, type ImportedDeckCard } from '../utils/deckImport'
+import { fetchOnePieceCardByCode, getOnePieceSectionFromKind } from '../services/optcgApi'
+import { extractOnePieceCardCodeFromCardId } from '../utils/onePieceCardCode'
+import { fetchImageAsDataUrl } from '../utils/imageExport'
+import { ActionButton } from './ActionButton'
 
 type DeckCard = ImportedDeckCard
 type DeckExportFormat = 'normal' | 'feed' | 'story'
@@ -271,7 +275,7 @@ export function DeckBuilderView() {
       return
     }
     setSaveStatus('Guardando...')
-    const formattedList = formatDeckCards(cards, sections, true)
+    const formattedList = formatDeckCards(cards, sections, true, currentTournament.tcg)
     submitDecklist(currentTournament.id, selectedPlayer.id, {
       name: deckName,
       list: formattedList,
@@ -306,15 +310,17 @@ export function DeckBuilderView() {
     const hydratedCards = await hydrateMissingImages(result.cards, currentTournament.tcg)
     setCards(splitCardCopies(hydratedCards))
     const importedTotal = result.cards.reduce((sum, card) => sum + card.quantity, 0)
-    setSaveStatus(result.ignoredLines.length
-      ? `Importadas ${importedTotal} cartas. ${result.ignoredLines.length} lineas sin reconocer.`
-      : `Importadas ${importedTotal} cartas.`
-    )
+    const withImages = hydratedCards.filter(card => card.imageUrl).length
+    const ignoredSuffix = result.ignoredLines.length ? ` ${result.ignoredLines.length} lineas sin reconocer.` : ''
+    const imageSuffix = currentTournament.tcg === 'one-piece'
+      ? ` ${withImages}/${hydratedCards.length} con imagen y edicion.`
+      : ` ${withImages}/${hydratedCards.length} con imagen.`
+    setSaveStatus(`Importadas ${importedTotal} cartas.${imageSuffix}${ignoredSuffix}`)
     window.setTimeout(() => setSaveStatus(''), 3500)
   }
 
   function importDeckText() {
-    const text = window.prompt('Pega una decklist en texto')
+    const text = window.prompt('Pega la lista del mazo (una carta por linea, con cantidad y codigo si lo tienes)')
     if (text) void applyImportedText(text)
   }
 
@@ -351,14 +357,16 @@ export function DeckBuilderView() {
 
   async function exportCurrentDeckImage() {
     if (!selectedPlayer || !deckName.trim() || cards.length === 0) return
+    setSaveStatus('Preparando imagenes para la exportacion...')
     const hydratedCards = await hydrateMissingImages(cards, currentTournament.tcg, true)
+    const withImages = hydratedCards.filter(card => card.imageUrl?.startsWith('data:')).length
     setExportDeck({
       id: 'current',
       playerId: selectedPlayer.id,
       playerName: selectedPlayer.name,
       game: currentTournament.tcg,
       name: deckName,
-      list: formatDeckCards(hydratedCards, sections),
+      list: formatDeckCards(hydratedCards, sections, false, currentTournament.tcg),
       notes: deckNotes,
       status: 'submitted',
       createdAt: now(),
@@ -367,14 +375,19 @@ export function DeckBuilderView() {
     setExportCards(hydratedCards)
     await waitFrame()
     await exportImage(`deck-${selectedPlayer.name}-${deckName}-${exportFormat}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+    setSaveStatus(`Imagen descargada (${withImages}/${hydratedCards.length} cartas con foto).`)
+    window.setTimeout(() => setSaveStatus(''), 3500)
   }
 
   async function exportSavedDeckImage(deck: DeckList) {
+    setSaveStatus('Preparando imagenes para la exportacion...')
     const hydratedCards = await hydrateMissingImages(parseSavedDeckCards(currentTournament.tcg, deck.list), currentTournament.tcg, true)
     setExportDeck(deck)
     setExportCards(hydratedCards)
     await waitFrame()
     await exportImage(`deck-${deck.playerName}-${deck.name}-${exportFormat}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+    setSaveStatus('Imagen del mazo descargada.')
+    window.setTimeout(() => setSaveStatus(''), 3500)
   }
 
   return (
@@ -385,21 +398,18 @@ export function DeckBuilderView() {
           <h1>{currentTournament.name}</h1>
           <p>Constructor bloqueado al juego del torneo</p>
         </div>
-        <button onClick={() => window.close()}>
-          <i className="ti ti-x" aria-hidden="true" />
-          Cerrar
-        </button>
+        <ActionButton onClick={() => window.close()} icon="ti-x" title="Cierra esta ventana del constructor">
+          Cerrar constructor
+        </ActionButton>
       </header>
 
       <div className="deck-builder-toolbar">
-        <button onClick={importDeckText}>
-          <i className="ti ti-file-import" aria-hidden="true" />
-          Pegar
-        </button>
-        <button onClick={() => fileInputRef.current?.click()}>
-          <i className="ti ti-upload" aria-hidden="true" />
-          Archivo
-        </button>
+        <ActionButton onClick={importDeckText} icon="ti-file-import" title="Pega una lista copiada desde otra app">
+          Pegar lista de texto
+        </ActionButton>
+        <ActionButton onClick={() => fileInputRef.current?.click()} icon="ti-upload" title="Importa un archivo .txt, .ydk u otro formato de lista">
+          Importar desde archivo
+        </ActionButton>
         <input
           ref={fileInputRef}
           type="file"
@@ -407,18 +417,30 @@ export function DeckBuilderView() {
           className="deck-file-input"
           onChange={event => void importDeckFile(event.target.files?.[0])}
         />
-        <button onClick={exportCurrentDeckImage} disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}>
-          <i className="ti ti-photo-down" aria-hidden="true" />
-          Exportar
-        </button>
-        <button onClick={saveDeck} disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}>
-          <i className="ti ti-edit" aria-hidden="true" />
-          Guardar
-        </button>
-        <button onClick={() => setCards([])} disabled={cards.length === 0}>
-          <i className="ti ti-trash" aria-hidden="true" />
-          Vaciar
-        </button>
+        <ActionButton
+          onClick={exportCurrentDeckImage}
+          disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}
+          icon="ti-photo-down"
+          title="Genera una imagen PNG lista para Instagram o WhatsApp"
+        >
+          Descargar imagen PNG
+        </ActionButton>
+        <ActionButton
+          onClick={saveDeck}
+          disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}
+          icon="ti-device-floppy"
+          title="Guarda el mazo en el torneo para este jugador"
+        >
+          Guardar mazo del torneo
+        </ActionButton>
+        <ActionButton
+          onClick={() => setCards([])}
+          disabled={cards.length === 0}
+          icon="ti-trash"
+          title="Elimina todas las cartas del editor"
+        >
+          Vaciar mazo actual
+        </ActionButton>
       </div>
 
       <section className="deck-builder-controls">
@@ -442,14 +464,22 @@ export function DeckBuilderView() {
           <option value="story">Historias / Reels 9:16</option>
           <option value="normal">Imagen normal</option>
         </select>
-        <button onClick={saveDeck} disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}>
-          <i className="ti ti-device-floppy" aria-hidden="true" />
-          Guardar
-        </button>
-        <button onClick={exportCurrentDeckImage} disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}>
-          <i className="ti ti-photo-down" aria-hidden="true" />
-          Imagen
-        </button>
+        <ActionButton
+          onClick={saveDeck}
+          disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}
+          icon="ti-device-floppy"
+          title="Guarda el mazo en el torneo para este jugador"
+        >
+          Guardar mazo
+        </ActionButton>
+        <ActionButton
+          onClick={exportCurrentDeckImage}
+          disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}
+          icon="ti-photo-down"
+          title="Genera una imagen PNG lista para redes"
+        >
+          Descargar PNG
+        </ActionButton>
         {saveStatus && <span className="deck-save-status">{saveStatus}</span>}
       </section>
 
@@ -480,9 +510,14 @@ export function DeckBuilderView() {
               onChange={event => setQuery(event.target.value)}
               placeholder="Buscar carta"
             />
-            <button onClick={() => addManualCard()} disabled={!query.trim()}>
-              <i className="ti ti-plus" aria-hidden="true" />
-            </button>
+            <ActionButton
+              onClick={() => addManualCard()}
+              disabled={!query.trim()}
+              icon="ti-plus"
+              title="Anade la carta escrita aunque no aparezca en la busqueda"
+            >
+              Anadir manual
+            </ActionButton>
           </div>
 
           <div className="deck-search-filters">
@@ -538,14 +573,14 @@ export function DeckBuilderView() {
                 {card.imageUrl ? <img src={card.imageUrl} alt="" /> : <div className="deck-card-placeholder" />}
                 <span>{card.name}</span>
                 <div className="deck-search-card-actions">
-                  <button onClick={() => addCard(card)}>
+                  <button onClick={() => addCard(card)} title="Anade esta carta al mazo principal">
                     <i className="ti ti-plus" aria-hidden="true" />
-                    Mazo
+                    Al mazo
                   </button>
                   {quickSideSection && (
-                    <button onClick={() => addCard(card, quickSideSection.id)}>
+                    <button onClick={() => addCard(card, quickSideSection.id)} title="Anade esta carta al banquillo">
                       <i className="ti ti-layout-sidebar-right" aria-hidden="true" />
-                      Side
+                      Al banquillo
                     </button>
                   )}
                 </div>
@@ -582,14 +617,17 @@ export function DeckBuilderView() {
                 <strong>{deck.name}</strong>
                 <span>{deck.playerName}</span>
               </div>
-              <button onClick={() => publishDecklist(currentTournament.id, deck.id, deck.status !== 'published')}>
-                {deck.status === 'published' ? 'Ocultar' : 'Publicar'}
+              <button
+                onClick={() => publishDecklist(currentTournament.id, deck.id, deck.status !== 'published')}
+                title={deck.status === 'published' ? 'Deja de mostrar este mazo como publicado' : 'Marca el mazo como listo para redes'}
+              >
+                {deck.status === 'published' ? 'Ocultar de redes' : 'Publicar en redes'}
               </button>
-              <button onClick={() => loadDeckList(deck)}>
-                Cargar
+              <button onClick={() => loadDeckList(deck)} title="Abre esta lista en el editor">
+                Abrir en editor
               </button>
-              <button onClick={() => void exportSavedDeckImage(deck)}>
-                Imagen
+              <button onClick={() => void exportSavedDeckImage(deck)} title="Descarga una imagen PNG de este mazo">
+                Descargar PNG
               </button>
             </article>
           ))}
@@ -603,11 +641,11 @@ export function DeckBuilderView() {
                 <strong>{deck.name}</strong>
                 <span>{deck.playerName}</span>
               </div>
-              <button onClick={() => loadDeckList(deck)}>
-                Cargar
+              <button onClick={() => loadDeckList(deck)} title="Carga esta plantilla en el editor">
+                Usar plantilla
               </button>
-              <button onClick={() => deleteReusableDeck(deck.id)}>
-                Borrar
+              <button onClick={() => deleteReusableDeck(deck.id)} title="Elimina la plantilla guardada en este navegador">
+                Eliminar plantilla
               </button>
             </article>
           ))}
@@ -687,9 +725,9 @@ function DeckZone({
       <header>
         <strong>{label}</strong>
         <div className="deck-zone-tools">
-          <button onClick={() => onSort('name')}>Nombre</button>
-          <button onClick={() => onSort('quantity')}>Copias</button>
-          <button onClick={() => onSort('type')}>Tipo</button>
+          <button onClick={() => onSort('name')} title="Ordena alfabeticamente">Ordenar por nombre</button>
+          <button onClick={() => onSort('quantity')} title="Agrupa por cantidad de copias">Ordenar por copias</button>
+          <button onClick={() => onSort('type')} title="Agrupa por tipo de carta">Ordenar por tipo</button>
           <span>{total}</span>
         </div>
       </header>
@@ -828,7 +866,13 @@ function DeckImageExport({
                       style={card.imageUrl ? { backgroundImage: `url("${card.imageUrl}")` } : undefined}
                     >
                       <div className={`deck-export-card-fallback${compactFallback ? ' deck-export-card-fallback-compact' : ''}`}>{card.name}</div>
-                      {card.imageUrl && <img src={card.imageUrl} alt="" crossOrigin="anonymous" />}
+                      {card.imageUrl && (
+                        <img
+                          src={card.imageUrl}
+                          alt=""
+                          crossOrigin={card.imageUrl.startsWith('data:') ? undefined : 'anonymous'}
+                        />
+                      )}
                       {groupedExport && <span className="deck-export-copy-badge">{card.quantity}</span>}
                     </div>
                   ))}
@@ -986,6 +1030,11 @@ async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forE
   const searchCache = new Map<string, Promise<CardSuggestion[]>>()
 
   const hydrated = await mapWithConcurrency(cards, 4, async card => {
+    if (game === 'one-piece') {
+      const enriched = await hydrateOnePieceCard(card, forExport, imageCache).catch(() => null)
+      if (enriched) return enriched
+    }
+
     if (card.imageUrl) {
       const usableImageUrl = forExport ? await cachedDataUrl(card.imageUrl, imageCache).catch(() => card.imageUrl) : card.imageUrl
       return { ...card, imageUrl: usableImageUrl }
@@ -1032,7 +1081,7 @@ function cachedDataUrl(url: string, cache: Map<string, Promise<string>>) {
   const key = url
   const current = cache.get(key)
   if (current) return current
-  const next = toDataUrl(url)
+  const next = fetchImageAsDataUrl(url)
   cache.set(key, next)
   return next
 }
@@ -1053,14 +1102,46 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, mapper: (item
   return results
 }
 
+async function hydrateOnePieceCard(
+  card: DeckCard,
+  forExport: boolean,
+  imageCache: Map<string, Promise<string>>,
+): Promise<DeckCard | null> {
+  const code = extractOnePieceCardCodeFromCardId(card.cardId)
+  if (!code) return null
+
+  const match = await fetchOnePieceCardByCode(code)
+  if (!match) return null
+
+  const usableImageUrl = match.imageUrl
+    ? forExport
+      ? await cachedDataUrl(match.imageUrl, imageCache).catch(() => match.imageUrl)
+      : match.imageUrl
+    : undefined
+
+  return {
+    ...card,
+    cardId: match.id,
+    name: match.name || card.name,
+    subtitle: match.subtitle,
+    kind: match.kind,
+    section: getOnePieceSectionFromKind(match.kind),
+    imageUrl: usableImageUrl,
+  }
+}
+
 async function hydrateKnownCardById(card: DeckCard, game: TournamentTCG, forExport: boolean): Promise<DeckCard | null> {
-  if (game === 'one-piece' || game === 'riftbound') {
+  if (game === 'one-piece') {
+    return hydrateOnePieceCard(card, forExport, new Map())
+  }
+
+  if (game === 'riftbound') {
     const code = card.cardId.split(':').pop()
     if (!code || !/^[A-Z]{2,4}\d{2}-\d{3}[a-z]?$/i.test(code)) return null
     const match = (await searchCards(game, code, undefined, { onlyImages: true, exact: true }))[0]
     if (!match?.imageUrl) return null
 
-    const usableImageUrl = forExport ? await toDataUrl(match.imageUrl).catch(() => match.imageUrl) : match.imageUrl
+    const usableImageUrl = forExport ? await fetchImageAsDataUrl(match.imageUrl).catch(() => match.imageUrl) : match.imageUrl
     return {
       ...card,
       cardId: match.id,
@@ -1087,7 +1168,7 @@ async function hydrateKnownCardById(card: DeckCard, game: TournamentTCG, forExpo
   if (!match) return null
 
   const imageUrl = match.card_images?.[0]?.image_url ?? match.card_images?.[0]?.image_url_small ?? getKnownImageUrl(game, String(match.id)) ?? ''
-  const usableImageUrl = imageUrl && forExport ? await toDataUrl(imageUrl).catch(() => '') : imageUrl
+  const usableImageUrl = imageUrl && forExport ? await fetchImageAsDataUrl(imageUrl).catch(() => '') : imageUrl
 
   return {
     ...card,
@@ -1097,44 +1178,6 @@ async function hydrateKnownCardById(card: DeckCard, game: TournamentTCG, forExpo
     kind: [match.type, match.race, match.attribute].filter(Boolean).join(' - '),
     imageUrl: usableImageUrl,
   }
-}
-
-async function toDataUrl(url: string) {
-  if (url.startsWith('data:')) return url
-
-  let blob: Blob | null = null
-  for (const candidate of getExportImageCandidates(url)) {
-    try {
-      const response = await fetch(candidate, { mode: 'cors', cache: 'force-cache' })
-      if (!response.ok) continue
-      blob = await response.blob()
-      if (blob.size > 0 && blob.type.startsWith('image/')) break
-      blob = null
-    } catch {
-      // Prueba el siguiente candidato: proxy, URL normalizada o URL original.
-    }
-  }
-
-  if (!blob) throw new Error('No se pudo cargar la imagen')
-  return await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(blob)
-  })
-}
-
-function getExportImageCandidates(url: string) {
-  if (!/^https?:\/\//i.test(url)) return [url]
-
-  const proxied = proxiedImageUrl(url)
-  return [...new Set([url, proxied])]
-}
-
-function proxiedImageUrl(url: string) {
-  if (url.includes('images.weserv.nl')) return url
-  const cleanUrl = url.replace(/^https?:\/\//, '')
-  return `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl)}`
 }
 
 function getKnownImageUrl(game: TournamentTCG, cardId: string) {

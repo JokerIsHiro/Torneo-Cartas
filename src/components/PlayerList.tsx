@@ -63,8 +63,8 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
                 outline: 'none',
               }}
             />
-            <button onClick={handleAdd} disabled={!input.trim()} style={btnStyle}>
-              <i className="ti ti-plus" aria-hidden="true" /> Añadir
+            <button onClick={handleAdd} disabled={!input.trim()} style={btnStyle} title="Registra un jugador manualmente en el torneo">
+              <i className="ti ti-plus" aria-hidden="true" /> Añadir jugador
             </button>
           </div>
           {error && (
@@ -154,9 +154,11 @@ function SetupPlayerRow({ player, index, onRemove }: { player: Player; index: nu
           color: 'var(--color-text-secondary)',
           cursor: 'pointer',
         }}
-        aria-label={`Eliminar a ${player.name}`}
+        title={`Quitar a ${player.name} del torneo`}
+        aria-label={`Quitar a ${player.name}`}
       >
         <i className="ti ti-trash" aria-hidden="true" />
+        <span>Quitar</span>
       </button>
     </div>
   )

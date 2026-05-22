@@ -120,11 +120,19 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
             <span>
               {visibleSummary?.matchesDone ?? currentSummary?.matchesDone ?? 0}/{visibleSummary?.matchesTotal ?? currentSummary?.matchesTotal ?? 0} resultados
             </span>
-            <button onClick={() => exportRoundImage(`ronda-${visibleRound}`)} style={exportButtonStyle}>
-              <i className="ti ti-download" aria-hidden="true" /> Ronda
+            <button
+              onClick={() => exportRoundImage(`ronda-${visibleRound}`)}
+              style={exportButtonStyle}
+              title="Descarga una imagen con las mesas de esta ronda"
+            >
+              <i className="ti ti-download" aria-hidden="true" /> Descargar emparejamientos
             </button>
-            <button onClick={() => exportStandingsImage(`clasificacion-ronda-${visibleRound}`)} style={exportButtonStyle}>
-              <i className="ti ti-trophy" aria-hidden="true" /> Clasificacion
+            <button
+              onClick={() => exportStandingsImage(`clasificacion-ronda-${visibleRound}`)}
+              style={exportButtonStyle}
+              title="Descarga la clasificacion actual en imagen"
+            >
+              <i className="ti ti-trophy" aria-hidden="true" /> Descargar clasificacion
             </button>
           </div>
         </div>
@@ -197,7 +205,7 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
               }}
             >
               <i className="ti ti-user-plus" aria-hidden="true" />
-              Anadir jugador
+              Anadir jugador tardio
             </button>
             {pairingToolMessage && <p>{pairingToolMessage}</p>}
           </section>
@@ -207,11 +215,11 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
           <div style={{ marginTop: '1rem' }}>
             {shouldFinish ? (
               <button onClick={() => finishTournament(tournamentId)} style={actionBtnStyle('var(--color-accent-secondary)', 'var(--color-border-success)')}>
-                <i className="ti ti-trophy" aria-hidden="true" /> Finalizar torneo
+                <i className="ti ti-trophy" aria-hidden="true" /> Finalizar torneo y cerrar inscripcion
               </button>
             ) : (
-              <button onClick={() => nextRound(tournamentId)} style={actionBtnStyle()}>
-                <i className="ti ti-arrow-right" aria-hidden="true" /> Nueva ronda
+              <button onClick={() => nextRound(tournamentId)} style={actionBtnStyle()} title="Genera la siguiente ronda cuando todos los resultados esten listos">
+                <i className="ti ti-arrow-right" aria-hidden="true" /> Pasar a la siguiente ronda
               </button>
             )}
           </div>
@@ -417,13 +425,13 @@ function PendingResultsPanel({
             <strong>{resultText(pendingResult)}</strong>
           </div>
           <div>
-            <button onClick={() => approvePendingResult(tournament.id, pendingResult.id)}>
+            <button onClick={() => approvePendingResult(tournament.id, pendingResult.id)} title="Aplica el resultado enviado por el jugador">
               <i className="ti ti-check" aria-hidden="true" />
-              Confirmar
+              Confirmar resultado
             </button>
-            <button onClick={() => rejectPendingResult(tournament.id, pendingResult.id)}>
+            <button onClick={() => rejectPendingResult(tournament.id, pendingResult.id)} title="Descarta el reporte del jugador">
               <i className="ti ti-x" aria-hidden="true" />
-              Rechazar
+              Rechazar reporte
             </button>
           </div>
         </div>

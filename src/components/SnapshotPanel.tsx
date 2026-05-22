@@ -37,7 +37,7 @@ export function SnapshotPanel({ tournamentId }: SnapshotPanelProps) {
               }}
             >
               <i className="ti ti-restore" aria-hidden="true" />
-              Restaurar
+              Volver a este punto
             </button>
           </div>
         ))}

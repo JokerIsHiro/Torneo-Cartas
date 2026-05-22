@@ -136,9 +136,9 @@ export function RegistrationView() {
           placeholder="Nombre del jugador"
           disabled={!isOpen}
         />
-        <button disabled={!isOpen}>
+        <button disabled={!isOpen} title="Registrate en este torneo con el nombre indicado">
           <i className="ti ti-user-plus" aria-hidden="true" />
-          Inscribirme
+          Apuntarme al torneo
         </button>
       </form>
 
@@ -225,19 +225,19 @@ function PlayerPortal({
 
           {canReport && (
             <div className="player-result-actions">
-              <button onClick={() => onSubmitResult(match.id, resultFromPlayerPerspective(true))}>
+              <button onClick={() => onSubmitResult(match.id, resultFromPlayerPerspective(true))} title="Envia victoria para que el organizador la confirme">
                 <i className="ti ti-trophy" aria-hidden="true" />
-                He ganado
+                Reportar victoria
               </button>
               {allowsDraw && (
-                <button onClick={() => onSubmitResult(match.id, 'draw')}>
+                <button onClick={() => onSubmitResult(match.id, 'draw')} title="Envia empate para confirmacion">
                   <i className="ti ti-equal" aria-hidden="true" />
-                  Empate
+                  Reportar empate
                 </button>
               )}
-              <button onClick={() => onSubmitResult(match.id, resultFromPlayerPerspective(false))}>
+              <button onClick={() => onSubmitResult(match.id, resultFromPlayerPerspective(false))} title="Envia derrota para confirmacion">
                 <i className="ti ti-flag" aria-hidden="true" />
-                He perdido
+                Reportar derrota
               </button>
             </div>
           )}
@@ -290,9 +290,9 @@ function PlayerPortal({
           placeholder="Notas opcionales"
           rows={3}
         />
-        <button type="submit" disabled={!deckName.trim() || !deckList.trim()}>
+        <button type="submit" disabled={!deckName.trim() || !deckList.trim()} title="Envia tu lista al organizador del torneo">
           <i className="ti ti-device-floppy" aria-hidden="true" />
-          {existingDeck ? 'Actualizar mazo' : 'Enviar mazo'}
+          {existingDeck ? 'Actualizar mi mazo' : 'Enviar mi mazo'}
         </button>
         {existingDeck && (
           <div className="registration-meta">

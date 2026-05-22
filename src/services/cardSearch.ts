@@ -1,4 +1,7 @@
 import type { TournamentTCG } from '../types/tournament'
+import { proxiedImageUrl } from '../utils/imageExport'
+import { extractOnePieceCardCode } from '../utils/onePieceCardCode'
+import { fetchOnePieceCardByCode, searchOnePieceCardsByName } from './optcgApi'
 
 export interface CardSuggestion {
   id: string
@@ -208,7 +211,7 @@ async function searchMagic(query: string, signal?: AbortSignal, filters: CardSea
         id: `magic:${card.id}`,
         name: card.name,
         subtitle: card.set_name,
-        imageUrl: card.image_uris?.normal ?? card.image_uris?.small ?? card.card_faces?.[0]?.image_uris?.normal ?? card.card_faces?.[0]?.image_uris?.small,
+        imageUrl: proxiedImageUrl(card.image_uris?.normal ?? card.image_uris?.small ?? card.card_faces?.[0]?.image_uris?.normal ?? card.card_faces?.[0]?.image_uris?.small),
         kind: card.type_line,
         text: card.oracle_text ?? card.card_faces?.map(face => face.oracle_text).filter(Boolean).join('\n'),
         legalities: card.legalities,
@@ -250,7 +253,7 @@ async function searchMagic(query: string, signal?: AbortSignal, filters: CardSea
     id: `magic:${card.id}`,
     name: card.name,
     subtitle: card.set_name,
-    imageUrl: card.image_uris?.normal ?? card.image_uris?.small ?? card.card_faces?.[0]?.image_uris?.normal ?? card.card_faces?.[0]?.image_uris?.small,
+    imageUrl: proxiedImageUrl(card.image_uris?.normal ?? card.image_uris?.small ?? card.card_faces?.[0]?.image_uris?.normal ?? card.card_faces?.[0]?.image_uris?.small),
     kind: card.type_line,
     text: card.oracle_text ?? card.card_faces?.map(face => face.oracle_text).filter(Boolean).join('\n'),
     legalities: card.legalities,
@@ -292,7 +295,7 @@ async function searchPokemon(query: string, signal?: AbortSignal, filters: CardS
     id: `pokemon:${card.id}`,
     name: card.name,
     subtitle: [card.set?.name, card.rarity].filter(Boolean).join(' - '),
-    imageUrl: card.images?.large ?? card.images?.small,
+    imageUrl: proxiedImageUrl(card.images?.large ?? card.images?.small),
     kind: card.types?.join(', ') ?? filters.kind,
     text: [
       ...(card.rules ?? []),
@@ -412,6 +415,22 @@ async function searchLorcana(query: string, signal?: AbortSignal, filters: CardS
 }
 
 async function searchOnePiece(query: string, signal?: AbortSignal, filters: CardSearchFilters = {}): Promise<CardSuggestion[]> {
+  const code = extractOnePieceCardCode(query)
+  if (code) {
+    const byCode = await fetchOnePieceCardByCode(code)
+    if (byCode && (!filters.onlyImages || byCode.imageUrl)) {
+      if (!filters.exact || byCode.name.toLowerCase().includes(query.toLowerCase()) || query.toUpperCase() === code) {
+        return [byCode]
+      }
+    }
+  }
+
+  const optcgCards = await searchOnePieceCardsByName(query, signal)
+  if (optcgCards.length) {
+    const cards = filters.onlyImages ? optcgCards.filter(card => card.imageUrl) : optcgCards
+    if (cards.length) return uniqueCards(cards)
+  }
+
   const scrydexCards = await searchScrydex('onepiece', query, signal, filters).catch(() => [])
   if (scrydexCards.length) return scrydexCards
   return searchApiTcg('one-piece', query, signal, filters)
@@ -636,7 +655,7 @@ function firstImage(card: {
 }
 
 function extractCardCode(value: string) {
-  return value.match(/\b([A-Z]{2,4}\d{2}-\d{3}[a-z]?)\b/i)?.[1].toUpperCase()
+  return extractOnePieceCardCode(value)
 }
 
 function filterByText(cards: CardSuggestion[], text?: string) {
@@ -673,9 +692,3 @@ function uniqueCards(cards: CardSuggestion[]) {
   })
 }
 
-function proxiedImageUrl(url?: string) {
-  if (!url) return undefined
-  if (url.startsWith('data:') || url.includes('images.weserv.nl')) return url
-  const cleanUrl = url.replace(/^https?:\/\//, '')
-  return `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl)}`
-}

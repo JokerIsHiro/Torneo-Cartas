@@ -188,19 +188,19 @@ export default function App() {
                 <button
                   onClick={() => openPublicTab('proyeccion')}
                   className="projector-open-button"
-                  title="Abrir emparejamientos en otra pestaña"
+                  title="Abre la pantalla publica de mesas y rivales"
                 >
                   <i className="ti ti-external-link" aria-hidden="true" />
-                  Emparejamientos
+                  Pantalla de emparejamientos
                 </button>
 
                 <button
                   onClick={() => openPublicTab('temporizadores')}
                   className="projector-open-button"
-                  title="Abrir temporizadores en otra pestaña"
+                  title="Abre los relojes de ronda en otra pestana"
                 >
                   <i className="ti ti-clock" aria-hidden="true" />
-                  Temporizadores
+                  Pantalla de temporizadores
                 </button>
               </div>
             )}
@@ -209,18 +209,19 @@ export default function App() {
               onClick={handleCreateTournament}
               disabled={syncEnabled && !syncLoaded}
               className="new-tournament-button"
+              title="Crea un torneo vacio para configurar"
             >
               <i className="ti ti-plus" aria-hidden="true" />
-              Nuevo torneo
+              Crear nuevo torneo
             </button>
 
             <button
               onClick={handleAdminLogout}
               className="projector-open-button"
-              title="Cerrar acceso de tienda"
+              title="Cierra la sesion de administracion de la tienda"
             >
               <i className="ti ti-logout" aria-hidden="true" />
-              Salir
+              Cerrar sesion
             </button>
           </>
         )}
@@ -228,15 +229,15 @@ export default function App() {
         {route !== 'admin' && route !== 'inscripcion' && (
           <div className="public-nav">
             {route === 'proyeccion' && (
-              <button onClick={() => setRoute('temporizadores')}>
+              <button onClick={() => setRoute('temporizadores')} title="Ver relojes de ronda">
                 <i className="ti ti-clock" aria-hidden="true" />
-                Temporizadores
+                Ir a temporizadores
               </button>
             )}
             {route === 'temporizadores' && (
-              <button onClick={() => setRoute('proyeccion')}>
+              <button onClick={() => setRoute('proyeccion')} title="Ver mesas y rivales">
                 <i className="ti ti-swords" aria-hidden="true" />
-                Emparejamientos
+                Ir a emparejamientos
               </button>
             )}
           </div>
@@ -271,9 +272,9 @@ export default function App() {
           <div className="empty-state">
             <i className="ti ti-trophy-off" aria-hidden="true" />
             <div>No hay torneos creados</div>
-            <button onClick={handleCreateTournament} className="empty-action-button">
+            <button onClick={handleCreateTournament} className="empty-action-button" title="Empieza configurando un torneo nuevo">
               <i className="ti ti-plus" aria-hidden="true" />
-              Nuevo torneo
+              Crear primer torneo
             </button>
           </div>
         )}

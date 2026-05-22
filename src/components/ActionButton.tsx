@@ -1,0 +1,16 @@
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
+
+interface ActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  icon?: string
+  children: ReactNode
+}
+
+// Botón con icono Tabler + texto descriptivo para la interfaz de tienda.
+export function ActionButton({ icon, children, className, type = 'button', ...props }: ActionButtonProps) {
+  return (
+    <button type={type} className={className} {...props}>
+      {icon && <i className={`ti ${icon}`} aria-hidden="true" />}
+      <span>{children}</span>
+    </button>
+  )
+}

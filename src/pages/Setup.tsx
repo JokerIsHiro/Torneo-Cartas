@@ -217,14 +217,14 @@ export function Setup({ tournamentId }: SetupProps) {
               aria-label="Enlace de invitacion"
             />
             <div className="invite-action-buttons">
-              <button onClick={copyInvitation} style={buttonStyle}>
-                <i className="ti ti-copy" aria-hidden="true" /> Copiar
+              <button onClick={copyInvitation} style={buttonStyle} title="Copia el enlace de inscripcion al portapapeles">
+                <i className="ti ti-copy" aria-hidden="true" /> Copiar enlace
               </button>
-              <button onClick={shareInvitation} style={buttonStyle}>
-                <i className="ti ti-share-3" aria-hidden="true" /> Enviar
+              <button onClick={shareInvitation} style={buttonStyle} title="Comparte el enlace con apps del movil">
+                <i className="ti ti-share-3" aria-hidden="true" /> Compartir enlace
               </button>
-              <button onClick={openQrTab} style={buttonStyle}>
-                <i className="ti ti-external-link" aria-hidden="true" /> Abrir QR
+              <button onClick={openQrTab} style={buttonStyle} title="Abre el QR grande para proyectar o imprimir">
+                <i className="ti ti-external-link" aria-hidden="true" /> Mostrar QR grande
               </button>
             </div>
           </div>
@@ -268,7 +268,7 @@ export function Setup({ tournamentId }: SetupProps) {
           className="start-tournament-button"
         >
           <i className="ti ti-player-play" aria-hidden="true" />
-          Iniciar ronda 1
+          Comenzar torneo (ronda 1)
         </button>
       </aside>
     </div>

@@ -111,7 +111,7 @@ export function getDefaultSection(game: TournamentTCG, card?: Pick<CardSuggestio
     if (text.includes('champion')) return 'Champion'
     if (text.includes('battlefield') || text.includes('field')) return 'Battlefield'
   }
-  if (game === 'one-piece' && (text.includes('leader') || text.includes('lider'))) return 'Leader'
+  if (game === 'one-piece' && (text.includes('leader') || text.includes('lider') || kind.includes('leader'))) return 'Leader'
 
   return deckRuleConfigs[game].sections[0]?.id ?? 'Main'
 }
