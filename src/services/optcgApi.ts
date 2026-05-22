@@ -1,4 +1,5 @@
 import type { CardSuggestion } from './cardSearch'
+import { displayImageUrl } from '../utils/imageExport'
 import { extractOnePieceCardCode, isOnePieceCardCode, ONE_PIECE_CARD_CODE_PATTERN } from '../utils/onePieceCardCode'
 
 const OPTCG_API_BASE = 'https://www.optcgapi.com/api'
@@ -62,7 +63,7 @@ export function onePieceCardToSuggestion(row: OptcgCardRow): CardSuggestion {
     id: `one-piece:${code}`,
     name: cleanCardName(row.card_name, code),
     subtitle: edition || code,
-    imageUrl: row.card_image,
+    imageUrl: displayImageUrl(row.card_image),
     kind: [row.card_type, row.card_color, row.rarity].filter(Boolean).join(' · '),
     text: undefined,
   }

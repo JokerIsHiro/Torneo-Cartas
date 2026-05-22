@@ -14,7 +14,8 @@ import type { DeckList, TournamentTCG } from '../types/tournament'
 import { deckRuleConfigs, getDefaultSection, validateDeck } from '../utils/deckRules'
 import { formatDeckCards, parseDeckImport, parseSavedDeckCards, type ImportedDeckCard } from '../utils/deckImport'
 import { getOnePieceSectionFromKind, resolveOnePieceCard } from '../services/optcgApi'
-import { fetchImageAsDataUrl } from '../utils/imageExport'
+import { DeckCardImage } from './DeckCardImage'
+import { displayImageUrl, fetchImageAsDataUrl, proxiedImageUrl } from '../utils/imageExport'
 import { ActionButton } from './ActionButton'
 
 type DeckCard = ImportedDeckCard
@@ -69,6 +70,7 @@ export function DeckBuilderView() {
   const [saveStatus, setSaveStatus] = useState('')
   const [deckLibrary, setDeckLibrary] = useState<SavedDeckTemplate[]>(loadDeckLibrary)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const deckHydrateRef = useRef(0)
   const { ref: exportRef, exportImage } = useExportImage()
   const { standings } = useSwissPairings(tournamentId)
 
@@ -137,12 +139,52 @@ export function DeckBuilderView() {
   const visibleResults = query.trim().length < 2 ? [] : results
   const quickSideSection = rules.sections.find(section => ['Side', 'Sideboard'].includes(section.id))
 
+  function toSplitDeckRows(imported: ImportedDeckCard[]) {
+    return splitCardCopies(
+      imported.map(card => ({
+        ...card,
+        imageUrl: card.imageUrl ? (displayImageUrl(card.imageUrl) ?? card.imageUrl) : undefined,
+      })),
+    )
+  }
+
+  async function loadDeckFromList(list: string, statusLabel = 'Mazo cargado') {
+    const generation = ++deckHydrateRef.current
+    const parsed = parseSavedDeckCards(currentTournament.tcg, list)
+    setCards(toSplitDeckRows(parsed))
+
+    if (!parsed.length) {
+      setSaveStatus('')
+      return
+    }
+
+    const needsHydration = parsed.some(card => !card.imageUrl)
+    if (needsHydration) {
+      setSaveStatus('Cargando imagenes del mazo...')
+    }
+
+    const hydrated = await hydrateMissingImages(parsed, currentTournament.tcg)
+    if (generation !== deckHydrateRef.current) return
+
+    setCards(toSplitDeckRows(hydrated))
+    const withImages = hydrated.filter(card => card.imageUrl).length
+    const imageNote =
+      withImages < hydrated.length ? ` (${withImages}/${hydrated.length} con imagen)` : ''
+    setSaveStatus(`${statusLabel}${imageNote}`)
+    window.setTimeout(() => setSaveStatus(''), 2800)
+  }
+
   function handlePlayerChange(nextPlayerId: string) {
+    deckHydrateRef.current += 1
     setPlayerId(nextPlayerId)
     const existingDeck = [...(currentTournament.decklists ?? [])].reverse().find(deck => deck.playerId === nextPlayerId)
     setDeckName(existingDeck?.name ?? '')
     setDeckNotes(existingDeck?.notes ?? '')
-    setCards(existingDeck ? splitCardCopies(parseSavedDeckCards(currentTournament.tcg, existingDeck.list)) : [])
+    if (!existingDeck?.list?.trim()) {
+      setCards([])
+      return
+    }
+    void loadDeckFromList(existingDeck.list, 'Mazo cargado')
   }
 
   function addCard(card: CardSuggestion, section = getDefaultSection(currentTournament.tcg, card)) {
@@ -158,7 +200,7 @@ export function DeckBuilderView() {
         cardId: card.id,
         name: card.name,
         subtitle: card.subtitle,
-        imageUrl: card.imageUrl,
+        imageUrl: card.imageUrl ? (displayImageUrl(card.imageUrl) ?? card.imageUrl) : undefined,
         kind: card.kind,
         section,
         quantity: 1,
@@ -306,12 +348,18 @@ export function DeckBuilderView() {
   async function applyImportedText(text: string) {
     if (!text) return
     const result = parseDeckImport(currentTournament.tcg, text)
-    setSaveStatus('Importando cartas...')
-    const hydratedCards = await hydrateMissingImages(result.cards, currentTournament.tcg)
-    setCards(splitCardCopies(hydratedCards))
     const importedTotal = result.cards.reduce((sum, card) => sum + card.quantity, 0)
-    const withImages = hydratedCards.filter(card => card.imageUrl).length
     const ignoredSuffix = result.ignoredLines.length ? ` ${result.ignoredLines.length} lineas sin reconocer.` : ''
+
+    deckHydrateRef.current += 1
+    const generation = ++deckHydrateRef.current
+    setCards(toSplitDeckRows(result.cards))
+    setSaveStatus(`Importadas ${importedTotal} cartas. Cargando imagenes...${ignoredSuffix}`)
+
+    const hydratedCards = await hydrateMissingImages(result.cards, currentTournament.tcg)
+    if (generation !== deckHydrateRef.current) return
+    setCards(toSplitDeckRows(hydratedCards))
+    const withImages = hydratedCards.filter(card => card.imageUrl).length
     const imageSuffix = currentTournament.tcg === 'one-piece'
       ? ` ${withImages}/${hydratedCards.length} con imagen y edicion.`
       : ` ${withImages}/${hydratedCards.length} con imagen.`
@@ -336,9 +384,7 @@ export function DeckBuilderView() {
   function loadDeckList(deck: Pick<DeckList, 'name' | 'list' | 'notes'>) {
     setDeckName(deck.name)
     setDeckNotes(deck.notes)
-    setCards(splitCardCopies(parseSavedDeckCards(currentTournament.tcg, deck.list)))
-    setSaveStatus('Lista cargada')
-    window.setTimeout(() => setSaveStatus(''), 2200)
+    void loadDeckFromList(deck.list, 'Lista cargada')
   }
 
   function saveReusableDeck(deck: SavedDeckTemplate) {
@@ -576,7 +622,7 @@ export function DeckBuilderView() {
                 onDragStart={event => event.dataTransfer.setData('application/x-card', JSON.stringify(card))}
                 className="deck-search-card"
               >
-                {card.imageUrl ? <img src={card.imageUrl} alt="" /> : <div className="deck-card-placeholder" />}
+                {card.imageUrl ? <DeckCardImage url={card.imageUrl} priority="high" /> : <div className="deck-card-placeholder" />}
                 <span>{card.name}</span>
                 <div className="deck-search-card-actions">
                   <button onClick={() => addCard(card)} title="Anade esta carta al mazo principal">
@@ -777,7 +823,7 @@ function DeckZone({
             }}
             onDragEnd={() => setDragTargetId('')}
           >
-            {card.imageUrl ? <img src={card.imageUrl} alt="" /> : <div className="deck-card-placeholder">{card.name}</div>}
+            {card.imageUrl ? <DeckCardImage url={card.imageUrl} /> : <div className="deck-card-placeholder">{card.name}</div>}
             {copyWarning && <em>{copyWarning}</em>}
             <div className="deck-card-order">
               <button onClick={() => onMoveOrder(card.id, -1)} aria-label={`Subir ${card.name}`}>
@@ -833,7 +879,7 @@ function DeckImageExport({
   const titleParts = getDeckTitleParts(deck.name)
 
   return (
-    <div ref={ref} className={`deck-export-card deck-export-card-${format} deck-export-game-${deck.game}`}>
+    <div ref={ref} className={`deck-export-card deck-export-card-${format}`}>
       <header className="deck-export-hero">
         <div className="deck-export-hero-mark">
           <img src="/subterra-logo.jpg" alt="" />
@@ -855,9 +901,7 @@ function DeckImageExport({
           {sections.map(section => {
             const sectionCards = cards.filter(card => card.section === section)
             if (!sectionCards.length) return null
-            const groupedExport = shouldGroupExportCards(deck.game)
-            const visualCards = groupedExport ? groupDeckCards(sectionCards) : expandCards(sectionCards)
-            const compactFallback = shouldUseCompactFallback(deck.game, section)
+            const visualCards = expandCards(sectionCards)
             return (
               <section key={section} className={`deck-export-section deck-export-section-${section.toLowerCase()}`}>
                 <h3>
@@ -868,25 +912,21 @@ function DeckImageExport({
                   {visualCards.map((card, index) => (
                     <div
                       key={`${card.id}-${index}`}
-                      className={`deck-export-card-tile${groupedExport ? ' deck-export-card-tile-grouped' : ''}`}
+                      className="deck-export-card-tile"
                       style={card.imageUrl ? { backgroundImage: `url("${card.imageUrl}")` } : undefined}
                     >
                       {card.imageUrl && (
                         <img
                           src={card.imageUrl}
                           alt=""
-                          crossOrigin={card.imageUrl.startsWith('data:') ? undefined : 'anonymous'}
+                          crossOrigin={
+                            card.imageUrl.startsWith('data:') || card.imageUrl.includes('images.weserv.nl')
+                              ? undefined
+                              : 'anonymous'
+                          }
                         />
                       )}
-                      <div className={`deck-export-card-fallback${compactFallback ? ' deck-export-card-fallback-compact' : ''}`}>{card.name}</div>
-                      {groupedExport && card.quantity > 1 && (
-                        <span
-                          className={`deck-export-copy-badge${card.quantity >= 10 ? ' deck-export-copy-badge--wide' : ''}`}
-                          aria-hidden="true"
-                        >
-                          {card.quantity}
-                        </span>
-                      )}
+                      <div className="deck-export-card-fallback">{card.name}</div>
                     </div>
                   ))}
                 </div>
@@ -995,28 +1035,6 @@ function expandCards(cards: DeckCard[]) {
   return cards.flatMap(card => Array.from({ length: card.quantity }, () => card))
 }
 
-function groupDeckCards(cards: DeckCard[]) {
-  const grouped = new Map<string, DeckCard>()
-  for (const card of cards) {
-    const key = `${card.section}:${card.cardId}:${card.name.toLowerCase()}`
-    const existing = grouped.get(key)
-    if (existing) {
-      existing.quantity += card.quantity
-    } else {
-      grouped.set(key, { ...card })
-    }
-  }
-  return [...grouped.values()]
-}
-
-function shouldGroupExportCards(game: TournamentTCG) {
-  return game !== 'yugioh' && game !== 'magic'
-}
-
-function shouldUseCompactFallback(game: TournamentTCG, section: string) {
-  return game === 'magic' && ['Sideboard', 'Side'].includes(section)
-}
-
 function splitCardCopies(cards: DeckCard[]) {
   return cards.flatMap(card =>
     Array.from({ length: Math.max(1, card.quantity) }, () => ({
@@ -1042,14 +1060,22 @@ async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forE
   const imageCache = new Map<string, Promise<string>>()
   const searchCache = new Map<string, Promise<CardSuggestion[]>>()
 
-  const hydrated = await mapWithConcurrency(cards, 4, async card => {
+  const hydrated = await mapWithConcurrency(cards, 8, async card => {
     if (game === 'one-piece') {
       const enriched = await hydrateOnePieceCard(card, forExport, imageCache).catch(() => null)
       if (enriched) return enriched
     }
 
     if (card.imageUrl) {
-      const usableImageUrl = forExport ? await cachedDataUrl(card.imageUrl, imageCache).catch(() => card.imageUrl) : card.imageUrl
+      const usableImageUrl = forExport
+        ? await cachedDataUrl(card.imageUrl, imageCache).catch(async () => {
+            const proxied = proxiedImageUrl(card.imageUrl)
+            if (proxied && proxied !== card.imageUrl) {
+              return cachedDataUrl(proxied, imageCache).catch(() => proxied)
+            }
+            return card.imageUrl
+          })
+        : card.imageUrl
       return { ...card, imageUrl: usableImageUrl }
     }
 
@@ -1066,7 +1092,15 @@ async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forE
     const rawImageUrl = match?.imageUrl ?? getKnownImageUrl(game, match?.id ?? card.cardId)
     if (!match || !rawImageUrl) return card
 
-    const usableImageUrl = forExport ? await cachedDataUrl(rawImageUrl, imageCache).catch(() => rawImageUrl) : rawImageUrl
+    const usableImageUrl = forExport
+      ? await cachedDataUrl(rawImageUrl, imageCache).catch(async () => {
+          const proxied = proxiedImageUrl(rawImageUrl)
+          if (proxied && proxied !== rawImageUrl) {
+            return cachedDataUrl(proxied, imageCache).catch(() => proxied)
+          }
+          return rawImageUrl
+        })
+      : rawImageUrl
 
     return {
       ...card,
@@ -1147,11 +1181,19 @@ async function hydrateKnownCardById(card: DeckCard, game: TournamentTCG, forExpo
 
   if (game === 'riftbound') {
     const code = card.cardId.split(':').pop()
-    if (!code || !/^[A-Z]{2,4}\d{2}-\d{3}[a-z]?$/i.test(code)) return null
+    if (!code || !/^[a-z]{2,4}-\d{1,3}[a-z]?(?:-\d+)?$/i.test(code)) return null
     const match = (await searchCards(game, code, undefined, { onlyImages: true, exact: true }))[0]
     if (!match?.imageUrl) return null
 
-    const usableImageUrl = forExport ? await fetchImageAsDataUrl(match.imageUrl).catch(() => match.imageUrl) : match.imageUrl
+    const usableImageUrl = forExport
+      ? await fetchImageAsDataUrl(match.imageUrl).catch(async () => {
+          const proxied = proxiedImageUrl(match.imageUrl)
+          if (proxied && proxied !== match.imageUrl) {
+            return fetchImageAsDataUrl(proxied).catch(() => proxied)
+          }
+          return match.imageUrl
+        })
+      : match.imageUrl
     return {
       ...card,
       cardId: match.id,

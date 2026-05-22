@@ -50,7 +50,6 @@ export function shouldIgnoreDeckLine(line: string) {
     'maybeboard',
     'considering',
     'tokens',
-    'sideboard:',
     'maybe:',
     'deck list generated',
     'generated on',
@@ -325,7 +324,7 @@ function parseBareCodeOrNameLine(line: string, game: TournamentTCG): ParsedDeckL
 
 function extractCardCode(game: TournamentTCG, value: string) {
   if (game === 'one-piece') return extractOnePieceCardCode(value)
-  if (game === 'riftbound') return value.match(/\b([A-Z]{2,4}\d{2}-\d{3}[a-z]?)\b/i)?.[1]?.toUpperCase()
+  if (game === 'riftbound') return value.match(/\b([A-Z]{2,4}-\d{1,3}[A-Z]?(?:-\d+)?)\b/i)?.[1]?.toLowerCase()
 
   const fb = value.match(/\b(FB\d{2}-\d{3}|FS\d{2}-\d{2,3})\b/i)?.[1]?.toUpperCase()
   if (fb) return fb
@@ -409,20 +408,22 @@ function collectJsonCards(
   if (typeof data !== 'object') return
 
   const record = data as Record<string, unknown>
+  const sideSection = game === 'yugioh' ? 'Side' : 'Sideboard'
   const sectionMap: Record<string, string> = {
     leader: 'Leader',
     leaders: 'Leader',
     main: 'Main',
     deck: 'Main',
     mainboard: 'Main',
+    maindeck: 'Main',
     mainDeck: 'Main',
     'main-deck': 'Main',
     extra: 'Extra',
     extraDeck: 'Extra',
-    side: 'Side',
-    sideboard: 'Side',
-    sideDeck: 'Side',
-    'side-deck': 'Side',
+    side: sideSection,
+    sideboard: sideSection,
+    sideDeck: sideSection,
+    'side-deck': sideSection,
     pokemon: 'Pokemon',
     trainer: 'Trainers',
     trainers: 'Trainers',
@@ -431,6 +432,8 @@ function collectJsonCards(
     champion: 'Champion',
     runes: 'Rune',
     rune: 'Rune',
+    runedeck: 'Rune',
+    'rune-deck': 'Rune',
     battlefield: 'Battlefield',
     battlefields: 'Battlefield',
   }

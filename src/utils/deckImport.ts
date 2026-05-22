@@ -174,7 +174,10 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     side: 'Sideboard',
     sb: 'Sideboard',
     sideboard: 'Sideboard',
+    'side board': 'Sideboard',
+    'side-deck': 'Sideboard',
     banquillo: 'Sideboard',
+    reserva: 'Sideboard',
   },
   'one-piece': {
     leader: 'Leader',
@@ -242,7 +245,6 @@ export function formatDeckCards(
       const sectionCards = groupedCards.filter(card => card.section === section)
       if (!sectionCards.length) return ''
       const lines = sectionCards.map(card => `${card.quantity} ${formatDeckCardLine(card, includeMetadata, game)}`)
-      if (game === 'one-piece') return lines.join('\n')
       return [`${section}:`, ...lines].join('\n')
     })
     .filter(Boolean)
@@ -257,7 +259,7 @@ function parseTextLines(game: TournamentTCG, list: string): DeckImportResult {
 
   for (const rawLine of list.split('\n')) {
     const line = normalizeLine(rawLine)
-    if (!line || shouldIgnoreDeckLine(line)) continue
+    if (!line) continue
 
     const nextSection = getSectionFromLine(game, line)
     if (nextSection) {
@@ -265,14 +267,16 @@ function parseTextLines(game: TournamentTCG, list: string): DeckImportResult {
       continue
     }
 
+    if (shouldIgnoreDeckLine(line)) continue
+
     const parsed = parseDeckLine(game, line)
     if (!parsed) {
       ignoredLines.push(rawLine.trim())
       continue
     }
 
-    const targetSection = parsed.sectionHint ?? section
-    const forcedSection = getForcedSection(game, targetSection, parsed)
+    const targetSection = normalizeImportedSection(game, parsed.sectionHint ?? section)
+    const forcedSection = normalizeImportedSection(game, getForcedSection(game, targetSection, parsed))
     const cleaned = applyGameMetadata(game, parsed)
 
     cards.push({
@@ -288,7 +292,10 @@ function linesToResult(game: TournamentTCG, lines: ParsedDeckLine[], ignoredLine
   const cards: ImportedDeckCard[] = []
 
   for (const parsed of lines) {
-    const section = getForcedSection(game, parsed.sectionHint ?? getFallbackSection(game), parsed)
+    const section = normalizeImportedSection(
+      game,
+      getForcedSection(game, parsed.sectionHint ?? getFallbackSection(game), parsed),
+    )
     const cleaned = applyGameMetadata(game, parsed)
     cards.push({
       ...createImportedCard(game, cleaned.name, parsed.quantity, section, cleaned.cardCode),
@@ -343,6 +350,19 @@ function normalizeLine(value: string) {
     .trim()
 }
 
+export function normalizeImportedSection(game: TournamentTCG, section: string) {
+  const key = section
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  const mapped = sectionAliases[game][key]
+  if (mapped) return mapped
+  if ((game === 'riftbound' || game === 'magic') && section === 'Side') return 'Sideboard'
+  if (game === 'yugioh' && section === 'Sideboard') return 'Side'
+  return section
+}
+
 function getSectionFromLine(game: TournamentTCG, line: string) {
   const clean = line
     .replace(/\s*\(\s*\d+\s*(?:cards?|cartas?)?\s*\)\s*$/gi, '')
@@ -363,13 +383,19 @@ function applyGameMetadata(game: TournamentTCG, parsed: ParsedDeckLine) {
   let cardCode = parsed.cardCode
   let metadata: Partial<Pick<ImportedDeckCard, 'cardId' | 'imageUrl' | 'subtitle' | 'kind'>> | undefined
 
-  const metadataMatch = name.match(/^(.*?)\s+\[(.+?)\]$/)
+  const metadataMatch = name.match(/^(.*?)\s+\[([^\]]+)\]\s*$/)
   if (metadataMatch) {
     metadata = parseCardMetadata(metadataMatch[2])
+    const resolvedCardId = metadata?.cardId
+    const codeFromId =
+      resolvedCardId?.includes(':') ? resolvedCardId.split(':').pop() : resolvedCardId
     return {
       name: metadataMatch[1].trim(),
-      cardCode: metadata?.cardId ?? cardCode,
-      metadata,
+      cardCode: codeFromId ?? cardCode,
+      metadata: {
+        ...metadata,
+        cardId: resolvedCardId ?? metadata?.cardId,
+      },
     }
   }
 

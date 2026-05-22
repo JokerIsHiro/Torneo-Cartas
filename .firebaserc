@@ -1,6 +1,7 @@
 {
   "projects": {
-    "subterra": "subterra-torneos"
+    "subterra": "subterra-torneos",
+    "default": "subterra-torneos"
   },
   "targets": {},
   "etags": {}
