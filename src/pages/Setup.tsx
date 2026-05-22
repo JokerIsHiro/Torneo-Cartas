@@ -26,6 +26,7 @@ const tcgOptions: Array<{ label: string; value: TournamentTCG }> = [
   { label: 'YuGiOh', value: 'yugioh' },
   { label: 'Lorcana', value: 'lorcana' },
   { label: 'One Piece', value: 'one-piece' },
+  { label: 'Ajedrez', value: 'chess' },
 ]
 
 export function Setup({ tournamentId }: SetupProps) {
@@ -136,6 +137,11 @@ export function Setup({ tournamentId }: SetupProps) {
           {tcg === 'yugioh' && (
             <div className="setup-note">
               <i className="ti ti-info-circle" aria-hidden="true" /> En YuGiOh no hay empate: victoria o derrota. Si se acaba el tiempo, ambos jugadores pierden.
+            </div>
+          )}
+          {tcg === 'chess' && (
+            <div className="setup-note">
+              <i className="ti ti-info-circle" aria-hidden="true" /> En Ajedrez se usan emparejamientos, clasificacion y resultados; no se activa constructor de mazos.
             </div>
           )}
         </div>

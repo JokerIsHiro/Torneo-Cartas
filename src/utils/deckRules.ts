@@ -80,6 +80,10 @@ export const deckRuleConfigs: Record<TournamentTCG, DeckRuleConfig> = {
     ],
     copyLimit: 4,
   },
+  chess: {
+    label: 'Ajedrez',
+    sections: [],
+  },
 }
 
 const yugiohExtraTypes = ['fusion', 'synchro', 'xyz', 'link']
@@ -88,7 +92,7 @@ const unlimitedMagicNames = ['plains', 'island', 'swamp', 'mountain', 'forest', 
 export function getDefaultSection(game: TournamentTCG, card?: Pick<CardSuggestion, 'name' | 'kind' | 'subtitle'>) {
   // Las APIs no comparten taxonomia, asi que usamos una heuristica pequena
   // basada en nombre/tipo/subtitulo para mandar cada carta a su zona natural.
-  if (!card) return deckRuleConfigs[game].sections[0].id
+  if (!card) return deckRuleConfigs[game].sections[0]?.id ?? 'Main'
 
   const name = card.name.toLowerCase()
   const kind = (card.kind ?? '').toLowerCase()
@@ -109,7 +113,7 @@ export function getDefaultSection(game: TournamentTCG, card?: Pick<CardSuggestio
   }
   if (game === 'one-piece' && text.includes('leader')) return 'Leader'
 
-  return deckRuleConfigs[game].sections[0].id
+  return deckRuleConfigs[game].sections[0]?.id ?? 'Main'
 }
 
 export function validateDeck(game: TournamentTCG, cards: RuleDeckCard[]) {

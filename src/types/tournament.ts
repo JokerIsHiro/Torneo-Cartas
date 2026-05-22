@@ -55,7 +55,7 @@ export interface Round {
 }
 
 export type TournamentStatus = 'setup' | 'active' | 'finished'
-export type TournamentTCG = 'magic' | 'riftbound' | 'pokemon' | 'yugioh' | 'lorcana' | 'one-piece'
+export type TournamentTCG = 'magic' | 'riftbound' | 'pokemon' | 'yugioh' | 'lorcana' | 'one-piece' | 'chess'
 
 export type TournamentSnapshotAction =
   | 'start-tournament'

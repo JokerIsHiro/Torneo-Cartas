@@ -113,6 +113,9 @@ export function DeckBuilderView() {
 
   if (!tournamentId) return <BuilderEmpty icon="ti-link-off" title="Falta torneo" text="Abre el constructor desde un torneo finalizado." />
   if (!tournament) return <BuilderEmpty icon="ti-loader-2" title="Cargando torneo" text="Sincronizando datos del evento." />
+  if (tournament.tcg === 'chess') {
+    return <BuilderEmpty icon="ti-chess" title="Ajedrez no usa mazos" text="Este torneo no tiene constructor de decks." />
+  }
   if (tournament.status !== 'finished') {
     return <BuilderEmpty icon="ti-lock" title="Decklists bloqueadas" text="El constructor se activa cuando el torneo esta finalizado." />
   }
@@ -619,6 +622,7 @@ export function DeckBuilderView() {
           sections={sections}
           standings={standings}
           format={exportFormat}
+          magicFormat={magicFormat}
         />
       </div>
     </div>
@@ -769,6 +773,7 @@ function DeckImageExport({
   sections,
   standings,
   format,
+  magicFormat,
 }: {
   ref: React.RefObject<HTMLDivElement | null>
   deck: DeckList | null
@@ -776,6 +781,7 @@ function DeckImageExport({
   sections: string[]
   standings: ReturnType<typeof useSwissPairings>['standings']
   format: DeckExportFormat
+  magicFormat: MagicFormat
 }) {
   if (!deck) return <div ref={ref} />
   const standing = standings.find(row => row.player.id === deck.playerId || row.player.name === deck.playerName)
@@ -789,7 +795,10 @@ function DeckImageExport({
           <img src="/subterra-logo.jpg" alt="" />
         </div>
         <div className="deck-export-hero-title">
-          <strong>{rankLabel}</strong>
+          <div className="deck-export-rank-line">
+            <strong className={`deck-export-rank deck-export-rank-${getPlacementTone(standing?.position)}`}>{rankLabel}</strong>
+            {deck.game === 'magic' && <span className="deck-export-format-pill">{getMagicFormatLabel(magicFormat)}</span>}
+          </div>
           <h2>
             {titleParts.main && <span className="deck-export-title-main">{titleParts.main}</span>}
             <span className="deck-export-title-accent">{titleParts.accent}</span>
@@ -864,6 +873,12 @@ function getPlacementLabel(position?: number) {
   if (position <= 32) return 'TOP 32'
   if (position <= 64) return 'TOP 64'
   return `TOP ${position}`
+}
+
+function getPlacementTone(position?: number) {
+  if (position === 1) return 'winner'
+  if (position === 2) return 'runner-up'
+  return 'default'
 }
 
 function getDeckTitleParts(name: string) {

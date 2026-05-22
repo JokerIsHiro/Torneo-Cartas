@@ -40,6 +40,11 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     reserva: 'Sideboard',
     commander: 'Main',
     companion: 'Sideboard',
+    creatures: 'Main',
+    creature: 'Main',
+    spells: 'Main',
+    lands: 'Main',
+    land: 'Main',
   },
   yugioh: {
     main: 'Main',
@@ -49,27 +54,36 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     monstruo: 'Main',
     monstruos: 'Main',
     spell: 'Main',
+    'spell cards': 'Main',
     spells: 'Main',
     magia: 'Main',
     magias: 'Main',
     trap: 'Main',
+    'trap cards': 'Main',
     traps: 'Main',
     trampa: 'Main',
     trampas: 'Main',
     extra: 'Extra',
     'extra deck': 'Extra',
+    'extra deck cards': 'Extra',
     side: 'Side',
     'side deck': 'Side',
+    'side deck cards': 'Side',
     banquillo: 'Side',
   },
   pokemon: {
     pokemon: 'Pokemon',
+    'pokemon cards': 'Pokemon',
+    'pokémon': 'Pokemon',
+    'pokémon cards': 'Pokemon',
     trainer: 'Trainers',
     trainers: 'Trainers',
     'trainer cards': 'Trainers',
     entrenador: 'Trainers',
     entrenadores: 'Trainers',
     energy: 'Energy',
+    energies: 'Energy',
+    'energy cards': 'Energy',
     energia: 'Energy',
   },
   lorcana: {
@@ -80,6 +94,11 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     'mazo principal': 'Main',
     cards: 'Main',
     cartas: 'Main',
+    characters: 'Main',
+    actions: 'Main',
+    items: 'Main',
+    locations: 'Main',
+    songs: 'Main',
   },
   riftbound: {
     legend: 'Legend',
@@ -114,9 +133,14 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     mazo: 'Main',
     'mazo principal': 'Main',
     character: 'Main',
+    characters: 'Main',
     event: 'Main',
+    events: 'Main',
     stage: 'Main',
+    stages: 'Main',
+    'don deck': 'Main',
   },
+  chess: {},
 }
 
 export function parseDeckImport(game: TournamentTCG, list: string): DeckImportResult {
@@ -202,7 +226,7 @@ function parseYdk(list: string): DeckImportResult {
 }
 
 function getFallbackSection(game: TournamentTCG) {
-  return deckRuleConfigs[game].sections.find(section => section.id === 'Main')?.id ?? deckRuleConfigs[game].sections[0].id
+  return deckRuleConfigs[game].sections.find(section => section.id === 'Main')?.id ?? deckRuleConfigs[game].sections[0]?.id ?? 'Main'
 }
 
 function looksLikeYdk(list: string) {
@@ -211,7 +235,9 @@ function looksLikeYdk(list: string) {
 
 function normalizeLine(value: string) {
   return decodeHtmlEntities(value)
+    .replace(/^#+\s*/, '')
     .replace(/^\*+\s*|\s*\*+$/g, '')
+    .replace(/^\s*[-•]\s+/, '')
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -223,12 +249,16 @@ function shouldIgnoreLine(line: string) {
     lower.startsWith('#created') ||
     lower.startsWith('total cards') ||
     lower.startsWith('total:') ||
+    lower.startsWith('maybeboard') ||
+    lower.startsWith('considering') ||
+    lower.startsWith('tokens') ||
     lower.includes('deck list generated')
   )
 }
 
 function getSectionFromLine(game: TournamentTCG, line: string) {
   const clean = line
+    .replace(/\s*\(\d+\)\s*$/g, '')
     .replace(/\s*[-:]\s*\d+\s*$/g, '')
     .replace(/:$/g, '')
     .trim()
@@ -240,11 +270,12 @@ function getSectionFromLine(game: TournamentTCG, line: string) {
 
 function parseCardLine(game: TournamentTCG, line: string): ParsedLine | null {
   const quantityFirst = line.match(/^(\d+)\s*x?\s+(.+)$/i)
+  const quantityColon = line.match(/^(\d+)\s*[:-]\s*(.+)$/i)
   const quantityWithX = line.match(/^(\d+)\s*x\s*(.+)$/i)
   const quantityLast = line.match(/^(.+?)\s+x\s*(\d+)$/i)
 
-  const quantity = Number(quantityWithX?.[1] ?? quantityFirst?.[1] ?? quantityLast?.[2] ?? 1)
-  const rawName = quantityWithX?.[2] ?? quantityFirst?.[2] ?? quantityLast?.[1] ?? line
+  const quantity = Number(quantityWithX?.[1] ?? quantityColon?.[1] ?? quantityFirst?.[1] ?? quantityLast?.[2] ?? 1)
+  const rawName = quantityWithX?.[2] ?? quantityColon?.[2] ?? quantityFirst?.[2] ?? quantityLast?.[1] ?? line
   const cleaned = cleanCardName(game, rawName)
   if (!cleaned.name) return null
   return { quantity, ...cleaned }
@@ -277,6 +308,7 @@ function cleanCardName(game: TournamentTCG, rawName: string): { name: string; ca
   if (game === 'pokemon') {
     // Pokemon exporta muchas listas como "Nombre SET 123".
     name = name.replace(/\s+[A-Z]{2,5}\s+\d+[a-z]?$/i, '')
+    name = name.replace(/\s+\d+\/\d+\s*$/i, '')
   }
 
   if (game === 'one-piece') {
@@ -288,6 +320,10 @@ function cleanCardName(game: TournamentTCG, rawName: string): { name: string; ca
       name = name.replace(codeMatch[0], '').replace(/^[-:]\s*/, '').trim()
       if (!name) name = cardCode
     }
+  }
+
+  if (game === 'riftbound') {
+    name = name.replace(/\s+\[[A-Z0-9-]+\]\s*$/i, '')
   }
 
   return { name: name.trim(), cardCode }

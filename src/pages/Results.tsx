@@ -10,10 +10,10 @@ interface ResultsProps {
 }
 
 export function Results({ tournamentId }: ResultsProps) {
-  const { name, exists } = useTournamentsStore(
+  const { name, tcg, exists } = useTournamentsStore(
     useShallow(s => {
       const t = s.tournaments.find(t => t.id === tournamentId)
-      return { name: t?.name ?? '', exists: !!t }
+      return { name: t?.name ?? '', tcg: t?.tcg ?? 'magic', exists: !!t }
     })
   )
   const deleteTournament = useTournamentsStore(s => s.deleteTournament)
@@ -57,12 +57,14 @@ export function Results({ tournamentId }: ResultsProps) {
         <i className="ti ti-download" aria-hidden="true" /> Exportar standing final
       </button>
 
-      <button
-        onClick={openDeckBuilder}
-        style={primaryActionStyle}
-      >
-        <i className="ti ti-cards" aria-hidden="true" /> Abrir constructor de decks
-      </button>
+      {tcg !== 'chess' && (
+        <button
+          onClick={openDeckBuilder}
+          style={primaryActionStyle}
+        >
+          <i className="ti ti-cards" aria-hidden="true" /> Abrir constructor de decks
+        </button>
+      )}
 
       <Standings tournamentId={tournamentId} showPodium={false} />
 

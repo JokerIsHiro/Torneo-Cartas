@@ -1902,13 +1902,49 @@ button:disabled {
   flex: 1;
 }
 
-.deck-export-hero-title strong {
-  display: block;
+.deck-export-rank-line {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.deck-export-rank {
+  display: inline-block;
   color: #f2f7ff;
   font-size: 46px;
   line-height: 0.9;
   text-transform: uppercase;
   text-shadow: 0 4px 12px rgba(0, 0, 0, 0.65);
+}
+
+.deck-export-rank-winner {
+  color: #ffd166;
+}
+
+.deck-export-rank-runner-up {
+  color: #cfd8e8;
+}
+
+.deck-export-card .deck-export-rank-winner {
+  color: #ffd166;
+}
+
+.deck-export-card .deck-export-rank-runner-up {
+  color: #cfd8e8;
+}
+
+.deck-export-format-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 5px 13px;
+  border: 1px solid rgba(88, 215, 255, 0.42);
+  color: #58d7ff;
+  background: rgba(7, 16, 31, 0.82);
+  font-size: 16px;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .deck-export-hero-title h2 {
@@ -2216,7 +2252,7 @@ button:disabled {
 }
 
 .deck-export-card-feed .deck-export-layout {
-  grid-template-columns: minmax(0, 1fr) 276px;
+  grid-template-columns: 1fr;
   height: auto;
 }
 
@@ -2224,6 +2260,21 @@ button:disabled {
 .deck-export-card-normal .deck-export-sidebar {
   margin: 18px 18px 0 0;
   border: 1px solid rgba(88, 215, 255, 0.28);
+}
+
+.deck-export-card-feed .deck-export-sidebar {
+  grid-row: 1;
+  grid-column: 1;
+  margin: 0;
+  padding: 16px 18px;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  border: 0;
+  border-bottom: 2px solid rgba(88, 215, 255, 0.3);
+}
+
+.deck-export-card-feed .deck-export-body {
+  grid-row: 2;
+  grid-column: 1;
 }
 
 .deck-export-card-feed .deck-export-card-grid {
@@ -2296,7 +2347,7 @@ button:disabled {
   height: 72px;
 }
 
-.deck-export-card-story .deck-export-hero-title strong {
+.deck-export-card-story .deck-export-rank {
   font-size: 50px;
 }
 
@@ -2385,7 +2436,7 @@ button:disabled {
   display: none;
 }
 
-.deck-export-game-magic .deck-export-hero-title strong {
+.deck-export-game-magic .deck-export-rank {
   color: #f7fbff;
   font-size: 25px;
   line-height: 1;
@@ -2565,7 +2616,7 @@ button:disabled {
   text-align: center;
 }
 
-.deck-export-game-lorcana .deck-export-hero-title strong {
+.deck-export-game-lorcana .deck-export-rank {
   color: rgba(255, 255, 255, 0.9);
   font-size: 34px;
   line-height: 1;
@@ -2745,7 +2796,7 @@ button:disabled {
   display: grid;
 }
 
-.deck-export-game-magic .deck-export-hero-title strong {
+.deck-export-game-magic .deck-export-rank {
   color: #f2f7ff;
   font-size: 46px;
   line-height: 0.9;
@@ -2897,6 +2948,22 @@ button:disabled {
   grid-column: 1;
   grid-row: 2;
   padding: 18px;
+}
+
+.deck-export-card-feed.deck-export-game-magic .deck-export-body {
+  grid-column: 1;
+  grid-row: 2;
+  padding: 18px;
+}
+
+.deck-export-card-feed.deck-export-game-magic .deck-export-sidebar {
+  grid-column: 1;
+  grid-row: 1;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  margin: 0;
+  padding: 16px 18px;
+  border: 0;
+  border-bottom: 2px solid rgba(88, 215, 255, 0.3);
 }
 
 .deck-export-card-story.deck-export-game-magic .deck-export-player-card,
