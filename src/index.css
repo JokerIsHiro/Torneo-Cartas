@@ -2626,7 +2626,7 @@ button:disabled {
 }
 
 .deck-export-game-one-piece .deck-export-card-tile {
-  border: 2px solid rgba(88, 215, 255, 0.32);
+  border: none;
   border-radius: 8px;
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.48);
 }
@@ -2635,40 +2635,37 @@ button:disabled {
   font-size: 11px;
 }
 
-/* Contador de copias para One Piece: más discreto y en línea con el arte de tarjeta */
+/* Contador de copias para One Piece: más visible, centrado y con colores del sitio */
 .deck-export-game-one-piece .deck-export-copy-badge {
-  --badge-size: 2.05em;
+  --badge-size: 2.2em;
   position: absolute;
-  top: 0.3em;
-  right: 0.3em;
-  left: auto;
-  bottom: auto;
+  top: 0.28em;
+  right: 0.28em;
   width: var(--badge-size);
   height: var(--badge-size);
   min-width: 0;
   padding: 0;
   display: grid;
   place-items: center;
-  color: #11101a;
-  font-size: 1.15em;
-  font-weight: 800;
+  color: #04224a;
+  font-size: 1.2em;
+  font-weight: 900;
   line-height: 1;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
+  text-align: center;
   border-radius: 50%;
-  border: 0.12em solid rgba(255, 255, 255, 0.9);
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.98) 0%, rgba(240, 240, 250, 0.95) 38%, rgba(255, 255, 255, 0.82) 100%);
+  background: radial-gradient(circle at 35% 30%, #c1f0ff 0%, #7dd2ff 45%, #2c8dec 95%);
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.12),
-    0 0.25em 0.45em rgba(0, 0, 0, 0.25);
-  text-shadow: 0 0.06em 0.08em rgba(255, 255, 255, 0.7);
+    inset 0 0.08em 0.15em rgba(255, 255, 255, 0.7),
+    0 0.18em 0.38em rgba(0, 0, 0, 0.2);
+  text-shadow: 0 0.08em 0.1em rgba(255, 255, 255, 0.6);
 }
 
 .deck-export-game-one-piece .deck-export-copy-badge--wide {
-  --badge-size: 2.7em;
+  --badge-size: 2.8em;
   border-radius: 0.55em;
   font-size: 1.05em;
-  padding-left: 0.12em;
-  padding-right: 0.18em;
+  padding: 0 0.15em;
 }
 
 .deck-export-card-story.deck-export-game-one-piece .deck-export-card-tile-grouped {
