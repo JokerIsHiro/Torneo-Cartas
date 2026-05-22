@@ -320,7 +320,9 @@ export function DeckBuilderView() {
   }
 
   function importDeckText() {
-    const text = window.prompt('Pega la lista del mazo (una carta por linea, con cantidad y codigo si lo tienes)')
+    const text = window.prompt(
+      'Pega la lista del mazo.\n\nFormatos admitidos: OPTCG Sim (4xOP01-016), Egman/Limitless (4 OP01-016 Nombre), tablas, JSON, TCGplayer, Pokemon.com y mas.',
+    )
     if (text) void applyImportedText(text)
   }
 
@@ -877,7 +879,14 @@ function DeckImageExport({
                         />
                       )}
                       <div className={`deck-export-card-fallback${compactFallback ? ' deck-export-card-fallback-compact' : ''}`}>{card.name}</div>
-                      {groupedExport && <span className="deck-export-copy-badge">{card.quantity}</span>}
+                      {groupedExport && card.quantity > 1 && (
+                        <span
+                          className={`deck-export-copy-badge${card.quantity >= 10 ? ' deck-export-copy-badge--wide' : ''}`}
+                          aria-hidden="true"
+                        >
+                          {card.quantity}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>

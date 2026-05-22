@@ -2131,6 +2131,7 @@ button:disabled {
 
 .deck-export-card-tile-grouped {
   overflow: visible;
+  font-size: 10px;
 }
 
 .deck-export-card-tile img {
@@ -2175,25 +2176,38 @@ button:disabled {
 }
 
 .deck-export-copy-badge {
+  --badge-size: 2.85em;
   position: absolute;
-  top: -10px;
-  right: -10px;
-  z-index: 3;
-  min-width: 48px;
-  height: 54px;
-  padding: 0 10px;
+  top: 0.2em;
+  right: 0.2em;
+  z-index: 4;
+  width: var(--badge-size);
+  height: var(--badge-size);
+  min-width: 0;
+  padding: 0;
   display: grid;
   place-items: center;
   color: #fff;
-  font-size: 36px;
+  font-family: 'Segoe UI', 'Arial Narrow', sans-serif;
+  font-size: 1.55em;
   font-weight: 900;
   line-height: 1;
-  background:
-    linear-gradient(145deg, #2d3035, #06070a);
-  border: 5px solid rgba(255, 255, 255, 0.12);
-  clip-path: polygon(20% 0, 80% 0, 100% 24%, 100% 76%, 80% 100%, 20% 100%, 0 76%, 0 24%);
-  text-shadow: 0 3px 8px rgba(0, 0, 0, 0.75);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.04em;
+  border-radius: 50%;
+  border: 0.2em solid #05070c;
+  background: radial-gradient(circle at 32% 26%, #58d7ff 0%, #1f7aff 42%, #0a2d66 100%);
+  box-shadow:
+    0 0 0 0.1em rgba(255, 255, 255, 0.42),
+    0 0.35em 0.75em rgba(0, 0, 0, 0.62);
+  text-shadow:
+    0 0.08em 0.12em rgba(0, 0, 0, 0.9),
+    0 0 0.35em rgba(88, 215, 255, 0.35);
+}
+
+.deck-export-copy-badge--wide {
+  --badge-size: 3.35em;
+  border-radius: 0.65em;
+  font-size: 1.35em;
 }
 
 .deck-export-sidebar {
@@ -2432,19 +2446,19 @@ button:disabled {
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.42);
 }
 
+.deck-export-game-pokemon .deck-export-card-tile-grouped,
+.deck-export-game-riftbound .deck-export-card-tile-grouped {
+  font-size: 9px;
+}
+
 .deck-export-game-pokemon .deck-export-copy-badge,
 .deck-export-game-riftbound .deck-export-copy-badge {
-  top: -9px;
-  right: -7px;
-  min-width: 36px;
-  height: 36px;
-  padding: 0;
-  font-size: 22px;
-  border-width: 3px;
-  clip-path: none;
-  border-radius: 999px;
-  background: #f2f7ff;
-  color: #05070c;
+  top: 0.25em;
+  right: 0.25em;
+  background: radial-gradient(circle at 32% 26%, #ffe566 0%, #e8b820 40%, #9a7010 100%);
+  border-color: #2a1f08;
+  color: #fffdf5;
+  text-shadow: 0 0.08em 0.14em rgba(0, 0, 0, 0.88);
 }
 
 .deck-export-game-magic {
@@ -2541,18 +2555,17 @@ button:disabled {
   border-radius: 4px;
 }
 
+.deck-export-game-magic .deck-export-card-tile-grouped {
+  font-size: 8px;
+}
+
 .deck-export-game-magic .deck-export-copy-badge {
-  top: -9px;
-  right: -7px;
-  min-width: 36px;
-  height: 36px;
-  padding: 0;
-  font-size: 22px;
-  border-width: 3px;
-  clip-path: none;
-  border-radius: 999px;
-  background: #f7fbff;
+  top: 0.2em;
+  right: 0.2em;
+  background: radial-gradient(circle at 30% 24%, #f8fcff 0%, #c5d4e4 38%, #6e849c 100%);
+  border-color: #1a2838;
   color: #0e1724;
+  text-shadow: 0 0.06em 0.1em rgba(255, 255, 255, 0.65);
 }
 
 .deck-export-game-magic .deck-export-sidebar {
@@ -2618,18 +2631,39 @@ button:disabled {
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.48);
 }
 
+.deck-export-game-one-piece .deck-export-card-tile-grouped {
+  font-size: 11px;
+}
+
+/* Contador al estilo coste DON/OP: esquina superior, no tapa el nombre inferior */
 .deck-export-game-one-piece .deck-export-copy-badge {
-  top: 8px;
-  right: 8px;
-  min-width: 38px;
-  height: 38px;
-  padding: 0;
-  clip-path: none;
-  border-radius: 999px;
-  border: 3px solid #05070c;
-  background: #f2f7ff;
-  color: #05070c;
-  font-size: 24px;
+  --badge-size: 2.65em;
+  top: 0.45em;
+  right: 0.45em;
+  left: auto;
+  bottom: auto;
+  background: radial-gradient(circle at 30% 24%, #e8c4ff 0%, #9b4fd9 38%, #5a248f 72%, #36145a 100%);
+  border: 0.22em solid #120818;
+  color: #fff;
+  box-shadow:
+    0 0 0 0.12em rgba(255, 255, 255, 0.5),
+    0 0.4em 0.85em rgba(0, 0, 0, 0.7),
+    inset 0 -0.15em 0.35em rgba(0, 0, 0, 0.35);
+  text-shadow: 0 0.1em 0.16em rgba(0, 0, 0, 0.92);
+}
+
+.deck-export-game-one-piece .deck-export-copy-badge--wide {
+  --badge-size: 3.1em;
+  border-radius: 0.55em;
+  font-size: 1.28em;
+}
+
+.deck-export-card-story.deck-export-game-one-piece .deck-export-card-tile-grouped {
+  font-size: 13px;
+}
+
+.deck-export-card-feed.deck-export-game-one-piece .deck-export-card-tile-grouped {
+  font-size: 12px;
 }
 
 .deck-export-game-lorcana {
@@ -2948,21 +2982,6 @@ button:disabled {
 
 .deck-export-game-magic .deck-export-card-tile-grouped {
   margin-bottom: 0;
-}
-
-.deck-export-game-magic .deck-export-copy-badge {
-  display: grid;
-  top: -9px;
-  right: -7px;
-  min-width: 34px;
-  height: 34px;
-  padding: 0;
-  font-size: 20px;
-  border-width: 3px;
-  clip-path: none;
-  border-radius: 999px;
-  background: #f2f7ff;
-  color: #05070c;
 }
 
 .deck-export-game-magic .deck-export-sidebar {

@@ -1,9 +1,17 @@
 import type { TournamentTCG } from '../types/tournament'
 import { deckRuleConfigs } from './deckRules'
 import { extractOnePieceCardCode, ONE_PIECE_CARD_CODE_PATTERN } from './onePieceCardCode'
+import {
+  normalizePasteText,
+  parseDeckLine,
+  shouldIgnoreDeckLine,
+  tryParseJsonDecklist,
+  tryParsePokemonComBlock,
+  type ParsedDeckLine,
+} from './deckListTextParser'
 
-// Importador tolerante por juego. La idea es aceptar el texto que el usuario
-// copia desde herramientas externas, no obligarle a aprender un formato propio.
+// Importador tolerante: acepta pegados desde simuladores, Limitless, Egman,
+// OPTCG Sim, TCGplayer, Pokemon.com, tablas Markdown, JSON y listas sueltas.
 export interface ImportedDeckCard {
   id: string
   cardId: string
@@ -21,24 +29,19 @@ export interface DeckImportResult {
   ignoredLines: string[]
 }
 
-type ParsedLine = {
-  quantity: number
-  name: string
-  cardCode?: string
-  metadata?: Partial<Pick<ImportedDeckCard, 'cardId' | 'imageUrl' | 'subtitle' | 'kind'>>
-}
-
 const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
   magic: {
     deck: 'Main',
     main: 'Main',
     'main deck': 'Main',
     mainboard: 'Main',
+    maindecks: 'Main',
     cards: 'Main',
     mazo: 'Main',
     'mazo principal': 'Main',
     side: 'Sideboard',
     sideboard: 'Sideboard',
+    'side board': 'Sideboard',
     banquillo: 'Sideboard',
     reserva: 'Sideboard',
     commander: 'Main',
@@ -47,18 +50,26 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     creature: 'Main',
     spells: 'Main',
     spell: 'Main',
+    instants: 'Main',
+    sorceries: 'Main',
+    enchantments: 'Main',
+    artifacts: 'Main',
     lands: 'Main',
     land: 'Main',
+    maybeboard: 'Sideboard',
+    maybe: 'Sideboard',
   },
   yugioh: {
     main: 'Main',
     'main deck': 'Main',
+    '#main': 'Main',
     monster: 'Main',
     monsters: 'Main',
     monstruo: 'Main',
     monstruos: 'Main',
     spell: 'Main',
     'spell cards': 'Main',
+    'spell/trap': 'Main',
     spells: 'Main',
     magia: 'Main',
     magias: 'Main',
@@ -69,9 +80,11 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     trampas: 'Main',
     extra: 'Extra',
     'extra deck': 'Extra',
+    '#extra': 'Extra',
     'extra deck cards': 'Extra',
     side: 'Side',
     'side deck': 'Side',
+    '!side': 'Side',
     'side deck cards': 'Side',
     banquillo: 'Side',
   },
@@ -86,6 +99,8 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     'trainer cards': 'Trainers',
     entrenador: 'Trainers',
     entrenadores: 'Trainers',
+    item: 'Trainers',
+    supporter: 'Trainers',
     energy: 'Energy',
     energies: 'Energy',
     'energy cards': 'Energy',
@@ -154,58 +169,48 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     leaders: 'Leader',
     lider: 'Leader',
     lideres: 'Leader',
+    'leader card': 'Leader',
+    'leader cards': 'Leader',
     main: 'Main',
     deck: 'Main',
     'main deck': 'Main',
     mainboard: 'Main',
     mazo: 'Main',
     'mazo principal': 'Main',
+    'character deck': 'Main',
     character: 'Main',
     characters: 'Main',
+    'character cards': 'Main',
     event: 'Main',
     events: 'Main',
+    'event deck': 'Main',
+    'event cards': 'Main',
     stage: 'Main',
     stages: 'Main',
+    'stage deck': 'Main',
+    'stage cards': 'Main',
     'don deck': 'Main',
     'don!! deck': 'Main',
     don: 'Main',
     'don!!': 'Main',
+    'z deck': 'Main',
+    'z-deck': 'Main',
   },
   chess: {},
 }
 
 export function parseDeckImport(game: TournamentTCG, list: string): DeckImportResult {
-  if (looksLikeYdk(list)) return parseYdk(list)
+  const normalized = normalizePasteText(list)
 
-  const fallbackSection = getFallbackSection(game)
-  const cards: ImportedDeckCard[] = []
-  const ignoredLines: string[] = []
-  let section = fallbackSection
+  if (looksLikeYdk(normalized)) return parseYdk(normalized)
 
-  for (const rawLine of list.split(/\r?\n/)) {
-    const line = normalizeLine(rawLine)
-    if (!line || shouldIgnoreLine(line)) continue
+  const jsonLines = tryParseJsonDecklist(normalized, game)
+  if (jsonLines) return linesToResult(game, jsonLines, [])
 
-    const nextSection = getSectionFromLine(game, line)
-    if (nextSection) {
-      section = nextSection
-      continue
-    }
+  const pokemonLines = game === 'pokemon' ? tryParsePokemonComBlock(normalized) : null
+  if (pokemonLines) return linesToResult(game, pokemonLines, [])
 
-    const parsed = parseCardLine(game, line)
-    if (!parsed) {
-      ignoredLines.push(rawLine.trim())
-      continue
-    }
-
-    const forcedSection = getForcedSection(game, section)
-    cards.push({
-      ...createImportedCard(game, parsed.name, parsed.quantity, forcedSection, parsed.cardCode),
-      ...parsed.metadata,
-    })
-  }
-
-  return { cards: mergeImportedCards(cards), ignoredLines }
+  return parseTextLines(game, normalized)
 }
 
 export function parseSavedDeckCards(game: TournamentTCG, list: string): ImportedDeckCard[] {
@@ -231,13 +236,61 @@ export function formatDeckCards(
     .join('\n\n')
 }
 
+function parseTextLines(game: TournamentTCG, list: string): DeckImportResult {
+  const fallbackSection = getFallbackSection(game)
+  const cards: ImportedDeckCard[] = []
+  const ignoredLines: string[] = []
+  let section = fallbackSection
+
+  for (const rawLine of list.split('\n')) {
+    const line = normalizeLine(rawLine)
+    if (!line || shouldIgnoreDeckLine(line)) continue
+
+    const nextSection = getSectionFromLine(game, line)
+    if (nextSection) {
+      section = nextSection
+      continue
+    }
+
+    const parsed = parseDeckLine(game, line)
+    if (!parsed) {
+      ignoredLines.push(rawLine.trim())
+      continue
+    }
+
+    const targetSection = parsed.sectionHint ?? section
+    const forcedSection = getForcedSection(game, targetSection, parsed)
+    const cleaned = applyGameMetadata(game, parsed)
+
+    cards.push({
+      ...createImportedCard(game, cleaned.name, parsed.quantity, forcedSection, cleaned.cardCode),
+      ...cleaned.metadata,
+    })
+  }
+
+  return { cards: mergeImportedCards(cards), ignoredLines }
+}
+
+function linesToResult(game: TournamentTCG, lines: ParsedDeckLine[], ignoredLines: string[]): DeckImportResult {
+  const cards: ImportedDeckCard[] = []
+
+  for (const parsed of lines) {
+    const section = getForcedSection(game, parsed.sectionHint ?? getFallbackSection(game), parsed)
+    const cleaned = applyGameMetadata(game, parsed)
+    cards.push({
+      ...createImportedCard(game, cleaned.name, parsed.quantity, section, cleaned.cardCode),
+      ...cleaned.metadata,
+    })
+  }
+
+  return { cards: mergeImportedCards(cards), ignoredLines }
+}
+
 function parseYdk(list: string): DeckImportResult {
-  // Los .ydk no guardan nombres, solo passcodes. El constructor los hidrata
-  // despues contra YGOPRODeck para mostrar nombre e imagen cuando sea posible.
   const cards: ImportedDeckCard[] = []
   let section = 'Main'
 
-  for (const rawLine of list.split(/\r?\n/)) {
+  for (const rawLine of list.split('\n')) {
     const line = rawLine.trim()
     if (!line || line.startsWith('#created')) continue
     if (line === '#main') {
@@ -272,26 +325,9 @@ function normalizeLine(value: string) {
   return decodeHtmlEntities(value)
     .replace(/^#+\s*/, '')
     .replace(/^\*+\s*|\s*\*+$/g, '')
-    .replace(/^\s*[-•]\s+/, '')
+    .replace(/^\s*[-•▪►]\s+/, '')
     .replace(/\s+/g, ' ')
     .trim()
-}
-
-function shouldIgnoreLine(line: string) {
-  const lower = line.toLowerCase()
-  return (
-    lower.startsWith('//') ||
-    lower.startsWith('#created') ||
-    lower.startsWith('total cards') ||
-    lower.startsWith('total:') ||
-    lower.startsWith('decklist') ||
-    lower.startsWith('deck list') ||
-    lower.startsWith('maybeboard') ||
-    lower.startsWith('considering') ||
-    lower.startsWith('tokens') ||
-    lower === 'don!!' ||
-    lower.includes('deck list generated')
-  )
 }
 
 function getSectionFromLine(game: TournamentTCG, line: string) {
@@ -301,7 +337,7 @@ function getSectionFromLine(game: TournamentTCG, line: string) {
     .replace(/\s*[-:]\s*\d+\s*$/g, '')
     .replace(/\s*[-:]\s*\d+\s*(?:cards?|cartas?)\s*$/gi, '')
     .replace(/\s+\d+\s*(?:cards?|cartas?)\s*$/gi, '')
-    .replace(/:$/g, '')
+    .replace(/[:：]$/g, '')
     .trim()
     .toLowerCase()
     .normalize('NFD')
@@ -309,71 +345,22 @@ function getSectionFromLine(game: TournamentTCG, line: string) {
   return sectionAliases[game][clean]
 }
 
-function parseCardLine(game: TournamentTCG, line: string): ParsedLine | null {
-  const quantityFirst = line.match(/^(\d+)\s*x?\s+(.+)$/i)
-  const quantityColon = line.match(/^(\d+)\s*[:-]\s*(.+)$/i)
-  const quantityWithX = line.match(/^(\d+)\s*x\s*(.+)$/i)
-  const quantityLast = line.match(/^(.+?)\s+x\s*(\d+)$/i)
-  const codeQuantityLast = line.match(/^([A-Z]{2,4}\d{2}-\d{3}[a-z]?)\s+(.+?)\s+(\d+)$/i)
-  const codeQuantityAfterCode = line.match(/^([A-Z]{2,4}\d{2}-\d{3}[a-z]?)\s+(\d+)\s+(.+)$/i)
-  const csvLine = line.match(/^(\d+)\s*[,;]\s*(.+?)(?:\s*[,;].*)?$/i)
-
-  const quantity = Number(
-    codeQuantityAfterCode?.[2] ??
-    codeQuantityLast?.[3] ??
-    csvLine?.[1] ??
-    quantityWithX?.[1] ??
-    quantityColon?.[1] ??
-    quantityFirst?.[1] ??
-    quantityLast?.[2] ??
-    1
-  )
-  const rawName =
-    (codeQuantityAfterCode ? `${codeQuantityAfterCode[1]} ${codeQuantityAfterCode[3]}` : undefined) ??
-    (codeQuantityLast ? `${codeQuantityLast[1]} ${codeQuantityLast[2]}` : undefined) ??
-    csvLine?.[2] ??
-    quantityWithX?.[2] ??
-    quantityColon?.[2] ??
-    quantityFirst?.[2] ??
-    quantityLast?.[1] ??
-    line
-  const cleaned = cleanCardName(game, rawName)
-  if (!cleaned.name) return null
-  return { quantity, ...cleaned }
-}
-
-function cleanCardName(game: TournamentTCG, rawName: string): { name: string; cardCode?: string; metadata?: ParsedLine['metadata'] } {
-  let name = rawName.trim()
-  let cardCode: string | undefined
+function applyGameMetadata(game: TournamentTCG, parsed: ParsedDeckLine) {
+  let name = parsed.name.trim()
+  let cardCode = parsed.cardCode
+  let metadata: Partial<Pick<ImportedDeckCard, 'cardId' | 'imageUrl' | 'subtitle' | 'kind'>> | undefined
 
   const metadataMatch = name.match(/^(.*?)\s+\[(.+?)\]$/)
   if (metadataMatch) {
-    // Formato interno guardado por la app: conserva imagen, tipo y subtitulo
-    // para no depender de la API cada vez que se reabre una lista.
-    const metadata = parseCardMetadata(metadataMatch[2])
+    metadata = parseCardMetadata(metadataMatch[2])
     return {
       name: metadataMatch[1].trim(),
-      cardCode: metadata.cardId,
+      cardCode: metadata?.cardId ?? cardCode,
       metadata,
     }
   }
 
-  if (game === 'magic' || game === 'lorcana') {
-    // Arena/Dreamborn suelen anadir set y numero. Para buscar por nombre
-    // conviene quitar esa cola, pero mantener el nombre de la carta intacto.
-    name = name.replace(/\s+\([A-Z0-9]{2,6}\)\s+\d+[a-z]?$/i, '')
-    name = name.replace(/\s+\([A-Z0-9]{2,6}\)$/i, '')
-    name = name.replace(/\s+\*F\*$/i, '')
-  }
-
-  if (game === 'pokemon') {
-    // Pokemon exporta muchas listas como "Nombre SET 123".
-    name = name.replace(/\s+[A-Z]{2,5}\s+\d+[a-z]?$/i, '')
-    name = name.replace(/\s+\d+\/\d+\s*$/i, '')
-  }
-
   if (game === 'one-piece') {
-    // Formato habitual: "4 OP12-071 Charlotte Pudding" o "OP15-058 Enel".
     const codeMatch = name.match(ONE_PIECE_CARD_CODE_PATTERN)
     if (codeMatch) {
       cardCode = codeMatch[1].toUpperCase()
@@ -382,16 +369,15 @@ function cleanCardName(game: TournamentTCG, rawName: string): { name: string; ca
     }
   }
 
-  if (game === 'riftbound') {
-    name = name.replace(/\s+\[[A-Z0-9-]+\]\s*$/i, '')
-    name = name.replace(/\s+\([A-Z0-9-]+\)\s*$/i, '')
-  }
-
-  return { name: name.trim(), cardCode }
+  return { name: name.trim(), cardCode, metadata }
 }
 
-function getForcedSection(game: TournamentTCG, currentSection: string) {
-  if (game === 'one-piece' && currentSection !== 'Leader') return 'Main'
+function getForcedSection(game: TournamentTCG, currentSection: string, parsed: ParsedDeckLine) {
+  if (game === 'one-piece') {
+    if (currentSection === 'Leader') return 'Leader'
+    if (parsed.sectionHint === 'Leader') return 'Leader'
+    return 'Main'
+  }
   if (game === 'pokemon') return currentSection
   if (game === 'yugioh') return currentSection
   return currentSection
