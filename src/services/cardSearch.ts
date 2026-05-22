@@ -1,6 +1,7 @@
 import type { TournamentTCG } from "../types/tournament";
 import { displayImageUrl } from "../utils/imageExport";
 import { extractOnePieceCardCode } from "../utils/onePieceCardCode";
+import { fetchLorcast, fetchLorcastCardById, getLorcastCardImageUrl, type LorcastCard } from "./lorcastApi";
 import { fetchOnePieceCardByCode, searchOnePieceCardsByName } from "./optcgApi";
 import { fetchRiftscribe } from "./riftscribeApi";
 
@@ -507,57 +508,43 @@ async function searchYugioh(
 }
 
 // ---------------------------------------------------------------------------
-// Lorcana — lorcast
+// Lorcana — Lorcast (api.lorcast.com, imágenes en cards.lorcast.io AVIF)
 // ---------------------------------------------------------------------------
+
+function lorcanaCardToSuggestion(card: LorcastCard): CardSuggestion {
+  return {
+    id: `lorcana:${card.id}`,
+    name: card.version ? `${card.name} - ${card.version}` : card.name,
+    subtitle: card.set?.name,
+    imageUrl: displayImageUrl(getLorcastCardImageUrl(card)),
+    kind: [card.type?.join(", "), card.ink].filter(Boolean).join(" - "),
+    text: card.fullText ?? card.text,
+  };
+}
+
+export async function resolveLorcanaCard(
+  cardId: string,
+  signal?: AbortSignal,
+): Promise<CardSuggestion | null> {
+  const card = await fetchLorcastCardById(cardId, signal);
+  if (!card?.name) return null;
+  return lorcanaCardToSuggestion(card);
+}
 
 async function searchLorcana(
   query: string,
   signal?: AbortSignal,
   filters: CardSearchFilters = {},
 ): Promise<CardSuggestion[]> {
-  const url = new URL("https://api.lorcast.com/v0/cards/search");
   const typeQuery = filters.kind ? ` type:${filters.kind}` : "";
   const colorQuery = filters.color ? ` ink:${filters.color}` : "";
-  url.searchParams.set("q", `${query}${typeQuery}${colorQuery}`);
-  url.searchParams.set("unique", "prints");
+  const apiPath = `/cards/search?q=${encodeURIComponent(`${query}${typeQuery}${colorQuery}`)}&unique=prints`;
 
-  const response = await fetch(url, {
-    signal,
-    headers: { Accept: "application/json" },
-  });
-  if (!response.ok) return [];
-
-  const payload = (await response.json()) as {
-    results?: Array<{
-      id: string;
-      name: string;
-      version?: string;
-      type?: string[];
-      ink?: string;
-      text?: string;
-      fullText?: string;
-      set?: { name?: string };
-      image_uris?: {
-        digital?: { small?: string; normal?: string; large?: string };
-      };
-    }>;
-  };
+  const payload = await fetchLorcast<{ results?: LorcastCard[] }>(apiPath, signal);
+  if (!payload?.results?.length) return [];
 
   return filterByText(
-    uniqueCards(
-      (payload.results ?? []).map((card) => ({
-        id: `lorcana:${card.id}`,
-        name: card.version ? `${card.name} - ${card.version}` : card.name,
-        subtitle: card.set?.name,
-        imageUrl: displayImageUrl(
-          card.image_uris?.digital?.large ??
-            card.image_uris?.digital?.normal ??
-            card.image_uris?.digital?.small,
-        ),
-        kind: [card.type?.join(", "), card.ink].filter(Boolean).join(" - "),
-        text: card.fullText ?? card.text,
-      })),
-    ),
+    uniqueCards(payload.results.map(lorcanaCardToSuggestion)),
     filters.text,
   ).slice(0, 12);
 }

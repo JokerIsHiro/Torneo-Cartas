@@ -5,6 +5,7 @@ import {
   getAdvancedCardFilterOptions,
   getCardFilterOptions,
   searchCards,
+  resolveLorcanaCard,
   type CardSearchFilters,
   type CardSuggestion,
 } from '../services/cardSearch'
@@ -1183,6 +1184,34 @@ async function hydrateKnownCardById(card: DeckCard, game: TournamentTCG, forExpo
     const code = card.cardId.split(':').pop()
     if (!code || !/^[a-z]{2,4}-\d{1,3}[a-z]?(?:-\d+)?$/i.test(code)) return null
     const match = (await searchCards(game, code, undefined, { onlyImages: true, exact: true }))[0]
+    if (!match?.imageUrl) return null
+
+    const usableImageUrl = forExport
+      ? await fetchImageAsDataUrl(match.imageUrl).catch(async () => {
+          const proxied = proxiedImageUrl(match.imageUrl)
+          if (proxied && proxied !== match.imageUrl) {
+            return fetchImageAsDataUrl(proxied).catch(() => proxied)
+          }
+          return match.imageUrl
+        })
+      : match.imageUrl
+    return {
+      ...card,
+      cardId: match.id,
+      name: match.name || card.name,
+      subtitle: match.subtitle,
+      kind: match.kind,
+      legalities: match.legalities,
+      section: getDefaultSection(game, match),
+      imageUrl: usableImageUrl,
+    }
+  }
+
+  if (game === 'lorcana') {
+    const lorcanaId = card.cardId.startsWith('lorcana:') ? card.cardId : `lorcana:${card.cardId}`
+    const match =
+      (await resolveLorcanaCard(lorcanaId).catch(() => null)) ??
+      (await searchCards(game, card.name, undefined, { onlyImages: true, exact: true }))[0]
     if (!match?.imageUrl) return null
 
     const usableImageUrl = forExport

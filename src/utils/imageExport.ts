@@ -9,9 +9,11 @@ const DISPLAY_DIRECT_HOSTS = [
   "cards.scryfall.io",
   "images.pokemontcg.io",
   "optcgapi.com",
-  "lorcast.org",
-  "lorcast.io",
+  "cards.lorcast.io",
 ];
+
+/** CDNs sin CORS o AVIF: en exportar PNG usar proxy (webp) primero. */
+const EXPORT_PROXY_FIRST_HOSTS = /cdn\.riftscribe\.gg|cards\.lorcast\.io/i;
 
 const displayUrlCache = new Map<string, string | undefined>();
 
@@ -94,8 +96,7 @@ export function getExportImageCandidates(url: string) {
   const proxied = proxiedImageUrl(url);
   const corsProxy = corsProxyUrl(url);
 
-  // RiftScribe CDN y similares: proxy primero (sin CORS en origen)
-  if (/cdn\.riftscribe\.gg/i.test(url)) {
+  if (EXPORT_PROXY_FIRST_HOSTS.test(url)) {
     return [...new Set([proxied, corsProxy, url].filter(Boolean) as string[])];
   }
 
