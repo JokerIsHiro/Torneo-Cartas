@@ -7,12 +7,14 @@ Aplicacion web para gestionar torneos presenciales de TCG en tienda: altas por Q
 - Creacion de torneos para Magic, Riftbound, Pokemon, YuGiOh, Lorcana y One Piece.
 - Inscripcion publica por enlace o QR.
 - Gestion de rondas Swiss con BYE automatico y evitando repetir rivales cuando es posible.
+- Sistemas de desempate configurables por torneo: resistencia TCG, Magic calculable, Pokemon, Buchholz, Buchholz cortado, Sonneborn-Berger, progresivo, frente a frente y criterios simples.
 - Envio de resultados desde jugador y aprobacion desde administracion.
 - Temporizadores sincronizados entre pantallas.
 - Pantalla de proyeccion para emparejamientos.
 - Snapshots automaticos antes de cambios importantes.
 - Deckbuilder visual solo al finalizar torneo.
 - Importacion flexible de listas por juego.
+- Importacion tolerante de exportaciones externas con cabeceras por seccion y conteos.
 - Exportacion de decklists como imagen para redes.
 - Persistencia en Firebase Firestore con Auth anonima para jugadores y Auth email/password para administracion.
 
@@ -255,6 +257,14 @@ Las reglas viven en `src/utils/deckRules.ts`.
 
 Las banlists dinamicas no estan integradas todavia. La validacion actual avisa por estructura y copias, pero no sustituye a una revision de juez.
 
+## Desempates
+
+Cada torneo guarda su propio sistema de desempates. La clasificacion, el podio, la exportacion de standings y los perfiles de mazo usan siempre el mismo criterio.
+
+La app calcula todos los desempates posibles con los datos actuales de ronda: porcentaje de victoria de rivales, rivales de rivales, Buchholz, Buchholz Cut 1, Buchholz mediano, Sonneborn-Berger, progresivo, frente a frente, victorias, menos derrotas y menos derrotas por tiempo.
+
+Magic Game Win % y Opponents' Game Win % no se aplican todavia porque la app registra resultado de match, no parciales de juegos como 2-0 o 2-1.
+
 ## APIs De Cartas
 
 - Magic: Scryfall.
@@ -262,6 +272,7 @@ Las banlists dinamicas no estan integradas todavia. La validacion actual avisa p
 - YuGiOh: YGOPRODeck.
 - Lorcana: Lorcast.
 - One Piece y Riftbound: por ahora se prioriza importacion manual/codigos y reglas locales.
+- One Piece y Riftbound: busqueda por fuentes especificas y fallback generico; las imagenes externas se pasan por proxy cuando hace falta para mejorar carga y exportacion.
 
 Las imagenes de YuGiOh se pasan por proxy para evitar problemas de CORS al exportar PNG.
 

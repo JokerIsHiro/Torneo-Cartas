@@ -11,8 +11,10 @@ import type {
   TournamentSnapshotAction,
   TournamentSnapshotData,
   TournamentTCG,
+  TournamentTiebreakerSystem,
 } from '../types/tournament'
 import { deleteRemoteTournament, getCurrentUserId, saveRemoteTournament } from '../services/firebase'
+import { getDefaultTiebreakerSystem } from '../utils/tiebreakers'
 
 // Cache en memoria de torneos. Firestore es la fuente de verdad; Zustand solo
 // alimenta la UI y calcula los siguientes estados antes de enviarlos.
@@ -215,6 +217,7 @@ function createEmptyTournament(): Tournament {
     currentRound: 0,
     status: 'setup',
     timerDuration: 50 * 60,
+    tiebreakerSystem: getDefaultTiebreakerSystem('magic'),
     createdAt: now,
     updatedAt: now,
   }
@@ -338,6 +341,7 @@ interface TournamentsStore {
   updateTournamentName: (id: string, name: string) => void
   setTournamentTCG: (id: string, tcg: TournamentTCG) => void
   setTimerDuration: (id: string, seconds: number) => void
+  setTiebreakerSystem: (id: string, system: TournamentTiebreakerSystem) => void
 
   // Jugadores
   addPlayer: (id: string, name: string) => string | null
@@ -398,13 +402,19 @@ export const useTournamentsStore = create<TournamentsStore>()(
       setTournamentTCG: (id, tcg) => {
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament) return
-        commitTournament(set, touchTournament({ ...tournament, tcg }))
+        commitTournament(set, touchTournament({ ...tournament, tcg, tiebreakerSystem: getDefaultTiebreakerSystem(tcg) }))
       },
 
       setTimerDuration: (id, seconds) => {
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament) return
         commitTournament(set, touchTournament({ ...tournament, timerDuration: seconds }))
+      },
+
+      setTiebreakerSystem: (id, system) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament) return
+        commitTournament(set, touchTournament({ ...tournament, tiebreakerSystem: system }))
       },
 
       addPlayer: (id, name) => {

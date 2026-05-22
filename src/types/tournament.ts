@@ -56,6 +56,20 @@ export interface Round {
 
 export type TournamentStatus = 'setup' | 'active' | 'finished'
 export type TournamentTCG = 'magic' | 'riftbound' | 'pokemon' | 'yugioh' | 'lorcana' | 'one-piece' | 'chess'
+export type TournamentTiebreakerSystem =
+  | 'tcg-resistance'
+  | 'magic-match'
+  | 'pokemon-official'
+  | 'fide-buchholz'
+  | 'fide-buchholz-cut-1'
+  | 'fide-buchholz-median-1'
+  | 'fide-sonneborn-berger'
+  | 'fide-progressive'
+  | 'direct-encounter'
+  | 'wins'
+  | 'fewest-losses'
+  | 'fewest-timeout-losses'
+  | 'none'
 
 export type TournamentSnapshotAction =
   | 'start-tournament'
@@ -89,6 +103,7 @@ export interface Tournament {
   currentRound: number
   status: TournamentStatus
   timerDuration: number  // segundos
+  tiebreakerSystem: TournamentTiebreakerSystem
   createdAt: number
   updatedAt: number
 }

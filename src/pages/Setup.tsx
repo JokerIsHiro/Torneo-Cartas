@@ -4,8 +4,9 @@ import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import { PlayerList } from '../components/PlayerList'
-import type { TournamentTCG } from '../types/tournament'
+import type { TournamentTCG, TournamentTiebreakerSystem } from '../types/tournament'
 import { hasFirebaseConfig } from '../services/firebase'
+import { tiebreakerSystemOptions } from '../utils/tiebreakers'
 
 interface SetupProps {
   tournamentId: string
@@ -30,7 +31,7 @@ const tcgOptions: Array<{ label: string; value: TournamentTCG }> = [
 ]
 
 export function Setup({ tournamentId }: SetupProps) {
-  const { name, tcg, timerDuration, playerCount, exists } = useTournamentsStore(
+  const { name, tcg, timerDuration, tiebreakerSystem, playerCount, exists } = useTournamentsStore(
     useShallow(s => {
       const t = s.tournaments.find(t => t.id === tournamentId)
       return {
@@ -38,6 +39,7 @@ export function Setup({ tournamentId }: SetupProps) {
         name: t?.name ?? '',
         tcg: t?.tcg ?? 'magic',
         timerDuration: t?.timerDuration ?? 50 * 60,
+        tiebreakerSystem: t?.tiebreakerSystem ?? 'tcg-resistance',
         playerCount: t?.players.length ?? 0,
       }
     })
@@ -45,6 +47,7 @@ export function Setup({ tournamentId }: SetupProps) {
   const updateTournamentName = useTournamentsStore(s => s.updateTournamentName)
   const setTournamentTCG = useTournamentsStore(s => s.setTournamentTCG)
   const setTimerDuration = useTournamentsStore(s => s.setTimerDuration)
+  const setTiebreakerSystem = useTournamentsStore(s => s.setTiebreakerSystem)
   const startTournament = useTournamentsStore(s => s.startTournament)
   const { totalRounds } = useSwissPairings(tournamentId)
   const [error, setError] = useState('')
@@ -160,6 +163,24 @@ export function Setup({ tournamentId }: SetupProps) {
                 {opt.label}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="setup-card" style={cardStyle}>
+          <div style={cardTitleStyle}>
+            <i className="ti ti-scale" aria-hidden="true" /> Sistema de desempates
+          </div>
+          <select
+            value={tiebreakerSystem}
+            onChange={event => setTiebreakerSystem(tournamentId, event.target.value as TournamentTiebreakerSystem)}
+            style={inputStyle}
+          >
+            {tiebreakerSystemOptions.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+          <div className="setup-note">
+            <i className="ti ti-info-circle" aria-hidden="true" /> {tiebreakerSystemOptions.find(option => option.value === tiebreakerSystem)?.description}
           </div>
         </div>
 

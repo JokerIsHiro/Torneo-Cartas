@@ -14,6 +14,32 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
 
+    function validTiebreakerSystem(value) {
+      return value in [
+        'tcg-resistance',
+        'magic-match',
+        'pokemon-official',
+        'fide-buchholz',
+        'fide-buchholz-cut-1',
+        'fide-buchholz-median-1',
+        'fide-sonneborn-berger',
+        'fide-progressive',
+        'direct-encounter',
+        'wins',
+        'fewest-losses',
+        'fewest-timeout-losses',
+        'none'
+      ];
+    }
+
+    function unchangedOrBackfilledTiebreaker() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['tiebreakerSystem'])
+        || (
+          !('tiebreakerSystem' in resource.data)
+          && validTiebreakerSystem(request.resource.data.tiebreakerSystem)
+        );
+    }
+
     function validPublicPlayer(player) {
       return player.keys().hasOnly([
           'id',
@@ -46,7 +72,8 @@ service cloud.firestore {
       let newPlayer = request.resource.data.players[resource.data.players.size()];
       return signedIn()
         && resource.data.status == 'setup'
-        && onlyChanged(['players', 'updatedAt'])
+        && onlyChanged(['players', 'updatedAt', 'tiebreakerSystem'])
+        && unchangedOrBackfilledTiebreaker()
         && request.resource.data.players is list
         && request.resource.data.players.size() == resource.data.players.size() + 1
         && validPublicPlayer(newPlayer);
@@ -76,7 +103,8 @@ service cloud.firestore {
       let pendingResult = request.resource.data.pendingResults[resource.data.pendingResults.size()];
       return signedIn()
         && resource.data.status == 'active'
-        && onlyChanged(['pendingResults', 'updatedAt'])
+        && onlyChanged(['pendingResults', 'updatedAt', 'tiebreakerSystem'])
+        && unchangedOrBackfilledTiebreaker()
         && request.resource.data.pendingResults is list
         && request.resource.data.pendingResults.size() == resource.data.pendingResults.size() + 1
         && validPublicPendingResult(pendingResult);
@@ -120,7 +148,8 @@ service cloud.firestore {
       let decklist = request.resource.data.decklists[resource.data.decklists.size()];
       return signedIn()
         && resource.data.status == 'finished'
-        && onlyChanged(['decklists', 'updatedAt'])
+        && onlyChanged(['decklists', 'updatedAt', 'tiebreakerSystem'])
+        && unchangedOrBackfilledTiebreaker()
         && request.resource.data.decklists is list
         && request.resource.data.decklists.size() == resource.data.decklists.size() + 1
         && validPublicDecklist(decklist);

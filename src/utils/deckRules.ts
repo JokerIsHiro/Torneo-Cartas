@@ -107,11 +107,11 @@ export function getDefaultSection(game: TournamentTCG, card?: Pick<CardSuggestio
   }
   if (game === 'riftbound') {
     if (text.includes('rune')) return 'Rune'
-    if (text.includes('legend')) return 'Legend'
+    if (text.includes('legend') || text.includes('leyenda')) return 'Legend'
     if (text.includes('champion')) return 'Champion'
-    if (text.includes('battlefield')) return 'Battlefield'
+    if (text.includes('battlefield') || text.includes('field')) return 'Battlefield'
   }
-  if (game === 'one-piece' && text.includes('leader')) return 'Leader'
+  if (game === 'one-piece' && (text.includes('leader') || text.includes('lider'))) return 'Leader'
 
   return deckRuleConfigs[game].sections[0]?.id ?? 'Main'
 }

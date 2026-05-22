@@ -15,6 +15,7 @@ import type { Tournament } from './types/tournament'
 import { unlockTimerSound } from './utils/timerSound'
 import { useFirebaseSync } from './hooks/useFirebaseSync'
 import { signInAdmin, signOutAdmin } from './services/firebase'
+import { ADMIN_AUTH_EMAIL } from './config/appConfig'
 
 // Componente raiz. Decide que vista se muestra segun la ruta de la URL
 // y conecta la sincronizacion entre pestanas.
@@ -24,7 +25,6 @@ type TournamentInnerTab = 'ronda' | 'organizar' | 'clasificacion'
 
 const ADMIN_SESSION_KEY = 'torneo-admin-session'
 const ADMIN_SESSION_VALUE = 'firebase-admin-v1'
-const ADMIN_AUTH_EMAIL = import.meta.env.VITE_ADMIN_AUTH_EMAIL?.trim() ?? ''
 const MIN_ADMIN_CODE_LENGTH = 8
 
 const routePaths: Record<AppRoute, string> = {

@@ -32,6 +32,8 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     deck: 'Main',
     main: 'Main',
     'main deck': 'Main',
+    mainboard: 'Main',
+    cards: 'Main',
     mazo: 'Main',
     'mazo principal': 'Main',
     side: 'Sideboard',
@@ -43,6 +45,7 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     creatures: 'Main',
     creature: 'Main',
     spells: 'Main',
+    spell: 'Main',
     lands: 'Main',
     land: 'Main',
   },
@@ -73,6 +76,7 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
   },
   pokemon: {
     pokemon: 'Pokemon',
+    pokemons: 'Pokemon',
     'pokemon cards': 'Pokemon',
     'pokémon': 'Pokemon',
     'pokémon cards': 'Pokemon',
@@ -85,6 +89,7 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     energies: 'Energy',
     'energy cards': 'Energy',
     energia: 'Energy',
+    energias: 'Energy',
   },
   lorcana: {
     main: 'Main',
@@ -95,41 +100,63 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     cards: 'Main',
     cartas: 'Main',
     characters: 'Main',
+    character: 'Main',
     actions: 'Main',
+    action: 'Main',
     items: 'Main',
+    item: 'Main',
     locations: 'Main',
+    location: 'Main',
     songs: 'Main',
+    song: 'Main',
   },
   riftbound: {
     legend: 'Legend',
+    legends: 'Legend',
     leyenda: 'Legend',
+    leyendas: 'Legend',
+    leyend: 'Legend',
+    leyends: 'Legend',
+    'legend cards': 'Legend',
     champion: 'Champion',
+    champions: 'Champion',
+    'champion cards': 'Champion',
     campeon: 'Champion',
+    campeones: 'Champion',
     chosen: 'Champion',
     main: 'Main',
     deck: 'Main',
     'main deck': 'Main',
+    mainboard: 'Main',
     mazo: 'Main',
     'mazo principal': 'Main',
     rune: 'Rune',
     runes: 'Rune',
     'rune deck': 'Rune',
+    'runes deck': 'Rune',
+    'rune cards': 'Rune',
     runas: 'Rune',
     'mazo de runas': 'Rune',
     battlefield: 'Battlefield',
     battlefields: 'Battlefield',
+    'battlefield cards': 'Battlefield',
     campo: 'Battlefield',
     'campos de batalla': 'Battlefield',
+    field: 'Battlefield',
+    fields: 'Battlefield',
     side: 'Sideboard',
     sideboard: 'Sideboard',
     banquillo: 'Sideboard',
   },
   'one-piece': {
     leader: 'Leader',
+    leaders: 'Leader',
     lider: 'Leader',
+    lideres: 'Leader',
     main: 'Main',
     deck: 'Main',
     'main deck': 'Main',
+    mainboard: 'Main',
     mazo: 'Main',
     'mazo principal': 'Main',
     character: 'Main',
@@ -139,6 +166,9 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     stage: 'Main',
     stages: 'Main',
     'don deck': 'Main',
+    'don!! deck': 'Main',
+    don: 'Main',
+    'don!!': 'Main',
   },
   chess: {},
 }
@@ -249,17 +279,23 @@ function shouldIgnoreLine(line: string) {
     lower.startsWith('#created') ||
     lower.startsWith('total cards') ||
     lower.startsWith('total:') ||
+    lower.startsWith('decklist') ||
+    lower.startsWith('deck list') ||
     lower.startsWith('maybeboard') ||
     lower.startsWith('considering') ||
     lower.startsWith('tokens') ||
+    lower === 'don!!' ||
     lower.includes('deck list generated')
   )
 }
 
 function getSectionFromLine(game: TournamentTCG, line: string) {
   const clean = line
-    .replace(/\s*\(\d+\)\s*$/g, '')
+    .replace(/\s*\(\s*\d+\s*(?:cards?|cartas?)?\s*\)\s*$/gi, '')
+    .replace(/\s*\[\s*\d+\s*(?:cards?|cartas?)?\s*\]\s*$/gi, '')
     .replace(/\s*[-:]\s*\d+\s*$/g, '')
+    .replace(/\s*[-:]\s*\d+\s*(?:cards?|cartas?)\s*$/gi, '')
+    .replace(/\s+\d+\s*(?:cards?|cartas?)\s*$/gi, '')
     .replace(/:$/g, '')
     .trim()
     .toLowerCase()
@@ -273,9 +309,29 @@ function parseCardLine(game: TournamentTCG, line: string): ParsedLine | null {
   const quantityColon = line.match(/^(\d+)\s*[:-]\s*(.+)$/i)
   const quantityWithX = line.match(/^(\d+)\s*x\s*(.+)$/i)
   const quantityLast = line.match(/^(.+?)\s+x\s*(\d+)$/i)
+  const codeQuantityLast = line.match(/^([A-Z]{2,4}\d{2}-\d{3}[a-z]?)\s+(.+?)\s+(\d+)$/i)
+  const codeQuantityAfterCode = line.match(/^([A-Z]{2,4}\d{2}-\d{3}[a-z]?)\s+(\d+)\s+(.+)$/i)
+  const csvLine = line.match(/^(\d+)\s*[,;]\s*(.+?)(?:\s*[,;].*)?$/i)
 
-  const quantity = Number(quantityWithX?.[1] ?? quantityColon?.[1] ?? quantityFirst?.[1] ?? quantityLast?.[2] ?? 1)
-  const rawName = quantityWithX?.[2] ?? quantityColon?.[2] ?? quantityFirst?.[2] ?? quantityLast?.[1] ?? line
+  const quantity = Number(
+    codeQuantityAfterCode?.[2] ??
+    codeQuantityLast?.[3] ??
+    csvLine?.[1] ??
+    quantityWithX?.[1] ??
+    quantityColon?.[1] ??
+    quantityFirst?.[1] ??
+    quantityLast?.[2] ??
+    1
+  )
+  const rawName =
+    (codeQuantityAfterCode ? `${codeQuantityAfterCode[1]} ${codeQuantityAfterCode[3]}` : undefined) ??
+    (codeQuantityLast ? `${codeQuantityLast[1]} ${codeQuantityLast[2]}` : undefined) ??
+    csvLine?.[2] ??
+    quantityWithX?.[2] ??
+    quantityColon?.[2] ??
+    quantityFirst?.[2] ??
+    quantityLast?.[1] ??
+    line
   const cleaned = cleanCardName(game, rawName)
   if (!cleaned.name) return null
   return { quantity, ...cleaned }
@@ -324,6 +380,7 @@ function cleanCardName(game: TournamentTCG, rawName: string): { name: string; ca
 
   if (game === 'riftbound') {
     name = name.replace(/\s+\[[A-Z0-9-]+\]\s*$/i, '')
+    name = name.replace(/\s+\([A-Z0-9-]+\)\s*$/i, '')
   }
 
   return { name: name.trim(), cardCode }

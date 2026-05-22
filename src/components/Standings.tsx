@@ -1,7 +1,14 @@
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
-import type { MatchResult, Player } from '../types/tournament'
+import type { MatchResult, Player, TournamentTiebreakerSystem } from '../types/tournament'
+import {
+  formatTiebreakerValue,
+  getTiebreakerMetricLabel,
+  getTiebreakerSystemOption,
+  getTiebreakerValue,
+  tiebreakerSystemOptions,
+} from '../utils/tiebreakers'
 
 // Clasificacion del torneo y resumen historico de rondas.
 interface StandingsProps {
@@ -21,11 +28,20 @@ export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
       }
     })
   )
-  const { standings, roundSummaries, totalRounds, getPlayerName } = useSwissPairings(tournamentId)
+  const setTiebreakerSystem = useTournamentsStore(s => s.setTiebreakerSystem)
+  const {
+    standings,
+    roundSummaries,
+    totalRounds,
+    getPlayerName,
+    tiebreakerSystem,
+    tiebreakerLabel,
+    primaryTiebreakerMetric,
+  } = useSwissPairings(tournamentId)
   const hasDraws = tcg !== 'yugioh'
   const standingsColumns = hasDraws
-    ? '28px 1fr 44px 44px 44px 44px'
-    : '28px 1fr 44px 44px 44px'
+    ? '28px 1fr 44px 44px 44px 44px 58px'
+    : '28px 1fr 44px 44px 44px 58px'
 
   if (!exists || status === 'setup') {
     return (
@@ -53,8 +69,30 @@ export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
         padding: '.75rem',
         marginBottom: '1rem',
       }}>
-        <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', padding: '4px 10px', marginBottom: '4px' }}>
-          <i className="ti ti-list-numbers" aria-hidden="true" /> Clasificacion general
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr minmax(220px, 320px)',
+          gap: '10px',
+          alignItems: 'center',
+          padding: '4px 10px',
+          marginBottom: '4px',
+        }}>
+          <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
+            <i className="ti ti-list-numbers" aria-hidden="true" /> Clasificacion general
+            <div style={{ fontSize: '11px', fontWeight: 400, color: 'var(--color-text-secondary)', marginTop: '3px' }}>
+              {getTiebreakerSystemOption(tiebreakerSystem).description}
+            </div>
+          </div>
+          <select
+            value={tiebreakerSystem}
+            onChange={event => setTiebreakerSystem(tournamentId, event.target.value as TournamentTiebreakerSystem)}
+            style={selectStyle}
+            aria-label="Sistema de desempates"
+          >
+            {tiebreakerSystemOptions.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
         </div>
         <div style={{
           display: 'grid',
@@ -70,6 +108,7 @@ export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
           <span style={{ textAlign: 'center' }}>V</span>
           {hasDraws && <span style={{ textAlign: 'center' }}>E</span>}
           <span style={{ textAlign: 'center' }}>D</span>
+          <span style={{ textAlign: 'center' }}>{primaryTiebreakerMetric ? getTiebreakerMetricLabel(primaryTiebreakerMetric) : tiebreakerLabel}</span>
         </div>
 
         {standings.map(row => (
@@ -100,6 +139,9 @@ export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
             <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{row.player.wins}</span>
             {hasDraws && <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{row.player.draws}</span>}
             <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{row.player.losses}</span>
+            <span style={{ fontSize: '12px', textAlign: 'center', color: 'var(--color-accent-secondary)' }}>
+              {formatTiebreakerValue(primaryTiebreakerMetric, getTiebreakerValue(row.tiebreakers, primaryTiebreakerMetric))}
+            </span>
           </div>
         ))}
       </div>
@@ -158,6 +200,17 @@ export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
       </div>
     </div>
   )
+}
+
+const selectStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '8px 10px',
+  fontSize: '12px',
+  border: '0.5px solid var(--color-border-tertiary)',
+  borderRadius: 'var(--border-radius-md)',
+  background: 'var(--color-background-secondary)',
+  color: 'var(--color-text-primary)',
+  outline: 'none',
 }
 
 function RoundResultRow({

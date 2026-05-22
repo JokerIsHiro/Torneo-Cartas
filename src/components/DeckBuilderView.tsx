@@ -1054,6 +1054,24 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, mapper: (item
 }
 
 async function hydrateKnownCardById(card: DeckCard, game: TournamentTCG, forExport: boolean): Promise<DeckCard | null> {
+  if (game === 'one-piece' || game === 'riftbound') {
+    const code = card.cardId.split(':').pop()
+    if (!code || !/^[A-Z]{2,4}\d{2}-\d{3}[a-z]?$/i.test(code)) return null
+    const match = (await searchCards(game, code, undefined, { onlyImages: true, exact: true }))[0]
+    if (!match?.imageUrl) return null
+
+    const usableImageUrl = forExport ? await toDataUrl(match.imageUrl).catch(() => match.imageUrl) : match.imageUrl
+    return {
+      ...card,
+      cardId: match.id,
+      name: match.name || card.name,
+      subtitle: match.subtitle,
+      kind: match.kind,
+      legalities: match.legalities,
+      imageUrl: usableImageUrl,
+    }
+  }
+
   if (game !== 'yugioh') return null
   const numericId = card.cardId.split(':').pop()
   if (!numericId || !/^\d+$/.test(numericId)) return null

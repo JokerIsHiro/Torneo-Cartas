@@ -35,11 +35,12 @@ export async function searchCards(
     if (game === 'pokemon') return searchPokemon(term, signal, filters)
     if (game === 'yugioh') return searchYugioh(term, signal, filters)
     if (game === 'lorcana') return searchLorcana(term, signal, filters)
-    if (game === 'one-piece' || game === 'riftbound') return searchApiTcg(game, term, signal, filters)
+    if (game === 'one-piece') return searchOnePiece(term, signal, filters)
+    if (game === 'riftbound') return searchRiftbound(term, signal, filters)
     return Promise.resolve([])
   })()
 
-  if ((!cards.length || (filters.onlyImages && !cards.some(card => card.imageUrl))) && game !== 'riftbound') {
+  if (!cards.length || (filters.onlyImages && !cards.some(card => card.imageUrl))) {
     const fallback = await searchApiTcg(game, term, signal, filters).catch(() => [])
     const combined = uniqueCards([...cards, ...fallback])
     return filters.onlyImages ? combined.filter(card => card.imageUrl) : combined
@@ -378,6 +379,7 @@ async function searchLorcana(query: string, signal?: AbortSignal, filters: CardS
   const typeQuery = filters.kind ? ` type:${filters.kind}` : ''
   const colorQuery = filters.color ? ` ink:${filters.color}` : ''
   url.searchParams.set('q', `${query}${typeQuery}${colorQuery}`)
+  url.searchParams.set('unique', 'prints')
 
   const response = await fetch(url, {
     signal,
@@ -390,10 +392,12 @@ async function searchLorcana(query: string, signal?: AbortSignal, filters: CardS
       id: string
       name: string
       version?: string
+      type?: string[]
+      ink?: string
       text?: string
       fullText?: string
       set?: { name?: string }
-      image_uris?: { digital?: { small?: string; normal?: string } }
+      image_uris?: { digital?: { small?: string; normal?: string; large?: string } }
     }>
   }
 
@@ -401,10 +405,75 @@ async function searchLorcana(query: string, signal?: AbortSignal, filters: CardS
     id: `lorcana:${card.id}`,
     name: card.version ? `${card.name} - ${card.version}` : card.name,
     subtitle: card.set?.name,
-    imageUrl: card.image_uris?.digital?.small,
-    kind: filters.kind,
+    imageUrl: proxiedImageUrl(card.image_uris?.digital?.large ?? card.image_uris?.digital?.normal ?? card.image_uris?.digital?.small),
+    kind: [card.type?.join(', '), card.ink].filter(Boolean).join(' - '),
     text: card.fullText ?? card.text,
   }))), filters.text).slice(0, 12)
+}
+
+async function searchOnePiece(query: string, signal?: AbortSignal, filters: CardSearchFilters = {}): Promise<CardSuggestion[]> {
+  const scrydexCards = await searchScrydex('onepiece', query, signal, filters).catch(() => [])
+  if (scrydexCards.length) return scrydexCards
+  return searchApiTcg('one-piece', query, signal, filters)
+}
+
+async function searchRiftbound(query: string, signal?: AbortSignal, filters: CardSearchFilters = {}): Promise<CardSuggestion[]> {
+  const riftScribeCards = await searchRiftScribe(query, signal, filters).catch(() => [])
+  if (riftScribeCards.some(card => card.imageUrl)) return riftScribeCards
+
+  const scrydexCards = await searchScrydex('riftbound', query, signal, filters).catch(() => [])
+  if (scrydexCards.length) return uniqueCards([...riftScribeCards, ...scrydexCards])
+  return searchApiTcg('riftbound', query, signal, filters)
+}
+
+async function searchScrydex(
+  gameSlug: 'onepiece' | 'riftbound',
+  query: string,
+  signal?: AbortSignal,
+  filters: CardSearchFilters = {}
+): Promise<CardSuggestion[]> {
+  const url = new URL(`https://api.scrydex.com/${gameSlug}/v1/cards`)
+  const code = extractCardCode(query)
+  url.searchParams.set('page_size', filters.exact ? '20' : '40')
+  url.searchParams.set('q', code ? `id:${code}` : `name:${query}*`)
+
+  const response = await fetch(url, { signal, headers: { Accept: 'application/json' } })
+  if (!response.ok) return []
+
+  const payload = await response.json() as ScrydexListResponse | ScrydexCard[]
+  const rows = Array.isArray(payload) ? payload : payload.data ?? payload.items ?? []
+  const game = gameSlug === 'onepiece' ? 'one-piece' : 'riftbound'
+
+  return filterByText(rows.map(card => ({
+    id: `${game}:${card.id ?? card.printed_number ?? card.number ?? card.name}`,
+    name: card.name ?? '',
+    subtitle: [card.printed_number ?? card.number, card.expansion?.code ?? card.expansion?.id, card.rarity].filter(Boolean).join(' - '),
+    imageUrl: proxiedImageUrl(firstImage(card)),
+    kind: [card.type, card.domain, card.attribute, card.colors?.join(', '), card.subtypes?.join(', ')].filter(Boolean).join(' - '),
+    text: card.rules?.join('\n'),
+  })).filter(card => card.name), filters.text)
+    .filter(card => !filters.exact || card.name.toLowerCase() === query.toLowerCase() || card.id.toLowerCase().endsWith(`:${query.toLowerCase()}`))
+    .slice(0, 12)
+}
+
+async function searchRiftScribe(query: string, signal?: AbortSignal, filters: CardSearchFilters = {}): Promise<CardSuggestion[]> {
+  const url = new URL('https://riftscribe.gg/api/cards/search')
+  url.searchParams.set('q', query)
+  url.searchParams.set('limit', filters.exact ? '8' : '20')
+
+  const response = await fetch(url, { signal, headers: { Accept: 'application/json' } })
+  if (!response.ok) return []
+
+  const payload = await response.json() as RiftScribeListResponse | RiftScribeCard[]
+  const rows = Array.isArray(payload) ? payload : payload.data ?? payload.items ?? payload.results ?? []
+  return filterByText(rows.map(card => ({
+    id: `riftbound:${card.id ?? card.card_id ?? card.code ?? card.name}`,
+    name: card.name ?? '',
+    subtitle: [card.set_id ?? card.set, card.rarity].filter(Boolean).join(' - '),
+    imageUrl: proxiedImageUrl(firstImage(card)),
+    kind: [card.type, card.domain, card.faction, card.region].filter(Boolean).join(' - '),
+    text: Array.isArray(card.rules) ? card.rules.join('\n') : card.text ?? card.effect,
+  })).filter(card => card.name), filters.text).slice(0, 12)
 }
 
 async function searchApiTcg(game: TournamentTCG, query: string, signal?: AbortSignal, filters: CardSearchFilters = {}): Promise<CardSuggestion[]> {
@@ -477,7 +546,7 @@ async function searchApiTcg(game: TournamentTCG, query: string, signal?: AbortSi
       id: `${game}:${String(card.id ?? name)}`,
       name,
       subtitle: card.set?.name ?? card.setName,
-      imageUrl: rawImage ? proxiedImageUrl(rawImage) : undefined,
+      imageUrl: proxiedImageUrl(rawImage),
       kind,
       text: card.text ?? card.effect ?? card.ability,
     }
@@ -492,6 +561,82 @@ function getApiTcgGameSlug(game: TournamentTCG) {
   if (game === 'magic') return 'magic'
   if (game === 'riftbound') return 'riftbound'
   return ''
+}
+
+type ScrydexImage = { small?: string; medium?: string; large?: string; full?: string; url?: string }
+type ScrydexCard = {
+  id?: string
+  name?: string
+  printed_number?: string
+  number?: string
+  type?: string
+  domain?: string
+  attribute?: string
+  colors?: string[]
+  subtypes?: string[]
+  rarity?: string
+  rules?: string[]
+  images?: ScrydexImage[] | Record<string, string>
+  image?: string
+  image_url?: string
+  imageUrl?: string
+  expansion?: { id?: string; code?: string; name?: string }
+}
+
+type ScrydexListResponse = {
+  data?: ScrydexCard[]
+  items?: ScrydexCard[]
+}
+
+type RiftScribeCard = {
+  id?: string
+  card_id?: string
+  code?: string
+  name?: string
+  set?: string
+  set_id?: string
+  rarity?: string
+  type?: string
+  domain?: string
+  faction?: string
+  region?: string
+  rules?: string[]
+  text?: string
+  effect?: string
+  images?: ScrydexImage[] | Record<string, string>
+  image?: string
+  image_url?: string
+  imageUrl?: string
+  art_url?: string
+  thumbnail_url?: string
+}
+
+type RiftScribeListResponse = {
+  data?: RiftScribeCard[]
+  items?: RiftScribeCard[]
+  results?: RiftScribeCard[]
+}
+
+function firstImage(card: {
+  images?: ScrydexImage[] | Record<string, string>
+  image?: string
+  image_url?: string
+  imageUrl?: string
+  art_url?: string
+  thumbnail_url?: string
+}) {
+  if (Array.isArray(card.images)) {
+    const image = card.images[0]
+    return image?.large ?? image?.full ?? image?.medium ?? image?.small ?? image?.url
+  }
+  if (card.images && typeof card.images === 'object') {
+    return card.images.large ?? card.images.full ?? card.images.medium ?? card.images.small
+  }
+  return card.imageUrl ?? card.image_url ?? card.image ?? card.art_url ?? card.thumbnail_url
+}
+
+function extractCardCode(value: string) {
+  return value.match(/\b([A-Z]{2,4}\d{2}-\d{3}[a-z]?)\b/i)?.[1].toUpperCase()
 }
 
 function filterByText(cards: CardSuggestion[], text?: string) {
@@ -530,7 +675,7 @@ function uniqueCards(cards: CardSuggestion[]) {
 
 function proxiedImageUrl(url?: string) {
   if (!url) return undefined
-  if (!url.includes('ygoprodeck.com')) return url
+  if (url.startsWith('data:') || url.includes('images.weserv.nl')) return url
   const cleanUrl = url.replace(/^https?:\/\//, '')
   return `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl)}`
 }

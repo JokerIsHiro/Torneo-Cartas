@@ -1,7 +1,16 @@
 import { useMemo, useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
-import type { Player, Match, Round } from '../types/tournament'
+import type { Player, Match, Round, TournamentTiebreakerSystem } from '../types/tournament'
+import {
+  calculateTiebreakerMetrics,
+  compareByTiebreakers,
+  getDefaultTiebreakerSystem,
+  getPrimaryTiebreakerMetric,
+  getTiebreakerSystemOption,
+  type TiebreakerMetricKey,
+  type TiebreakerMetrics,
+} from '../utils/tiebreakers'
 
 // Hook de lectura para todo lo derivado del sistema Swiss:
 // emparejamientos actuales, clasificacion, resumen de rondas y nombres.
@@ -9,10 +18,7 @@ interface StandingsRow {
   player: Player
   position: number
   isEliminated: boolean
-  tiebreakers: {
-    opponentPoints: number
-    opponentWinRate: number
-  }
+  tiebreakers: TiebreakerMetrics
 }
 
 interface RoundSummary {
@@ -31,6 +37,9 @@ interface UseSwissPairingsReturn {
   allResultsIn: boolean
   unfinishedCount: number
   standings: StandingsRow[]
+  tiebreakerSystem: TournamentTiebreakerSystem
+  tiebreakerLabel: string
+  primaryTiebreakerMetric: TiebreakerMetricKey | null
   roundSummaries: RoundSummary[]
   getPlayerById: (id: string) => Player | undefined
   getPlayerName: (id: string) => string
@@ -38,24 +47,6 @@ interface UseSwissPairingsReturn {
 
 const EMPTY_PLAYERS: Player[] = []
 const EMPTY_ROUNDS: Round[] = []
-
-function getTiebreakers(player: Player, players: Player[]) {
-  // Resistencia: mide como de fuertes fueron los rivales que te tocaron.
-  const opponents = player.opponents
-    .map(opponentId => players.find(candidate => candidate.id === opponentId))
-    .filter(Boolean) as Player[]
-
-  const opponentPoints = opponents.reduce((total, opponent) => total + opponent.points, 0)
-  const opponentGames = opponents.reduce((total, opponent) => {
-    return total + opponent.wins + opponent.losses + opponent.draws
-  }, 0)
-  const opponentWins = opponents.reduce((total, opponent) => total + opponent.wins, 0)
-
-  return {
-    opponentPoints,
-    opponentWinRate: opponentGames > 0 ? opponentWins / opponentGames : 0,
-  }
-}
 
 function calcTotalRounds(playerCount: number): number {
   if (playerCount <= 0)  return 0
@@ -72,7 +63,7 @@ export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
   // ✅ useShallow evita re-renders cuando el contenido no cambia.
   // Extraemos solo los campos primitivos y arrays que necesitamos,
   // no el objeto torneo entero (que .find() recrea en cada render).
-  const { players, rounds, currentRound, status } = useTournamentsStore(
+  const { players, rounds, currentRound, status, tcg, tiebreakerSystem } = useTournamentsStore(
     useShallow(s => {
       const t = s.tournaments.find(t => t.id === tournamentId)
       return {
@@ -80,9 +71,17 @@ export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
         rounds:       t?.rounds       ?? EMPTY_ROUNDS,
         currentRound: t?.currentRound ?? 0,
         status:       t?.status       ?? 'setup',
+        tcg:          t?.tcg          ?? 'magic',
+        tiebreakerSystem: t?.tiebreakerSystem,
       }
     })
   )
+  const activeTiebreakerSystem = tiebreakerSystem ?? getDefaultTiebreakerSystem(tcg)
+  const primaryTiebreakerMetric = useMemo(
+    () => getPrimaryTiebreakerMetric(activeTiebreakerSystem),
+    [activeTiebreakerSystem]
+  )
+  const tiebreakerLabel = getTiebreakerSystemOption(activeTiebreakerSystem).shortLabel
 
   const totalRounds = useMemo(() => calcTotalRounds(players.length), [players.length])
 
@@ -118,27 +117,19 @@ export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
       player,
       position: 0,
       isEliminated: player.losses >= 2,
-      tiebreakers: getTiebreakers(player, players),
+      tiebreakers: calculateTiebreakerMetrics(player, players, rounds),
     }))
 
     const sorted = rows.sort((a, b) => {
       if (b.player.points !== a.player.points) return b.player.points - a.player.points
-      if (b.tiebreakers.opponentPoints !== a.tiebreakers.opponentPoints) {
-        return b.tiebreakers.opponentPoints - a.tiebreakers.opponentPoints
-      }
-      if (b.tiebreakers.opponentWinRate !== a.tiebreakers.opponentWinRate) {
-        return b.tiebreakers.opponentWinRate - a.tiebreakers.opponentWinRate
-      }
-      if (b.player.wins !== a.player.wins) return b.player.wins - a.player.wins
-      if (a.player.timeoutLosses !== b.player.timeoutLosses) return a.player.timeoutLosses - b.player.timeoutLosses
-      return a.player.name.localeCompare(b.player.name)
+      return compareByTiebreakers(a, b, rounds, activeTiebreakerSystem)
     })
 
     return sorted.map((row, index) => ({
       ...row,
       position: index + 1,
     }))
-  }, [players])
+  }, [activeTiebreakerSystem, players, rounds])
 
   const roundSummaries = useMemo<RoundSummary[]>(() => {
     return rounds.map(round => {
@@ -175,6 +166,9 @@ export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
     allResultsIn,
     unfinishedCount,
     standings,
+    tiebreakerSystem: activeTiebreakerSystem,
+    tiebreakerLabel,
+    primaryTiebreakerMetric,
     roundSummaries,
     getPlayerById,
     getPlayerName,

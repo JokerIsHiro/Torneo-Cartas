@@ -21,17 +21,8 @@ import {
 } from 'firebase/firestore'
 import type { Tournament } from '../types/tournament'
 import type { SyncedTimerState } from '../store/timerStore'
-
-const envFirebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-}
-
-const hasEnvFirebaseConfig = Object.values(envFirebaseConfig).every(Boolean)
+import { ADMIN_AUTH_EMAIL, bundledFirebaseConfig, hasBundledFirebaseConfig } from '../config/appConfig'
+import { getDefaultTiebreakerSystem } from '../utils/tiebreakers'
 
 // Instancias lazy. Asi la app puede arrancar aunque falten variables y
 // decidir en runtime si usa Firebase Hosting init.json o .env.local.
@@ -43,7 +34,7 @@ let runtimeConfigPromise: Promise<FirebaseOptions | null> | null = null
 let authPersistencePromise: Promise<void> | null = null
 
 export function hasFirebaseConfig() {
-  return hasEnvFirebaseConfig || isFirebaseHosting()
+  return hasBundledFirebaseConfig || isFirebaseHosting()
 }
 
 function isFirebaseHosting() {
@@ -51,7 +42,7 @@ function isFirebaseHosting() {
 }
 
 async function getFirebaseConfig() {
-  if (hasEnvFirebaseConfig) return envFirebaseConfig
+  if (hasBundledFirebaseConfig) return bundledFirebaseConfig
 
   runtimeConfigPromise ??= fetch('/__/firebase/init.json', { cache: 'no-store' })
     .then(response => response.ok ? response.json() as Promise<FirebaseOptions> : null)
@@ -104,7 +95,7 @@ export async function ensureFirebaseAuth() {
 
 export async function signInAdmin(accessCode: string) {
   const firebaseAuth = await getFirebaseAuth()
-  const adminEmail = import.meta.env.VITE_ADMIN_AUTH_EMAIL?.trim()
+  const adminEmail = ADMIN_AUTH_EMAIL
   if (!firebaseAuth || !adminEmail) return null
   const credential = await signInWithEmailAndPassword(firebaseAuth, adminEmail, accessCode)
   return credential.user
@@ -208,6 +199,7 @@ function normalizeTournament(data: Partial<Tournament> & { id: string }): Tourna
     currentRound: data.currentRound ?? 0,
     status: data.status ?? 'setup',
     timerDuration: data.timerDuration ?? 50 * 60,
+    tiebreakerSystem: data.tiebreakerSystem ?? getDefaultTiebreakerSystem(data.tcg ?? 'magic'),
     createdAt: data.createdAt ?? Date.now(),
     updatedAt: data.updatedAt ?? data.createdAt ?? Date.now(),
   }
