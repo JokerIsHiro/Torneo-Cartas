@@ -1159,22 +1159,12 @@ async function hydrateKnownCardById(card: DeckCard, game: TournamentTCG, forExpo
       subtitle: match.subtitle,
       kind: match.kind,
       legalities: match.legalities,
-        section: getDefaultSection(game, match),
+      section: getDefaultSection(game, match),
+      imageUrl: usableImageUrl,
+    }
   }
-  const match = payload.data?.[0]
-  if (!match) return null
 
-  const imageUrl = match.card_images?.[0]?.image_url ?? match.card_images?.[0]?.image_url_small ?? getKnownImageUrl(game, String(match.id)) ?? ''
-  const usableImageUrl = imageUrl && forExport ? await fetchImageAsDataUrl(imageUrl).catch(() => '') : imageUrl
-
-  return {
-    ...card,
-    cardId: `yugioh:${match.id}`,
-    name: match.name,
-    subtitle: match.type,
-    kind: [match.type, match.race, match.attribute].filter(Boolean).join(' - '),
-    imageUrl: usableImageUrl,
-  }
+  return null
 }
 
 function getKnownImageUrl(game: TournamentTCG, cardId: string) {
