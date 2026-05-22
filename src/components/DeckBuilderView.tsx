@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import {
   getAdvancedCardFilterOptions,
@@ -12,8 +13,7 @@ import { useSwissPairings } from '../hooks/useSwissPairings'
 import type { DeckList, TournamentTCG } from '../types/tournament'
 import { deckRuleConfigs, getDefaultSection, validateDeck } from '../utils/deckRules'
 import { formatDeckCards, parseDeckImport, parseSavedDeckCards, type ImportedDeckCard } from '../utils/deckImport'
-import { fetchOnePieceCardByCode, getOnePieceSectionFromKind } from '../services/optcgApi'
-import { extractOnePieceCardCodeFromCardId } from '../utils/onePieceCardCode'
+import { getOnePieceSectionFromKind, resolveOnePieceCard } from '../services/optcgApi'
 import { fetchImageAsDataUrl } from '../utils/imageExport'
 import { ActionButton } from './ActionButton'
 
@@ -360,20 +360,22 @@ export function DeckBuilderView() {
     setSaveStatus('Preparando imagenes para la exportacion...')
     const hydratedCards = await hydrateMissingImages(cards, currentTournament.tcg, true)
     const withImages = hydratedCards.filter(card => card.imageUrl?.startsWith('data:')).length
-    setExportDeck({
-      id: 'current',
-      playerId: selectedPlayer.id,
-      playerName: selectedPlayer.name,
-      game: currentTournament.tcg,
-      name: deckName,
-      list: formatDeckCards(hydratedCards, sections, false, currentTournament.tcg),
-      notes: deckNotes,
-      status: 'submitted',
-      createdAt: now(),
-      updatedAt: now(),
+    flushSync(() => {
+      setExportDeck({
+        id: 'current',
+        playerId: selectedPlayer.id,
+        playerName: selectedPlayer.name,
+        game: currentTournament.tcg,
+        name: deckName,
+        list: formatDeckCards(hydratedCards, sections, false, currentTournament.tcg),
+        notes: deckNotes,
+        status: 'submitted',
+        createdAt: now(),
+        updatedAt: now(),
+      })
+      setExportCards(hydratedCards)
     })
-    setExportCards(hydratedCards)
-    await waitFrame()
+    await waitForExportPaint()
     await exportImage(`deck-${selectedPlayer.name}-${deckName}-${exportFormat}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
     setSaveStatus(`Imagen descargada (${withImages}/${hydratedCards.length} cartas con foto).`)
     window.setTimeout(() => setSaveStatus(''), 3500)
@@ -382,9 +384,11 @@ export function DeckBuilderView() {
   async function exportSavedDeckImage(deck: DeckList) {
     setSaveStatus('Preparando imagenes para la exportacion...')
     const hydratedCards = await hydrateMissingImages(parseSavedDeckCards(currentTournament.tcg, deck.list), currentTournament.tcg, true)
-    setExportDeck(deck)
-    setExportCards(hydratedCards)
-    await waitFrame()
+    flushSync(() => {
+      setExportDeck(deck)
+      setExportCards(hydratedCards)
+    })
+    await waitForExportPaint()
     await exportImage(`deck-${deck.playerName}-${deck.name}-${exportFormat}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
     setSaveStatus('Imagen del mazo descargada.')
     window.setTimeout(() => setSaveStatus(''), 3500)
@@ -865,7 +869,6 @@ function DeckImageExport({
                       className={`deck-export-card-tile${groupedExport ? ' deck-export-card-tile-grouped' : ''}`}
                       style={card.imageUrl ? { backgroundImage: `url("${card.imageUrl}")` } : undefined}
                     >
-                      <div className={`deck-export-card-fallback${compactFallback ? ' deck-export-card-fallback-compact' : ''}`}>{card.name}</div>
                       {card.imageUrl && (
                         <img
                           src={card.imageUrl}
@@ -873,6 +876,7 @@ function DeckImageExport({
                           crossOrigin={card.imageUrl.startsWith('data:') ? undefined : 'anonymous'}
                         />
                       )}
+                      <div className={`deck-export-card-fallback${compactFallback ? ' deck-export-card-fallback-compact' : ''}`}>{card.name}</div>
                       {groupedExport && <span className="deck-export-copy-badge">{card.quantity}</span>}
                     </div>
                   ))}
@@ -1107,17 +1111,14 @@ async function hydrateOnePieceCard(
   forExport: boolean,
   imageCache: Map<string, Promise<string>>,
 ): Promise<DeckCard | null> {
-  const code = extractOnePieceCardCodeFromCardId(card.cardId)
-  if (!code) return null
+  const match = await resolveOnePieceCard(card)
+  if (!match?.imageUrl) return null
 
-  const match = await fetchOnePieceCardByCode(code)
-  if (!match) return null
+  const usableImageUrl = forExport
+    ? await cachedDataUrl(match.imageUrl, imageCache).catch(() => '')
+    : match.imageUrl
 
-  const usableImageUrl = match.imageUrl
-    ? forExport
-      ? await cachedDataUrl(match.imageUrl, imageCache).catch(() => match.imageUrl)
-      : match.imageUrl
-    : undefined
+  if (forExport && !usableImageUrl) return null
 
   return {
     ...card,
@@ -1126,7 +1127,7 @@ async function hydrateOnePieceCard(
     subtitle: match.subtitle,
     kind: match.kind,
     section: getOnePieceSectionFromKind(match.kind),
-    imageUrl: usableImageUrl,
+    imageUrl: usableImageUrl || match.imageUrl,
   }
 }
 
@@ -1192,6 +1193,12 @@ function waitFrame() {
   return new Promise<void>(resolve => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
   })
+}
+
+async function waitForExportPaint() {
+  await waitFrame()
+  await new Promise<void>(resolve => window.setTimeout(resolve, 80))
+  await waitFrame()
 }
 
 const exportHiddenStyle: React.CSSProperties = {

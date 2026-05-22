@@ -1,5 +1,4 @@
 import type { CardSuggestion } from './cardSearch'
-import { proxiedImageUrl } from '../utils/imageExport'
 import { extractOnePieceCardCode, isOnePieceCardCode, ONE_PIECE_CARD_CODE_PATTERN } from '../utils/onePieceCardCode'
 
 const OPTCG_API_BASE = 'https://www.optcgapi.com/api'
@@ -63,7 +62,7 @@ export function onePieceCardToSuggestion(row: OptcgCardRow): CardSuggestion {
     id: `one-piece:${code}`,
     name: cleanCardName(row.card_name, code),
     subtitle: edition || code,
-    imageUrl: proxiedImageUrl(row.card_image),
+    imageUrl: row.card_image,
     kind: [row.card_type, row.card_color, row.rarity].filter(Boolean).join(' · '),
     text: undefined,
   }
@@ -111,4 +110,19 @@ export async function fetchOnePieceCardByCode(code: string): Promise<CardSuggest
   if (!match) return null
 
   return onePieceCardToSuggestion(match)
+}
+
+export async function resolveOnePieceCard(card: { cardId: string; name: string }): Promise<CardSuggestion | null> {
+  const fromId = extractOnePieceCardCode(card.cardId) ?? extractOnePieceCardCode(card.name)
+  if (fromId) {
+    const byCode = await fetchOnePieceCardByCode(fromId)
+    if (byCode) return byCode
+  }
+
+  const name = card.name.replace(ONE_PIECE_CARD_CODE_PATTERN, '').trim()
+  if (name.length < 2) return null
+
+  const matches = await searchOnePieceCardsByName(name)
+  const exact = matches.find(candidate => candidate.name.toLowerCase() === name.toLowerCase())
+  return exact ?? matches[0] ?? null
 }

@@ -2143,6 +2143,11 @@ button:disabled {
   z-index: 2;
 }
 
+.deck-export-card-tile:has(img[src]) .deck-export-card-fallback {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .deck-export-card-fallback {
   width: 100%;
   height: 100%;
@@ -2586,8 +2591,25 @@ button:disabled {
 }
 
 .deck-export-game-one-piece .deck-export-section-leader .deck-export-card-grid {
-  grid-template-columns: repeat(4, 1fr);
-  max-width: 560px;
+  grid-template-columns: repeat(6, 1fr);
+  max-width: none;
+}
+
+.deck-export-card-story.deck-export-game-one-piece .deck-export-section-leader .deck-export-card-grid,
+.deck-export-card-feed.deck-export-game-one-piece .deck-export-section-leader .deck-export-card-grid {
+  max-width: none;
+}
+
+.deck-export-card-story.deck-export-game-one-piece .deck-export-section-leader .deck-export-card-grid {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.deck-export-card-feed.deck-export-game-one-piece .deck-export-section-leader .deck-export-card-grid {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.deck-export-game-one-piece .deck-export-section-leader .deck-export-card-tile {
+  max-width: none;
 }
 
 .deck-export-game-one-piece .deck-export-card-tile {

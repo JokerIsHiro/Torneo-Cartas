@@ -6,8 +6,21 @@ export function proxiedImageUrl(url?: string) {
   if (!url) return undefined
   if (url.startsWith('data:') || url.includes(PROXY_HOST)) return url
 
-  const cleanUrl = url.replace(/^https?:\/\//, '')
-  return `https://${PROXY_HOST}/?url=${encodeURIComponent(cleanUrl)}&output=jpg`
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol === 'https:') {
+      // Weserv requiere el prefijo ssl: para HTTPS; encodeURIComponent rompe rutas largas.
+      return `https://${PROXY_HOST}/?url=ssl:${parsed.host}${parsed.pathname}${parsed.search}&output=jpg`
+    }
+    const cleanUrl = url.replace(/^https?:\/\//, '')
+    return `https://${PROXY_HOST}/?url=${encodeURIComponent(cleanUrl)}&output=jpg`
+  } catch {
+    return undefined
+  }
+}
+
+function corsProxyUrl(url: string) {
+  return `https://corsproxy.io/?${encodeURIComponent(url)}`
 }
 
 export function getExportImageCandidates(url: string) {
@@ -15,7 +28,12 @@ export function getExportImageCandidates(url: string) {
   if (!/^https?:\/\//i.test(url)) return [url]
 
   const proxied = proxiedImageUrl(url)
-  const corsProxy = `https://corsproxy.io/?${encodeURIComponent(url)}`
+  const corsProxy = corsProxyUrl(url)
+
+  if (/optcgapi\.com/i.test(url)) {
+    return [...new Set([url, proxied, corsProxy].filter(Boolean) as string[])]
+  }
+
   return [...new Set([proxied, corsProxy, url].filter(Boolean) as string[])]
 }
 
