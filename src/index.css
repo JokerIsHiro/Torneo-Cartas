@@ -1719,7 +1719,10 @@ button:disabled {
   margin: 0 auto;
   display: grid;
   gap: 12px;
-  background: #25272b;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(88, 215, 255, 0.06), transparent 260px),
+    radial-gradient(circle at 100% 18%, rgba(31, 122, 255, 0.07), transparent 340px),
+    #1f2126;
   padding: 12px;
   border-radius: var(--border-radius-lg);
 }
@@ -1937,7 +1940,7 @@ button:disabled {
 
 .deck-builder-layout {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr) 300px;
+  grid-template-columns: 340px minmax(0, 1fr) 300px;
   gap: 12px;
   align-items: start;
 }
@@ -1966,8 +1969,10 @@ button:disabled {
 
 .deck-search-panel {
   background:
-    radial-gradient(circle at 100% 0%, rgba(88, 215, 255, 0.08), transparent 180px),
+    linear-gradient(180deg, rgba(88, 215, 255, 0.035), transparent 220px),
+    radial-gradient(circle at 100% 0%, rgba(88, 215, 255, 0.12), transparent 190px),
     var(--color-background-primary);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
 }
 
 .deck-search-panel-header {
@@ -2008,21 +2013,20 @@ button:disabled {
 
 .deck-search-box {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  margin-bottom: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 12px;
 }
 
 .deck-search-input-shell {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 7px;
   min-width: 0;
-  min-height: 42px;
-  padding: 0 8px;
+  min-height: 46px;
+  padding: 0 6px 0 10px;
   border: 0.5px solid var(--color-border-secondary);
-  border-radius: var(--border-radius-md);
+  border-radius: 14px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent), var(--color-background-secondary);
   color: var(--color-text-secondary);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -2043,8 +2047,8 @@ button:disabled {
 }
 
 .deck-search-input-shell button {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   min-height: 0;
   padding: 0;
   border: 0;
@@ -2052,6 +2056,22 @@ button:disabled {
   background: rgba(255, 255, 255, 0.06);
   color: var(--color-text-secondary);
   cursor: pointer;
+}
+
+.deck-search-input-shell .deck-search-submit-icon {
+  width: 34px;
+  height: 34px;
+  border: 0.5px solid rgba(88, 215, 255, 0.55);
+  background:
+    linear-gradient(180deg, rgba(88, 215, 255, 0.26), rgba(88, 215, 255, 0.08)),
+    #071526;
+  color: var(--color-accent-secondary);
+  box-shadow: 0 8px 20px rgba(31, 122, 255, 0.16);
+}
+
+.deck-search-input-shell .deck-search-submit-icon:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--color-accent-secondary);
 }
 
 .deck-search-filters {
@@ -2137,10 +2157,11 @@ button:disabled {
 
 .deck-search-results {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   max-height: calc(100vh - 230px);
   overflow: auto;
+  padding-right: 2px;
 }
 
 .deck-search-empty {
@@ -2175,10 +2196,15 @@ button:disabled {
 
 .deck-search-card {
   min-width: 0;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   padding: 0;
   border: 0.5px solid var(--color-border-tertiary);
-  border-radius: var(--border-radius-md);
-  background: var(--color-background-secondary);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent),
+    var(--color-background-secondary);
   color: var(--color-text-primary);
   cursor: grab;
   overflow: hidden;
@@ -2193,20 +2219,25 @@ button:disabled {
 }
 
 .deck-search-card-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  grid-column: 2;
+  align-items: center;
+  justify-content: flex-end;
   gap: 4px;
-  padding: 5px;
-  border-top: 0.5px solid var(--color-border-tertiary);
+  padding: 0 8px 8px;
+  border-top: 0;
 }
 
 .deck-search-card-actions button {
-  min-height: 28px;
+  min-height: 26px;
+  padding: 4px 8px;
   gap: 4px;
-  font-size: 11px;
+  font-size: 10px;
+  color: var(--color-accent-secondary);
 }
 
 .deck-search-card-image {
+  grid-row: 1 / span 2;
   position: relative;
   background: #05070c;
 }
@@ -2218,6 +2249,12 @@ button:disabled {
   aspect-ratio: 0.716;
   object-fit: cover;
   background: var(--color-background-accent);
+}
+
+.deck-search-card img,
+.deck-search-card .deck-card-placeholder {
+  height: 100%;
+  min-height: 92px;
 }
 
 .deck-search-card img.deck-card-image-landscape,
@@ -2232,15 +2269,16 @@ button:disabled {
 
 .deck-search-card-copy {
   display: grid;
-  gap: 2px;
-  min-height: 54px;
-  padding: 7px;
+  align-content: center;
+  gap: 4px;
+  min-height: 58px;
+  padding: 8px 9px 4px;
 }
 
 .deck-search-card-copy strong {
   color: var(--color-text-primary);
-  font-size: 11px;
-  line-height: 1.15;
+  font-size: 12px;
+  line-height: 1.18;
   overflow-wrap: anywhere;
 }
 
@@ -2251,7 +2289,7 @@ button:disabled {
   overflow: hidden;
   color: var(--color-text-secondary);
   font-size: 10px;
-  line-height: 1.15;
+  line-height: 1.2;
 }
 
 .deck-zone-grid {

@@ -682,16 +682,17 @@ export function DeckBuilderView() {
                   <i className="ti ti-x" aria-hidden="true" />
                 </button>
               )}
+              <button
+                type="button"
+                className="deck-search-submit-icon"
+                onClick={() => addManualCard()}
+                disabled={!query.trim()}
+                title="Anadir como carta manual si no aparece en la busqueda"
+                aria-label="Anadir carta manual"
+              >
+                <i className="ti ti-search" aria-hidden="true" />
+              </button>
             </div>
-            <ActionButton
-              className="deck-action-primary"
-              onClick={() => addManualCard()}
-              disabled={!query.trim()}
-              icon="ti-plus"
-              title="Anade la carta escrita aunque no aparezca en la busqueda"
-            >
-              Anadir manual
-            </ActionButton>
           </div>
 
           <div className="deck-search-filters">
@@ -755,7 +756,7 @@ export function DeckBuilderView() {
               <div className="deck-search-empty">
                 <i className="ti ti-mood-empty" aria-hidden="true" />
                 <strong>No he encontrado cartas</strong>
-                <span>Prueba con menos filtros o anadela manualmente.</span>
+                <span>Prueba con menos filtros o usa la lupa del buscador para guardarla manualmente.</span>
               </div>
             )}
             {visibleResults.map(card => (
@@ -773,14 +774,14 @@ export function DeckBuilderView() {
                   {(card.subtitle || card.kind) && <small>{[card.subtitle, card.kind].filter(Boolean).join(' · ')}</small>}
                 </div>
                 <div className="deck-search-card-actions">
-                  <button onClick={() => addCard(card)} title="Anade esta carta al mazo principal">
+                  <button onClick={() => addCard(card)} title="Anade esta carta al mazo principal" aria-label={`Anadir ${card.name} al mazo`}>
                     <i className="ti ti-plus" aria-hidden="true" />
-                    Al mazo
+                    <span>Mazo</span>
                   </button>
                   {quickSideSection && (
-                    <button onClick={() => addCard(card, quickSideSection.id)} title="Anade esta carta al banquillo">
+                    <button onClick={() => addCard(card, quickSideSection.id)} title="Anade esta carta al banquillo" aria-label={`Anadir ${card.name} al banquillo`}>
                       <i className="ti ti-layout-sidebar-right" aria-hidden="true" />
-                      Al banquillo
+                      <span>Side</span>
                     </button>
                   )}
                 </div>
