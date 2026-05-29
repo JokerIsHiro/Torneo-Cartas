@@ -18,6 +18,7 @@ export function useFirebaseSync() {
     if (!hasFirebaseConfig()) {
       store.setSyncEnabled(false)
       store.setSyncLoaded(true)
+      useTimerStore.getState().setTimersLoaded(true)
       return
     }
 
@@ -26,6 +27,7 @@ export function useFirebaseSync() {
     localStorage.removeItem('torneos-storage')
     store.setSyncEnabled(true)
     store.setSyncLoaded(false)
+    useTimerStore.getState().setTimersLoaded(false)
 
     let unsubscribeTournaments: (() => void) | null = null
     let unsubscribeTimers: (() => void) | null = null
@@ -51,6 +53,7 @@ export function useFirebaseSync() {
           },
           error => {
             console.error('No se han podido escuchar los temporizadores de Firebase', error)
+            useTimerStore.getState().setTimersLoaded(true)
           }
         )
       })
@@ -66,6 +69,7 @@ export function useFirebaseSync() {
       unsubscribeTimers?.()
       useTournamentsStore.getState().setSyncEnabled(false)
       useTournamentsStore.getState().setSyncLoaded(false)
+      useTimerStore.getState().setTimersLoaded(false)
     }
   }, [])
 }

@@ -15,6 +15,7 @@ interface TimerState {
 
 interface TimerStore {
   timers: Record<string, TimerState>
+  timersLoaded: boolean
 
   initTimer: (tournamentId: string, durationSeconds: number) => void
   startTimer: (tournamentId: string) => void
@@ -23,17 +24,18 @@ interface TimerStore {
   resetTimer: (tournamentId: string, durationSeconds: number) => void
   getTimer: (tournamentId: string) => TimerState | null
   setRemoteTimers: (timers: Record<string, SyncedTimerState>) => void
+  setTimersLoaded: (loaded: boolean) => void
 }
 
 export type SyncedTimerState = Omit<TimerState, 'intervalId'>
 
 export const TIMER_SYNC_KEY = 'torneos-timers-sync'
 
-const defaultTimer = (durationSeconds: number): TimerState => ({
+const defaultTimer = (durationSeconds: number, updatedAt = Date.now()): TimerState => ({
   secondsLeft: durationSeconds,
   status: 'idle',
   endsAt: null,
-  updatedAt: Date.now(),
+  updatedAt,
   intervalId: null,
 })
 
@@ -159,6 +161,7 @@ export function syncTimersFromStorage(value?: string | null) {
 
 export const useTimerStore = create<TimerStore>((_, get) => ({
   timers: {},
+  timersLoaded: false,
 
   initTimer: (tournamentId, durationSeconds) => {
     const existing = get().timers[tournamentId]
@@ -173,10 +176,14 @@ export const useTimerStore = create<TimerStore>((_, get) => ({
     const syncedTimer = readSyncedTimers()[tournamentId]
     const timer: TimerState = syncedTimer
       ? { ...syncedTimer, secondsLeft: getSecondsLeft(syncedTimer), intervalId: null }
-      : defaultTimer(durationSeconds)
+      : defaultTimer(durationSeconds, 0)
     timer.intervalId = ensureTicker(tournamentId, timer)
 
-    commitTimer(tournamentId, timer, false)
+    if (syncedTimer) {
+      commitTimer(tournamentId, timer, false)
+    } else {
+      commitTimers({ ...get().timers, [tournamentId]: timer }, false)
+    }
   },
 
   startTimer: (tournamentId) => {
@@ -239,7 +246,12 @@ export const useTimerStore = create<TimerStore>((_, get) => ({
 
   setRemoteTimers: (timers) => {
     hydrateSyncedTimers(timers)
+    useTimerStore.setState({ timersLoaded: true })
     publishTimers(useTimerStore.getState().timers)
+  },
+
+  setTimersLoaded: (loaded) => {
+    useTimerStore.setState({ timersLoaded: loaded })
   },
 }))
 

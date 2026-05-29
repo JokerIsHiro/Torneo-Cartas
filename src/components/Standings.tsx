@@ -35,6 +35,8 @@ export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
     totalRounds,
     getPlayerName,
     tiebreakerSystem,
+    phaseMode,
+    topCut,
     tiebreakerLabel,
     primaryTiebreakerMetric,
   } = useSwissPairings(tournamentId)
@@ -81,6 +83,7 @@ export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
             <i className="ti ti-list-numbers" aria-hidden="true" /> Clasificacion general
             <div style={{ fontSize: '11px', fontWeight: 400, color: 'var(--color-text-secondary)', marginTop: '3px' }}>
               {getTiebreakerSystemOption(tiebreakerSystem).description}
+              {phaseMode === 'swiss-top' && ` · Corte: Top ${topCut}`}
             </div>
           </div>
           <select
@@ -120,6 +123,9 @@ export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
             padding: '7px 10px',
             borderRadius: 'var(--border-radius-md)',
             background: row.position % 2 === 0 ? 'var(--color-background-secondary)' : 'transparent',
+            border: phaseMode === 'swiss-top' && row.position === topCut
+              ? '0.5px solid var(--color-border-success)'
+              : '0.5px solid transparent',
             opacity: row.isEliminated && status !== 'finished' ? 0.5 : 1,
           }}>
             <span style={{ fontSize: '12px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>

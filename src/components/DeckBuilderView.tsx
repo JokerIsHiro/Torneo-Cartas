@@ -4,14 +4,18 @@ import { useTournamentsStore } from '../store/tournamentsStore'
 import {
   getAdvancedCardFilterOptions,
   getCardFilterOptions,
-  searchCards,
+  resolveMagicCard,
+  resolveMagicCardsBatch,
+  resolvePokemonCard,
   resolveLorcanaCard,
+  resolveYugiohCard,
+  searchCards,
   type CardSearchFilters,
   type CardSuggestion,
 } from '../services/cardSearch'
 import { useExportImage } from '../hooks/useExportImage'
 import { useSwissPairings } from '../hooks/useSwissPairings'
-import type { DeckList, TournamentTCG } from '../types/tournament'
+import type { DeckList, MagicFormat, TournamentTCG } from '../types/tournament'
 import { deckRuleConfigs, getDefaultSection, validateDeck } from '../utils/deckRules'
 import { formatDeckCards, parseDeckImport, parseSavedDeckCards, type ImportedDeckCard } from '../utils/deckImport'
 import { getOnePieceSectionFromKind, resolveOnePieceCard } from '../services/optcgApi'
@@ -21,7 +25,10 @@ import { ActionButton } from './ActionButton'
 
 type DeckCard = ImportedDeckCard
 type DeckExportFormat = 'normal' | 'feed' | 'story'
-type MagicFormat = 'standard' | 'pioneer' | 'modern' | 'pauper' | 'commander' | 'legacy' | 'vintage'
+type DeckExportVisualCard = DeckCard & {
+  exportBadge?: number
+  exportRole?: 'rune-summary'
+}
 
 const magicFormatOptions: Array<{ value: MagicFormat; label: string }> = [
   { value: 'standard', label: 'Standard' },
@@ -31,6 +38,11 @@ const magicFormatOptions: Array<{ value: MagicFormat; label: string }> = [
   { value: 'commander', label: 'Commander' },
   { value: 'legacy', label: 'Legacy' },
   { value: 'vintage', label: 'Vintage' },
+]
+
+const magicCommanderSections = [
+  { id: 'Commander', label: 'Comandante', min: 1, max: 2 },
+  { id: 'Main', label: 'Mazo principal', min: 98, max: 99 },
 ]
 
 interface SavedDeckTemplate {
@@ -54,7 +66,9 @@ export function DeckBuilderView() {
   const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
   const submitDecklist = useTournamentsStore(s => s.submitDecklist)
   const publishDecklist = useTournamentsStore(s => s.publishDecklist)
+  const setTournamentMagicFormat = useTournamentsStore(s => s.setTournamentMagicFormat)
   const [playerId, setPlayerId] = useState('')
+  const [deckOwnerName, setDeckOwnerName] = useState('')
   const [deckName, setDeckName] = useState('')
   const [deckNotes, setDeckNotes] = useState('')
   const [query, setQuery] = useState('')
@@ -67,19 +81,20 @@ export function DeckBuilderView() {
   const [exportDeck, setExportDeck] = useState<DeckList | null>(null)
   const [exportCards, setExportCards] = useState<DeckCard[]>([])
   const [exportFormat, setExportFormat] = useState<DeckExportFormat>('feed')
-  const [magicFormat, setMagicFormat] = useState<MagicFormat>('pauper')
   const [saveStatus, setSaveStatus] = useState('')
   const [deckLibrary, setDeckLibrary] = useState<SavedDeckTemplate[]>(loadDeckLibrary)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const deckHydrateRef = useRef(0)
   const { ref: exportRef, exportImage } = useExportImage()
   const { standings } = useSwissPairings(tournamentId)
+  const magicFormat = tournament?.magicFormat ?? 'pauper'
 
   const latestDecks = useMemo(() => {
     const latestByPlayer = new Map<string, DeckList>()
     for (const deck of tournament?.decklists ?? []) {
-      const current = latestByPlayer.get(deck.playerId)
-      if (!current || deck.updatedAt >= current.updatedAt) latestByPlayer.set(deck.playerId, deck)
+      const key = `${deck.playerId}:${deck.playerName}`
+      const current = latestByPlayer.get(key)
+      if (!current || deck.updatedAt >= current.updatedAt) latestByPlayer.set(key, deck)
     }
     return [...latestByPlayer.values()].sort((a, b) => a.playerName.localeCompare(b.playerName))
   }, [tournament?.decklists])
@@ -129,23 +144,41 @@ export function DeckBuilderView() {
 
   const currentTournament = tournament
   const rules = deckRuleConfigs[currentTournament.tcg]
-  const sections = rules.sections.map(section => section.id)
+  const ruleSections = getActiveDeckSections(currentTournament.tcg, rules.sections, magicFormat)
+  const activeSections = getVisibleDeckSections(currentTournament.tcg, ruleSections)
+  const sections = ruleSections.map(section => section.id)
   const warnings = [
-    ...validateDeck(currentTournament.tcg, cards),
+    ...(currentTournament.tcg === 'magic' && magicFormat === 'commander'
+      ? []
+      : validateDeck(currentTournament.tcg, cards)),
     ...(currentTournament.tcg === 'magic' ? getMagicFormatWarnings(cards, magicFormat) : []),
   ]
   const filterOptions = getCardFilterOptions(currentTournament.tcg)
   const advancedFilterOptions = getAdvancedCardFilterOptions(currentTournament.tcg)
   const selectedPlayer = currentTournament.players.find(player => player.id === playerId) ?? null
+  const selectedTeamMembers = selectedPlayer?.teamMembers ?? []
+  const selectedDeckOwnerName = selectedTeamMembers.length ? deckOwnerName : selectedPlayer?.name ?? ''
   const visibleResults = query.trim().length < 2 ? [] : results
-  const quickSideSection = rules.sections.find(section => ['Side', 'Sideboard'].includes(section.id))
+  const quickSideSection = activeSections.find(section => ['Side', 'Sideboard'].includes(section.id))
+  const activeSearchFilters = [
+    searchKind,
+    searchText,
+    onlyImages ? '' : 'all-images',
+    ...Object.values(advancedFilters).map(value => String(value ?? '')),
+  ].filter(Boolean).length
 
   function toSplitDeckRows(imported: ImportedDeckCard[]) {
-    return splitCardCopies(
+    const displayCards = normalizeResolvedDeckSectionsForGame(
       imported.map(card => ({
         ...card,
         imageUrl: card.imageUrl ? (displayImageUrl(card.imageUrl) ?? card.imageUrl) : undefined,
+        artUrl: card.artUrl ? (displayImageUrl(card.artUrl) ?? card.artUrl) : undefined,
       })),
+      currentTournament.tcg,
+    )
+
+    return splitCardCopies(
+      displayCards,
     )
   }
 
@@ -178,7 +211,27 @@ export function DeckBuilderView() {
   function handlePlayerChange(nextPlayerId: string) {
     deckHydrateRef.current += 1
     setPlayerId(nextPlayerId)
-    const existingDeck = [...(currentTournament.decklists ?? [])].reverse().find(deck => deck.playerId === nextPlayerId)
+    const nextPlayer = currentTournament.players.find(player => player.id === nextPlayerId)
+    const nextOwnerName = nextPlayer?.teamMembers?.[0] ?? nextPlayer?.name ?? ''
+    setDeckOwnerName(nextOwnerName)
+    const existingDeck = [...(currentTournament.decklists ?? [])].reverse().find(deck =>
+      deck.playerId === nextPlayerId && (!nextPlayer?.teamMembers?.length || deck.playerName === nextOwnerName)
+    )
+    setDeckName(existingDeck?.name ?? '')
+    setDeckNotes(existingDeck?.notes ?? '')
+    if (!existingDeck?.list?.trim()) {
+      setCards([])
+      return
+    }
+    void loadDeckFromList(existingDeck.list, 'Mazo cargado')
+  }
+
+  function handleDeckOwnerChange(nextOwnerName: string) {
+    deckHydrateRef.current += 1
+    setDeckOwnerName(nextOwnerName)
+    const existingDeck = [...(currentTournament.decklists ?? [])].reverse().find(deck =>
+      deck.playerId === playerId && deck.playerName === nextOwnerName
+    )
     setDeckName(existingDeck?.name ?? '')
     setDeckNotes(existingDeck?.notes ?? '')
     if (!existingDeck?.list?.trim()) {
@@ -202,6 +255,8 @@ export function DeckBuilderView() {
         name: card.name,
         subtitle: card.subtitle,
         imageUrl: card.imageUrl ? (displayImageUrl(card.imageUrl) ?? card.imageUrl) : undefined,
+        artUrl: card.artUrl ? (displayImageUrl(card.artUrl) ?? card.artUrl) : undefined,
+        orientation: card.orientation,
         kind: card.kind,
         section,
         quantity: 1,
@@ -220,11 +275,12 @@ export function DeckBuilderView() {
     setCards(current => {
       const card = current.find(candidate => candidate.id === cardId)
       if (!card) return current
-      if (!canPlaceCardInSection(currentTournament.tcg, card, section)) {
+      if (!canPlaceCardInVisibleSection(currentTournament.tcg, card, section)) {
         showDeckStatus(`Movimiento rechazado: ${card.name} no pertenece a ${getSectionLabel(section)}.`)
         return current
       }
-      return current.map(candidate => candidate.id === cardId ? { ...candidate, section } : candidate)
+      const storedSection = getStoredSectionForVisibleDrop(currentTournament.tcg, section, card)
+      return current.map(candidate => candidate.id === cardId ? { ...candidate, section: storedSection } : candidate)
     })
   }
 
@@ -257,13 +313,15 @@ export function DeckBuilderView() {
 
       const moved = current[fromIndex]
       const target = current[targetIndex]
-      if (!canPlaceCardInSection(currentTournament.tcg, moved, target.section)) {
-        showDeckStatus(`Movimiento rechazado: ${moved.name} no pertenece a ${getSectionLabel(target.section)}.`)
+      const visibleTargetSection = getVisibleSectionId(currentTournament.tcg, target.section)
+      if (!canPlaceCardInVisibleSection(currentTournament.tcg, moved, visibleTargetSection)) {
+        showDeckStatus(`Movimiento rechazado: ${moved.name} no pertenece a ${getSectionLabel(visibleTargetSection)}.`)
         return current
       }
+      const storedSection = getStoredSectionForVisibleDrop(currentTournament.tcg, visibleTargetSection, moved)
       const next = current.filter(card => card.id !== cardId)
       const insertIndex = next.findIndex(card => card.id === targetCardId)
-      next.splice(insertIndex, 0, { ...moved, section: target.section })
+      next.splice(insertIndex, 0, { ...moved, section: storedSection })
       return next
     })
   }
@@ -304,16 +362,19 @@ export function DeckBuilderView() {
   }
 
   function getCopyWarning(card: DeckCard) {
-    const limit = rules.copyLimit
+    const limit = currentTournament.tcg === 'magic' && magicFormat === 'commander'
+      ? 1
+      : rules.copyLimit
     if (!limit) return ''
     const total = cards
       .filter(candidate => candidate.name.toLowerCase() === card.name.toLowerCase())
       .reduce((sum, candidate) => sum + candidate.quantity, 0)
+    if (currentTournament.tcg === 'magic' && isBasicMagicLand(card.name)) return ''
     return total > limit ? `Max ${limit}` : ''
   }
 
   function saveDeck() {
-    if (!selectedPlayer || !deckName.trim() || cards.length === 0) {
+    if (!selectedPlayer || !selectedDeckOwnerName || !deckName.trim() || cards.length === 0) {
       setSaveStatus('Completa jugador, nombre y cartas.')
       return
     }
@@ -323,11 +384,15 @@ export function DeckBuilderView() {
       name: deckName,
       list: formattedList,
       notes: deckNotes,
+      playerName: selectedDeckOwnerName,
+      teamName: selectedPlayer.teamMembers?.length ? selectedPlayer.name : undefined,
     })
     saveReusableDeck({
-      id: `${currentTournament.tcg}:${selectedPlayer.name}:${deckName}`.toLowerCase(),
+      id: `${currentTournament.tcg}:${selectedPlayer.name}:${selectedDeckOwnerName}:${deckName}`.toLowerCase(),
       game: currentTournament.tcg,
-      playerName: selectedPlayer.name,
+      playerName: selectedPlayer.teamMembers?.length
+        ? `${selectedPlayer.name} - ${selectedDeckOwnerName}`
+        : selectedDeckOwnerName,
       name: deckName.trim(),
       list: formattedList,
       notes: deckNotes.trim(),
@@ -343,21 +408,33 @@ export function DeckBuilderView() {
   }
 
   function getSectionLabel(sectionId: string) {
-    return rules.sections.find(section => section.id === sectionId)?.label ?? sectionId
+    return activeSections.find(section => section.id === sectionId)?.label ?? sectionId
+  }
+
+  function clearSearchFilters() {
+    setSearchKind('')
+    setSearchText('')
+    setAdvancedFilters({})
+    setOnlyImages(true)
   }
 
   async function applyImportedText(text: string) {
     if (!text) return
     const result = parseDeckImport(currentTournament.tcg, text)
-    const importedTotal = result.cards.reduce((sum, card) => sum + card.quantity, 0)
+    const importedCards = normalizeImportedDeckSectionsForTournament(
+      result.cards,
+      currentTournament.tcg,
+      magicFormat,
+    )
+    const importedTotal = importedCards.reduce((sum, card) => sum + card.quantity, 0)
     const ignoredSuffix = result.ignoredLines.length ? ` ${result.ignoredLines.length} lineas sin reconocer.` : ''
 
     deckHydrateRef.current += 1
     const generation = ++deckHydrateRef.current
-    setCards(toSplitDeckRows(result.cards))
+    setCards(toSplitDeckRows(importedCards))
     setSaveStatus(`Importadas ${importedTotal} cartas. Cargando imagenes...${ignoredSuffix}`)
 
-    const hydratedCards = await hydrateMissingImages(result.cards, currentTournament.tcg)
+    const hydratedCards = await hydrateMissingImages(importedCards, currentTournament.tcg)
     if (generation !== deckHydrateRef.current) return
     setCards(toSplitDeckRows(hydratedCards))
     const withImages = hydratedCards.filter(card => card.imageUrl).length
@@ -380,6 +457,26 @@ export function DeckBuilderView() {
     const text = await file.text()
     await applyImportedText(text)
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  async function repairDeckImages() {
+    if (!cards.length) return
+
+    const generation = ++deckHydrateRef.current
+    setSaveStatus('Reparando imagenes del mazo...')
+
+    const cardsToRepair = cards.map(card => ({
+      ...card,
+      imageUrl: undefined,
+    }))
+
+    const hydratedCards = await hydrateMissingImages(cardsToRepair, currentTournament.tcg)
+    if (generation !== deckHydrateRef.current) return
+
+    setCards(toSplitDeckRows(hydratedCards))
+    const withImages = hydratedCards.filter(card => card.imageUrl).length
+    setSaveStatus(`Imagenes reparadas (${withImages}/${hydratedCards.length} con imagen).`)
+    window.setTimeout(() => setSaveStatus(''), 3500)
   }
 
   function loadDeckList(deck: Pick<DeckList, 'name' | 'list' | 'notes'>) {
@@ -405,7 +502,7 @@ export function DeckBuilderView() {
   }
 
   async function exportCurrentDeckImage() {
-    if (!selectedPlayer || !deckName.trim() || cards.length === 0) return
+    if (!selectedPlayer || !selectedDeckOwnerName || !deckName.trim() || cards.length === 0) return
     setSaveStatus('Preparando imagenes para la exportacion...')
     const hydratedCards = await hydrateMissingImages(cards, currentTournament.tcg, true)
     const withImages = hydratedCards.filter(card => card.imageUrl?.startsWith('data:')).length
@@ -413,7 +510,8 @@ export function DeckBuilderView() {
       setExportDeck({
         id: 'current',
         playerId: selectedPlayer.id,
-        playerName: selectedPlayer.name,
+        playerName: selectedDeckOwnerName,
+        teamName: selectedPlayer.teamMembers?.length ? selectedPlayer.name : undefined,
         game: currentTournament.tcg,
         name: deckName,
         list: formatDeckCards(hydratedCards, sections, false, currentTournament.tcg),
@@ -425,7 +523,7 @@ export function DeckBuilderView() {
       setExportCards(hydratedCards)
     })
     await waitForExportPaint()
-    await exportImage(`deck-${selectedPlayer.name}-${deckName}-${exportFormat}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+    await exportImage(`deck-${selectedPlayer.name}-${selectedDeckOwnerName}-${deckName}-${exportFormat}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
     setSaveStatus(`Imagen descargada (${withImages}/${hydratedCards.length} cartas con foto).`)
     window.setTimeout(() => setSaveStatus(''), 3500)
   }
@@ -451,7 +549,7 @@ export function DeckBuilderView() {
           <h1>{currentTournament.name}</h1>
           <p>Constructor bloqueado al juego del torneo</p>
         </div>
-        <ActionButton onClick={() => window.close()} icon="ti-x" title="Cierra esta ventana del constructor">
+        <ActionButton className="deck-action-ghost" onClick={() => window.close()} icon="ti-x" title="Cierra esta ventana del constructor">
           Cerrar constructor
         </ActionButton>
       </header>
@@ -471,22 +569,34 @@ export function DeckBuilderView() {
           onChange={event => void importDeckFile(event.target.files?.[0])}
         />
         <ActionButton
+          className="deck-action-warning"
+          onClick={repairDeckImages}
+          disabled={cards.length === 0}
+          icon="ti-photo-search"
+          title="Fuerza una nueva busqueda de imagenes para todo el mazo"
+        >
+          Reparar imagenes
+        </ActionButton>
+        <ActionButton
+          className="deck-action-primary"
           onClick={exportCurrentDeckImage}
-          disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}
+          disabled={!selectedPlayer || !selectedDeckOwnerName || !deckName.trim() || cards.length === 0}
           icon="ti-photo-down"
           title="Genera una imagen PNG lista para Instagram o WhatsApp"
         >
           Descargar imagen PNG
         </ActionButton>
         <ActionButton
+          className="deck-action-primary"
           onClick={saveDeck}
-          disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}
+          disabled={!selectedPlayer || !selectedDeckOwnerName || !deckName.trim() || cards.length === 0}
           icon="ti-device-floppy"
           title="Guarda el mazo en el torneo para este jugador"
         >
           Guardar mazo del torneo
         </ActionButton>
         <ActionButton
+          className="deck-action-danger"
           onClick={() => setCards([])}
           disabled={cards.length === 0}
           icon="ti-trash"
@@ -498,15 +608,24 @@ export function DeckBuilderView() {
 
       <section className="deck-builder-controls">
         <select value={playerId} onChange={event => handlePlayerChange(event.target.value)}>
-          <option value="">Jugador</option>
+          <option value="">{currentTournament.teamMode === 'solo' ? 'Jugador' : 'Equipo'}</option>
           {currentTournament.players.map(player => (
             <option key={player.id} value={player.id}>{player.name}</option>
           ))}
         </select>
+        {selectedTeamMembers.length > 0 && (
+          <select value={deckOwnerName} onChange={event => handleDeckOwnerChange(event.target.value)}>
+            {selectedTeamMembers.map(member => (
+              <option key={member} value={member}>
+                {member}{member === selectedPlayer?.captainName ? ' (capitan)' : ''}
+              </option>
+            ))}
+          </select>
+        )}
         <input value={deckName} onChange={event => setDeckName(event.target.value)} placeholder="Nombre del mazo" />
         <input value={deckNotes} onChange={event => setDeckNotes(event.target.value)} placeholder="Notas para redes" />
         {currentTournament.tcg === 'magic' && (
-          <select value={magicFormat} onChange={event => setMagicFormat(event.target.value as MagicFormat)}>
+          <select value={magicFormat} onChange={event => setTournamentMagicFormat(currentTournament.id, event.target.value as MagicFormat)}>
             {magicFormatOptions.map(option => (
               <option key={option.value} value={option.value}>Formato: {option.label}</option>
             ))}
@@ -517,22 +636,6 @@ export function DeckBuilderView() {
           <option value="story">Historias / Reels 9:16</option>
           <option value="normal">Imagen normal</option>
         </select>
-        <ActionButton
-          onClick={saveDeck}
-          disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}
-          icon="ti-device-floppy"
-          title="Guarda el mazo en el torneo para este jugador"
-        >
-          Guardar mazo
-        </ActionButton>
-        <ActionButton
-          onClick={exportCurrentDeckImage}
-          disabled={!selectedPlayer || !deckName.trim() || cards.length === 0}
-          icon="ti-photo-down"
-          title="Genera una imagen PNG lista para redes"
-        >
-          Descargar PNG
-        </ActionButton>
         {saveStatus && <span className="deck-save-status">{saveStatus}</span>}
       </section>
 
@@ -541,10 +644,10 @@ export function DeckBuilderView() {
           <strong>Total</strong>
           <span>{cards.reduce((sum, card) => sum + card.quantity, 0)} cartas</span>
         </div>
-        {rules.sections.map(section => (
+        {activeSections.map(section => (
           <div key={section.id}>
             <strong>{section.label}</strong>
-            <span>{cards.filter(card => card.section === section.id).reduce((sum, card) => sum + card.quantity, 0)} cartas</span>
+            <span>{getCardsForVisibleSection(currentTournament.tcg, section.id, cards).reduce((sum, card) => sum + card.quantity, 0)} cartas</span>
           </div>
         ))}
         {warnings.length > 0 && (
@@ -557,13 +660,30 @@ export function DeckBuilderView() {
 
       <div className="deck-builder-layout">
         <aside className="deck-search-panel">
+          <div className="deck-search-panel-header">
+            <div>
+              <span>Base de datos</span>
+              <strong>Buscar cartas</strong>
+            </div>
+            <em>{visibleResults.length ? `${visibleResults.length} resultados` : query.trim().length >= 2 ? 'Sin resultados' : rules.label}</em>
+          </div>
+
           <div className="deck-search-box">
-            <input
-              value={query}
-              onChange={event => setQuery(event.target.value)}
-              placeholder="Buscar carta"
-            />
+            <div className="deck-search-input-shell">
+              <i className="ti ti-search" aria-hidden="true" />
+              <input
+                value={query}
+                onChange={event => setQuery(event.target.value)}
+                placeholder={`Buscar carta de ${rules.label}`}
+              />
+              {query && (
+                <button type="button" onClick={() => setQuery('')} title="Limpiar busqueda" aria-label="Limpiar busqueda">
+                  <i className="ti ti-x" aria-hidden="true" />
+                </button>
+              )}
+            </div>
             <ActionButton
+              className="deck-action-primary"
               onClick={() => addManualCard()}
               disabled={!query.trim()}
               icon="ti-plus"
@@ -591,6 +711,13 @@ export function DeckBuilderView() {
             </label>
           </div>
 
+          <div className="deck-search-filterbar">
+            <span>{activeSearchFilters} filtros activos</span>
+            <button type="button" onClick={clearSearchFilters} disabled={activeSearchFilters === 0}>
+              Restablecer filtros
+            </button>
+          </div>
+
           {advancedFilterOptions.length > 0 && (
             <div className="deck-search-advanced-filters">
               {advancedFilterOptions.map(filter => (
@@ -616,6 +743,20 @@ export function DeckBuilderView() {
           />
 
           <div className="deck-search-results">
+            {query.trim().length < 2 && (
+              <div className="deck-search-empty">
+                <i className="ti ti-cards" aria-hidden="true" />
+                <strong>Empieza escribiendo una carta</strong>
+                <span>Busca por nombre, filtra por tipo y arrastra resultados al mazo.</span>
+              </div>
+            )}
+            {query.trim().length >= 2 && visibleResults.length === 0 && (
+              <div className="deck-search-empty">
+                <i className="ti ti-mood-empty" aria-hidden="true" />
+                <strong>No he encontrado cartas</strong>
+                <span>Prueba con menos filtros o anadela manualmente.</span>
+              </div>
+            )}
             {visibleResults.map(card => (
               <article
                 key={card.id}
@@ -623,8 +764,13 @@ export function DeckBuilderView() {
                 onDragStart={event => event.dataTransfer.setData('application/x-card', JSON.stringify(card))}
                 className="deck-search-card"
               >
-                {card.imageUrl ? <DeckCardImage url={card.imageUrl} priority="high" /> : <div className="deck-card-placeholder" />}
-                <span>{card.name}</span>
+                <div className="deck-search-card-image">
+                  {card.imageUrl ? <DeckCardImage url={card.imageUrl} priority="high" className={getCardImageOrientationClass(card, currentTournament.tcg)} /> : <div className="deck-card-placeholder" />}
+                </div>
+                <div className="deck-search-card-copy">
+                  <strong>{card.name}</strong>
+                  {(card.subtitle || card.kind) && <small>{[card.subtitle, card.kind].filter(Boolean).join(' · ')}</small>}
+                </div>
                 <div className="deck-search-card-actions">
                   <button onClick={() => addCard(card)} title="Anade esta carta al mazo principal">
                     <i className="ti ti-plus" aria-hidden="true" />
@@ -643,19 +789,21 @@ export function DeckBuilderView() {
         </aside>
 
         <main className="deck-zone-grid">
-          {rules.sections.map(section => (
+          {activeSections.map(section => (
             <DeckZone
               key={section.id}
+              sectionId={section.id}
               label={section.label}
-              cards={cards.filter(card => card.section === section.id)}
-              onDropCard={card => addCard(card, section.id)}
+              cards={getCardsForVisibleSection(currentTournament.tcg, section.id, cards)}
+              onDropCard={card => addCard(card, getStoredSectionForVisibleDrop(currentTournament.tcg, section.id, card))}
               onMoveCard={cardId => moveCard(cardId, section.id)}
               onReorderCard={reorderCard}
               onMoveOrder={moveCardOrder}
               onQuantityChange={updateQuantity}
               getCopyWarning={getCopyWarning}
               onSort={mode => sortSection(section.id, mode)}
-              canDropCard={card => canPlaceCardInSection(currentTournament.tcg, card, section.id)}
+              game={currentTournament.tcg}
+              canDropCard={card => canPlaceCardInVisibleSection(currentTournament.tcg, card, section.id)}
             />
           ))}
         </main>
@@ -668,7 +816,7 @@ export function DeckBuilderView() {
             <article key={deck.id}>
               <div>
                 <strong>{deck.name}</strong>
-                <span>{deck.playerName}</span>
+                <span>{deck.teamName ? `${deck.teamName} - ${deck.playerName}` : deck.playerName}</span>
               </div>
               <button
                 onClick={() => publishDecklist(currentTournament.id, deck.id, deck.status !== 'published')}
@@ -721,6 +869,7 @@ export function DeckBuilderView() {
 }
 
 function DeckZone({
+  sectionId,
   label,
   cards,
   onDropCard,
@@ -730,8 +879,10 @@ function DeckZone({
   onQuantityChange,
   getCopyWarning,
   onSort,
+  game,
   canDropCard,
 }: {
+  sectionId: string
   label: string
   cards: DeckCard[]
   onDropCard: (card: CardSuggestion) => void
@@ -741,6 +892,7 @@ function DeckZone({
   onQuantityChange: (cardId: string, quantity: number) => void
   getCopyWarning: (card: DeckCard) => string
   onSort: (mode: 'name' | 'quantity' | 'type') => void
+  game: TournamentTCG
   canDropCard: (card: Pick<CardSuggestion, 'name' | 'kind' | 'subtitle'>) => boolean
 }) {
   const total = cards.reduce((sum, card) => sum + card.quantity, 0)
@@ -791,7 +943,7 @@ function DeckZone({
           return (
           <article
             key={card.id}
-            className={isDropTarget ? 'deck-card-tile compact drop-target' : 'deck-card-tile compact'}
+            className={getDeckCardTileClass(game, sectionId, card, isDropTarget)}
             draggable
             onDragStart={event => {
               event.dataTransfer.setData('application/x-deck-card', card.id)
@@ -824,7 +976,7 @@ function DeckZone({
             }}
             onDragEnd={() => setDragTargetId('')}
           >
-            {card.imageUrl ? <DeckCardImage url={card.imageUrl} /> : <div className="deck-card-placeholder">{card.name}</div>}
+            {card.imageUrl ? <DeckCardImage url={card.imageUrl} className={getCardImageOrientationClass(card, game)} /> : <div className="deck-card-placeholder">{card.name}</div>}
             {copyWarning && <em>{copyWarning}</em>}
             <div className="deck-card-order">
               <button onClick={() => onMoveOrder(card.id, -1)} aria-label={`Subir ${card.name}`}>
@@ -875,12 +1027,12 @@ function DeckImageExport({
   magicFormat: MagicFormat
 }) {
   if (!deck) return <div ref={ref} />
-  const standing = standings.find(row => row.player.id === deck.playerId || row.player.name === deck.playerName)
+  const standing = standings.find(row => row.player.id === deck.playerId || row.player.name === (deck.teamName ?? deck.playerName))
   const rankLabel = getPlacementLabel(standing?.position)
   const titleParts = getDeckTitleParts(deck.name)
 
   return (
-    <div ref={ref} className={`deck-export-card deck-export-card-${format}`}>
+    <div ref={ref} className={`deck-export-card deck-export-card-${format} deck-export-game-${deck.game}`}>
       <header className="deck-export-hero">
         <div className="deck-export-hero-mark">
           <img src="/subterra-logo.jpg" alt="" />
@@ -900,26 +1052,29 @@ function DeckImageExport({
       <div className="deck-export-layout">
         <div className="deck-export-body">
           {sections.map(section => {
-            const sectionCards = cards.filter(card => card.section === section)
+            if (shouldSkipExportSection(deck.game, section, cards)) return null
+            const sectionCards = getExportSectionCards(section, cards)
             if (!sectionCards.length) return null
-            const visualCards = expandCards(sectionCards)
+            const visualCards = getExportVisualCards(deck.game, section, sectionCards, cards)
             return (
               <section key={section} className={`deck-export-section deck-export-section-${section.toLowerCase()}`}>
                 <h3>
-                  <span>{getExportSectionLabel(deck.game, section)}</span>
-                  <strong>{sectionCards.reduce((sum, card) => sum + card.quantity, 0)} cartas</strong>
+                  <span>{getExportSectionHeading(deck.game, section, cards)}</span>
+                  <strong>{getExportSectionCountLabel(deck.game, section, sectionCards, cards)}</strong>
                 </h3>
                 <div className="deck-export-card-grid">
                   {visualCards.map((card, index) => (
                     <div
                       key={`${card.id}-${index}`}
-                      className="deck-export-card-tile"
-                      style={card.imageUrl ? { backgroundImage: `url("${card.imageUrl}")` } : undefined}
+                      className={getExportCardTileClass(deck.game, card)}
+                      style={getExportCardTileStyle(deck.game, card)}
                     >
+                      {card.exportBadge && <div className="deck-export-rune-count">{card.exportBadge}</div>}
                       {card.imageUrl && (
                         <img
                           src={card.imageUrl}
                           alt=""
+                          className={getExportCardImageClass(deck.game, card)}
                           crossOrigin={
                             card.imageUrl.startsWith('data:') || card.imageUrl.includes('images.weserv.nl')
                               ? undefined
@@ -938,8 +1093,18 @@ function DeckImageExport({
 
         <aside className="deck-export-sidebar">
           <div className="deck-export-player-card">
-            <span>Jugador</span>
-            <strong>{deck.playerName}</strong>
+            {deck.teamName ? (
+              <>
+                <span>Equipo</span>
+                <strong>{deck.teamName}</strong>
+                <small>{deck.playerName}</small>
+              </>
+            ) : (
+              <>
+                <span>Jugador</span>
+                <strong>{deck.playerName}</strong>
+              </>
+            )}
           </div>
 
           <div className="deck-export-promo">
@@ -958,7 +1123,147 @@ function DeckImageExport({
 }
 
 function getExportSectionLabel(game: TournamentTCG, sectionId: string) {
+  if (game === 'magic' && sectionId === 'Commander') return 'Comandante'
   return deckRuleConfigs[game].sections.find(section => section.id === sectionId)?.label ?? sectionId
+}
+
+function shouldSkipExportSection(game: TournamentTCG, sectionId: string, cards: DeckCard[]) {
+  if (game !== 'riftbound' || sectionId !== 'Rune') return false
+  return cards.some(card => card.section === 'Legend') && cards.some(card => card.section === 'Rune')
+}
+
+function getExportSectionCards(sectionId: string, cards: DeckCard[]) {
+  return cards.filter(card => card.section === sectionId)
+}
+
+function getExportVisualCards(
+  game: TournamentTCG,
+  sectionId: string,
+  sectionCards: DeckCard[],
+  allCards: DeckCard[],
+): DeckExportVisualCard[] {
+  if (game === 'riftbound' && sectionId === 'Legend') {
+    return [
+      ...expandCards(sectionCards),
+      ...getRiftboundRuneSummaries(allCards),
+    ]
+  }
+
+  if (game === 'riftbound' && sectionId === 'Rune') {
+    return getRiftboundRuneSummaries(sectionCards)
+  }
+
+  return expandCards(sectionCards)
+}
+
+function getExportSectionHeading(game: TournamentTCG, sectionId: string, cards: DeckCard[]) {
+  if (game === 'riftbound' && sectionId === 'Legend' && cards.some(card => card.section === 'Rune')) {
+    return 'Leyenda / Runas'
+  }
+  return getExportSectionLabel(game, sectionId)
+}
+
+function getExportSectionCountLabel(
+  game: TournamentTCG,
+  sectionId: string,
+  sectionCards: DeckCard[],
+  allCards: DeckCard[],
+) {
+  const sectionTotal = sectionCards.reduce((sum, card) => sum + card.quantity, 0)
+  if (game === 'riftbound' && sectionId === 'Legend') {
+    const runeTotal = allCards
+      .filter(card => card.section === 'Rune')
+      .reduce((sum, card) => sum + card.quantity, 0)
+    if (runeTotal > 0) return `${sectionTotal} + ${runeTotal} runas`
+  }
+  if (game === 'riftbound' && sectionId === 'Rune') return `${sectionTotal} runas`
+  return `${sectionTotal} cartas`
+}
+
+function getRiftboundRuneSummaries(cards: DeckCard[]): DeckExportVisualCard[] {
+  const grouped = new Map<string, DeckExportVisualCard>()
+
+  for (const card of cards.filter(card => card.section === 'Rune')) {
+    const key = normalizeExportCardName(card.name)
+    const current = grouped.get(key)
+    if (current) {
+      current.exportBadge = (current.exportBadge ?? 0) + card.quantity
+      continue
+    }
+
+    grouped.set(key, {
+      ...card,
+      quantity: 1,
+      exportBadge: card.quantity,
+      exportRole: 'rune-summary',
+    })
+  }
+
+  return [...grouped.values()].sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function normalizeExportCardName(name: string) {
+  return name.trim().toLowerCase()
+}
+
+function getExportCardTileClass(game: TournamentTCG, card: DeckExportVisualCard) {
+  return [
+    'deck-export-card-tile',
+    card.exportRole === 'rune-summary' ? 'deck-export-card-tile-rune-summary' : '',
+    isRiftboundBattlefieldCard(game, card) ? 'deck-export-card-tile-battlefield' : '',
+    !isRiftboundBattlefieldCard(game, card) && inferCardOrientation(card, game) === 'landscape'
+      ? 'deck-export-card-tile-landscape'
+      : '',
+  ].filter(Boolean).join(' ')
+}
+
+function getExportCardTileStyle(game: TournamentTCG, card: DeckExportVisualCard) {
+  if (!card.imageUrl) return undefined
+  if (game === 'riftbound') return undefined
+  if (isRiftboundBattlefieldCard(game, card)) return undefined
+  if (inferCardOrientation(card, game) === 'landscape') return undefined
+  return { backgroundImage: `url("${card.imageUrl}")` }
+}
+
+function getExportCardImageClass(game: TournamentTCG, card: DeckExportVisualCard) {
+  if (isRiftboundBattlefieldCard(game, card)) return undefined
+  return getCardImageOrientationClass(card, game)
+}
+
+function isRiftboundBattlefieldCard(game: TournamentTCG, card: Pick<DeckCard, 'section' | 'kind' | 'name'>) {
+  if (game !== 'riftbound') return false
+  const text = `${card.section} ${card.kind ?? ''} ${card.name}`.toLowerCase()
+  return text.includes('battlefield') || text.includes('campo de batalla')
+}
+
+function getActiveDeckSections(
+  game: TournamentTCG,
+  sections: Array<{ id: string; label: string; min?: number; max?: number }>,
+  magicFormat: MagicFormat,
+) {
+  if (game === 'magic' && magicFormat === 'commander') return magicCommanderSections
+  return sections
+}
+
+function getVisibleDeckSections(
+  game: TournamentTCG,
+  sections: Array<{ id: string; label: string; min?: number; max?: number }>,
+) {
+  if (game !== 'riftbound') return sections
+  return sections.filter(section => section.id !== 'Rune')
+}
+
+function getVisibleSectionId(game: TournamentTCG, sectionId: string) {
+  if (game === 'riftbound' && sectionId === 'Rune') return 'Legend'
+  return sectionId
+}
+
+function getCardsForVisibleSection(game: TournamentTCG, sectionId: string, cards: DeckCard[]) {
+  if (game === 'riftbound' && sectionId === 'Legend') {
+    return cards.filter(card => card.section === 'Legend' || card.section === 'Rune')
+  }
+
+  return cards.filter(card => card.section === sectionId)
 }
 
 function getPlacementLabel(position?: number) {
@@ -990,6 +1295,7 @@ function getDeckTitleParts(name: string) {
 
 function canPlaceCardInSection(game: TournamentTCG, card: Pick<CardSuggestion, 'name' | 'kind' | 'subtitle'>, section: string) {
   if (['Side', 'Sideboard'].includes(section)) return true
+  if (game === 'magic' && section === 'Commander') return true
 
   const defaultSection = getDefaultSection(game, card)
   if (section === defaultSection) return true
@@ -1000,16 +1306,71 @@ function canPlaceCardInSection(game: TournamentTCG, card: Pick<CardSuggestion, '
   return false
 }
 
+function canPlaceCardInVisibleSection(
+  game: TournamentTCG,
+  card: Pick<CardSuggestion, 'name' | 'kind' | 'subtitle'>,
+  section: string,
+) {
+  if (game === 'riftbound' && section === 'Legend') {
+    const defaultSection = getDefaultSection(game, card)
+    return defaultSection === 'Legend' || defaultSection === 'Rune'
+  }
+
+  return canPlaceCardInSection(game, card, section)
+}
+
+function getStoredSectionForVisibleDrop(
+  game: TournamentTCG,
+  section: string,
+  card: Pick<CardSuggestion, 'name' | 'kind' | 'subtitle'>,
+) {
+  if (game === 'riftbound' && section === 'Legend') {
+    const defaultSection = getDefaultSection(game, card)
+    if (defaultSection === 'Rune') return 'Rune'
+  }
+
+  return section
+}
+
+function getDeckCardTileClass(
+  game: TournamentTCG,
+  sectionId: string,
+  card: Pick<DeckCard, 'section' | 'kind' | 'name'>,
+  isDropTarget: boolean,
+) {
+  return [
+    'deck-card-tile compact',
+    isRiftboundBattlefieldCard(game, { ...card, section: sectionId }) ? 'deck-card-tile-battlefield' : '',
+    isDropTarget ? 'drop-target' : '',
+  ].filter(Boolean).join(' ')
+}
+
+function normalizeResolvedDeckSectionsForGame(cards: DeckCard[], game: TournamentTCG) {
+  if (game !== 'riftbound') return cards
+  return cards.map(card => ({
+    ...card,
+    section: getHydratedCardSection(game, card, card),
+  }))
+}
+
 function getMagicFormatWarnings(cards: DeckCard[], format: MagicFormat) {
   const warnings: string[] = []
+  const commanderTotal = cards.filter(card => card.section === 'Commander').reduce((sum, card) => sum + card.quantity, 0)
   const mainTotal = cards.filter(card => card.section === 'Main').reduce((sum, card) => sum + card.quantity, 0)
   const sideTotal = cards.filter(card => card.section === 'Sideboard').reduce((sum, card) => sum + card.quantity, 0)
 
   if (format === 'commander') {
-    const total = mainTotal + sideTotal
+    const total = commanderTotal + mainTotal
     if (total !== 100) warnings.push('Commander: exactamente 100 cartas')
-    cards.forEach(card => {
-      if (card.quantity > 1 && !isBasicMagicLand(card.name)) warnings.push(`${card.name}: singleton en Commander`)
+    if (commanderTotal < 1) warnings.push('Commander: anade el comandante')
+    if (commanderTotal > 2) warnings.push('Commander: maximo 2 cartas en comandante')
+    if (sideTotal > 0) warnings.push('Commander: el sideboard no cuenta para el mazo')
+    const byName = new Map<string, number>()
+    cards
+      .filter(card => card.section !== 'Sideboard')
+      .forEach(card => byName.set(card.name.toLowerCase(), (byName.get(card.name.toLowerCase()) ?? 0) + card.quantity))
+    byName.forEach((quantity, name) => {
+      if (quantity > 1 && !isBasicMagicLand(name)) warnings.push(`${titleCase(name)}: singleton en Commander`)
     })
   } else {
     if (mainTotal < 60) warnings.push(`${getMagicFormatLabel(format)}: minimo 60 cartas en main`)
@@ -1032,6 +1393,10 @@ function isBasicMagicLand(name: string) {
   return ['plains', 'island', 'swamp', 'mountain', 'forest', 'wastes'].includes(name.toLowerCase())
 }
 
+function titleCase(value: string) {
+  return value.replace(/\b\w/g, letter => letter.toUpperCase())
+}
+
 function expandCards(cards: DeckCard[]) {
   return cards.flatMap(card => Array.from({ length: card.quantity }, () => card))
 }
@@ -1044,6 +1409,63 @@ function splitCardCopies(cards: DeckCard[]) {
       quantity: 1,
     }))
   )
+}
+
+function normalizeImportedDeckSectionsForTournament(
+  cards: DeckCard[],
+  game: TournamentTCG,
+  magicFormat: MagicFormat,
+) {
+  if (game !== 'magic' || magicFormat !== 'commander') return cards
+
+  const sideboardTotal = cards
+    .filter(card => card.section === 'Sideboard')
+    .reduce((sum, card) => sum + card.quantity, 0)
+
+  if (sideboardTotal < 1 || sideboardTotal > 2) return cards
+
+  return cards.map(card =>
+    card.section === 'Sideboard'
+      ? { ...card, section: 'Commander' }
+      : card,
+  )
+}
+
+function getCardImageOrientationClass(card: Pick<DeckCard, 'orientation' | 'kind' | 'name'>, game?: TournamentTCG) {
+  return inferCardOrientation(card, game) === 'landscape' ? 'deck-card-image-landscape' : undefined
+}
+
+function inferCardOrientation(
+  card: Pick<DeckCard, 'orientation' | 'kind' | 'name'>,
+  game?: TournamentTCG,
+): DeckCard['orientation'] {
+  if (game === 'lorcana') return undefined
+  if (card.orientation) return card.orientation
+  return undefined
+}
+
+function getHydratedCardSection(
+  game: TournamentTCG,
+  card: Pick<DeckCard, 'section'>,
+  resolved?: Pick<CardSuggestion, 'name' | 'kind' | 'subtitle'>,
+) {
+  if (game !== 'riftbound' || !resolved) return card.section
+  const section = getDefaultSection(game, resolved)
+
+  if (card.section === 'Legend' || card.section === 'Champion' || card.section === 'Sideboard') {
+    return card.section
+  }
+
+  if (card.section === 'Rune') {
+    return section === 'Main' ? 'Main' : 'Rune'
+  }
+
+  if (card.section === 'Battlefield') {
+    return section === 'Rune' ? 'Rune' : 'Battlefield'
+  }
+
+  if (!resolved.kind && !resolved.subtitle && section === 'Main') return card.section
+  return section
 }
 
 function loadDeckLibrary(): SavedDeckTemplate[] {
@@ -1061,13 +1483,14 @@ async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forE
   const imageCache = new Map<string, Promise<string>>()
   const searchCache = new Map<string, Promise<CardSuggestion[]>>()
 
-  const hydrated = await mapWithConcurrency(cards, 8, async card => {
-    if (game === 'one-piece') {
-      const enriched = await hydrateOnePieceCard(card, forExport, imageCache).catch(() => null)
-      if (enriched) return enriched
-    }
+  if (game === 'magic') {
+    return hydrateMagicDeckImages(cards, forExport, imageCache, searchCache)
+  }
 
+  const hydrated = await hydrateCardsUniquely(cards, 8, async card => {
     if (card.imageUrl) {
+      const orientation = inferCardOrientation(card, game)
+      const section = getHydratedCardSection(game, card, card)
       const usableImageUrl = forExport
         ? await cachedDataUrl(card.imageUrl, imageCache).catch(async () => {
             const proxied = proxiedImageUrl(card.imageUrl)
@@ -1075,9 +1498,14 @@ async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forE
               return cachedDataUrl(proxied, imageCache).catch(() => proxied)
             }
             return card.imageUrl
-          })
+        })
         : card.imageUrl
-      return { ...card, imageUrl: usableImageUrl }
+      return { ...card, section, orientation, imageUrl: usableImageUrl, artUrl: card.artUrl }
+    }
+
+    if (game === 'one-piece') {
+      const enriched = await hydrateOnePieceCard(card, forExport, imageCache).catch(() => null)
+      if (enriched) return enriched
     }
 
     const cardById = await hydrateKnownCardById(card, game, forExport).catch(() => null)
@@ -1102,18 +1530,82 @@ async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forE
           return rawImageUrl
         })
       : rawImageUrl
-
     return {
       ...card,
       cardId: match.id,
       subtitle: match.subtitle,
+      orientation: inferCardOrientation(match, game),
       kind: match.kind,
       legalities: match.legalities,
+      section: getHydratedCardSection(game, card, match),
       imageUrl: usableImageUrl,
+      artUrl: match.artUrl,
     }
   })
 
   return hydrated
+}
+
+async function hydrateMagicDeckImages(
+  cards: DeckCard[],
+  forExport: boolean,
+  imageCache: Map<string, Promise<string>>,
+  searchCache: Map<string, Promise<CardSuggestion[]>>,
+) {
+  const batchMatches = await resolveMagicCardsBatch(
+    cards
+      .filter(card => !card.imageUrl)
+      .map(card => ({ cardId: card.cardId, name: card.name })),
+  ).catch(() => new Map<string, CardSuggestion>())
+
+  const hydrateWithMatch = async (card: DeckCard, match: CardSuggestion) => {
+    if (!match.imageUrl) return card
+    const usableImageUrl = forExport
+      ? await cachedExportImage(match.imageUrl, imageCache)
+      : match.imageUrl
+    return {
+      ...card,
+      cardId: match.id,
+      name: match.name || card.name,
+      subtitle: match.subtitle,
+      orientation: inferCardOrientation(match, 'magic'),
+      kind: match.kind,
+      legalities: match.legalities,
+      section: card.section,
+      imageUrl: usableImageUrl,
+      artUrl: match.artUrl,
+    }
+  }
+
+  return hydrateCardsUniquely(cards, 8, async card => {
+    if (card.imageUrl) {
+      const usableImageUrl = forExport
+        ? await cachedExportImage(card.imageUrl, imageCache)
+        : card.imageUrl
+      return {
+        ...card,
+        orientation: inferCardOrientation(card, 'magic'),
+        imageUrl: usableImageUrl,
+        artUrl: card.artUrl,
+      }
+    }
+
+    const batchMatch = batchMatches.get(card.cardId)
+    if (batchMatch?.imageUrl) return hydrateWithMatch(card, batchMatch)
+
+    const cardById = await hydrateKnownCardById(card, 'magic', forExport, imageCache).catch(() => null)
+    if (cardById) return cardById
+
+    const exactSuggestions = await cachedCardSearch('magic', card.name, true, searchCache).catch(() => [])
+    const looseSuggestions = exactSuggestions.length
+      ? exactSuggestions
+      : await cachedCardSearch('magic', card.name, false, searchCache).catch(() => [])
+    const exact = looseSuggestions.find(candidate => candidate.name.toLowerCase() === card.name.toLowerCase())
+    const match = exact ?? looseSuggestions[0]
+    if (!match?.imageUrl) return card
+
+    return hydrateWithMatch(card, match)
+  })
 }
 
 function cachedCardSearch(game: TournamentTCG, name: string, exact: boolean, cache: Map<string, Promise<CardSuggestion[]>>) {
@@ -1132,6 +1624,54 @@ function cachedDataUrl(url: string, cache: Map<string, Promise<string>>) {
   const next = fetchImageAsDataUrl(url)
   cache.set(key, next)
   return next
+}
+
+async function cachedExportImage(url: string, cache: Map<string, Promise<string>>) {
+  return cachedDataUrl(url, cache).catch(async () => {
+    const proxied = proxiedImageUrl(url)
+    if (proxied && proxied !== url) {
+      return cachedDataUrl(proxied, cache).catch(() => proxied)
+    }
+    return url
+  })
+}
+
+async function hydrateCardsUniquely(
+  cards: DeckCard[],
+  limit: number,
+  mapper: (item: DeckCard) => Promise<DeckCard>,
+) {
+  const uniqueCards: DeckCard[] = []
+  const indexByKey = new Map<string, number>()
+
+  for (const card of cards) {
+    const key = getHydrationKey(card)
+    if (!indexByKey.has(key)) {
+      indexByKey.set(key, uniqueCards.length)
+      uniqueCards.push(card)
+    }
+  }
+
+  const hydratedUnique = await mapWithConcurrency(uniqueCards, limit, mapper)
+
+  return cards.map(card => {
+    const hydrated = hydratedUnique[indexByKey.get(getHydrationKey(card)) ?? 0] ?? card
+    return {
+      ...hydrated,
+      id: card.id,
+      quantity: card.quantity,
+    }
+  })
+}
+
+function getHydrationKey(card: DeckCard) {
+  return [
+    card.section,
+    card.cardId,
+    card.name.toLowerCase(),
+    card.imageUrl ?? '',
+    card.artUrl ?? '',
+  ].join('|')
 }
 
 async function mapWithConcurrency<T, R>(items: T[], limit: number, mapper: (item: T) => Promise<R>) {
@@ -1161,7 +1701,6 @@ async function hydrateOnePieceCard(
   const usableImageUrl = forExport
     ? await cachedDataUrl(match.imageUrl, imageCache).catch(() => '')
     : match.imageUrl
-
   if (forExport && !usableImageUrl) return null
 
   return {
@@ -1169,15 +1708,86 @@ async function hydrateOnePieceCard(
     cardId: match.id,
     name: match.name || card.name,
     subtitle: match.subtitle,
+    orientation: inferCardOrientation(match, 'one-piece'),
     kind: match.kind,
     section: getOnePieceSectionFromKind(match.kind),
     imageUrl: usableImageUrl || match.imageUrl,
+    artUrl: match.artUrl,
   }
 }
 
-async function hydrateKnownCardById(card: DeckCard, game: TournamentTCG, forExport: boolean): Promise<DeckCard | null> {
+async function hydrateKnownCardById(
+  card: DeckCard,
+  game: TournamentTCG,
+  forExport: boolean,
+  imageCache = new Map<string, Promise<string>>(),
+): Promise<DeckCard | null> {
+  if (game === 'magic') {
+    const match = await resolveMagicCard(card.cardId).catch(() => null)
+    if (!match?.imageUrl) return null
+
+    const usableImageUrl = forExport
+      ? await cachedExportImage(match.imageUrl, imageCache)
+      : match.imageUrl
+    return {
+      ...card,
+      cardId: match.id,
+      name: match.name || card.name,
+      subtitle: match.subtitle,
+      orientation: inferCardOrientation(match, game),
+      kind: match.kind,
+      legalities: match.legalities,
+      section: card.section,
+      imageUrl: usableImageUrl,
+      artUrl: match.artUrl,
+    }
+  }
+
   if (game === 'one-piece') {
     return hydrateOnePieceCard(card, forExport, new Map())
+  }
+
+  if (game === 'pokemon') {
+    const match = await resolvePokemonCard(card.cardId, card.name).catch(() => null)
+    if (!match?.imageUrl) return null
+
+    const usableImageUrl = forExport
+      ? await cachedExportImage(match.imageUrl, imageCache)
+      : match.imageUrl
+
+    return {
+      ...card,
+      cardId: match.id,
+      name: match.name || card.name,
+      subtitle: match.subtitle,
+      orientation: inferCardOrientation(match, game),
+      kind: match.kind,
+      legalities: match.legalities,
+      section: getHydratedCardSection(game, card, match),
+      imageUrl: usableImageUrl,
+      artUrl: match.artUrl,
+    }
+  }
+
+  if (game === 'yugioh') {
+    const match = await resolveYugiohCard(card.cardId).catch(() => null)
+    if (!match?.imageUrl) return null
+
+    const usableImageUrl = forExport
+      ? await cachedExportImage(match.imageUrl, imageCache)
+      : match.imageUrl
+    return {
+      ...card,
+      cardId: match.id,
+      name: match.name || card.name,
+      subtitle: match.subtitle,
+      orientation: inferCardOrientation(match, game),
+      kind: match.kind,
+      legalities: match.legalities,
+      section: card.section,
+      imageUrl: usableImageUrl,
+      artUrl: match.artUrl,
+    }
   }
 
   if (game === 'riftbound') {
@@ -1187,51 +1797,45 @@ async function hydrateKnownCardById(card: DeckCard, game: TournamentTCG, forExpo
     if (!match?.imageUrl) return null
 
     const usableImageUrl = forExport
-      ? await fetchImageAsDataUrl(match.imageUrl).catch(async () => {
-          const proxied = proxiedImageUrl(match.imageUrl)
-          if (proxied && proxied !== match.imageUrl) {
-            return fetchImageAsDataUrl(proxied).catch(() => proxied)
-          }
-          return match.imageUrl
-        })
+      ? await fetchImageAsDataUrl(match.imageUrl).catch(() => match.imageUrl)
       : match.imageUrl
     return {
       ...card,
       cardId: match.id,
       name: match.name || card.name,
       subtitle: match.subtitle,
+      orientation: inferCardOrientation(match, game),
       kind: match.kind,
       legalities: match.legalities,
       section: getDefaultSection(game, match),
       imageUrl: usableImageUrl,
+      artUrl: match.artUrl,
     }
   }
 
   if (game === 'lorcana') {
+    const canResolveById = card.cardId.startsWith('lorcana:') && !card.cardId.startsWith('lorcana:name:')
     const lorcanaId = card.cardId.startsWith('lorcana:') ? card.cardId : `lorcana:${card.cardId}`
     const match =
-      (await resolveLorcanaCard(lorcanaId).catch(() => null)) ??
-      (await searchCards(game, card.name, undefined, { onlyImages: true, exact: true }))[0]
+      (canResolveById ? await resolveLorcanaCard(lorcanaId).catch(() => null) : null) ??
+      (await searchCards(game, card.name, undefined, { onlyImages: true, exact: true }).catch(() => []))[0] ??
+      (await searchCards(game, card.name, undefined, { onlyImages: true, exact: false }).catch(() => []))[0]
     if (!match?.imageUrl) return null
 
     const usableImageUrl = forExport
-      ? await fetchImageAsDataUrl(match.imageUrl).catch(async () => {
-          const proxied = proxiedImageUrl(match.imageUrl)
-          if (proxied && proxied !== match.imageUrl) {
-            return fetchImageAsDataUrl(proxied).catch(() => proxied)
-          }
-          return match.imageUrl
-        })
+      ? await fetchImageAsDataUrl(match.imageUrl).catch(() => match.imageUrl)
       : match.imageUrl
     return {
       ...card,
       cardId: match.id,
       name: match.name || card.name,
       subtitle: match.subtitle,
+      orientation: inferCardOrientation(match, game),
       kind: match.kind,
       legalities: match.legalities,
       section: getDefaultSection(game, match),
       imageUrl: usableImageUrl,
+      artUrl: match.artUrl,
     }
   }
 

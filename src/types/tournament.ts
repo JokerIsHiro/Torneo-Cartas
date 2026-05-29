@@ -4,6 +4,8 @@ export interface Player {
   id: string
   uid?: string
   name: string
+  teamMembers?: string[]
+  captainName?: string
   points: number
   wins: number
   losses: number
@@ -18,6 +20,7 @@ export interface DeckList {
   playerId: string
   ownerUid?: string
   playerName: string
+  teamName?: string
   game: TournamentTCG
   name: string
   list: string
@@ -56,6 +59,9 @@ export interface Round {
 
 export type TournamentStatus = 'setup' | 'active' | 'finished'
 export type TournamentTCG = 'magic' | 'riftbound' | 'pokemon' | 'yugioh' | 'lorcana' | 'one-piece' | 'chess'
+export type MagicFormat = 'standard' | 'pioneer' | 'modern' | 'pauper' | 'commander' | 'legacy' | 'vintage'
+export type TournamentTeamMode = 'solo' | '2v2' | '3v3'
+export type TournamentPhaseMode = 'swiss' | 'swiss-top'
 export type TournamentTiebreakerSystem =
   | 'tcg-resistance'
   | 'magic-match'
@@ -95,6 +101,10 @@ export interface Tournament {
   organizerUid?: string
   name: string
   tcg: TournamentTCG
+  magicFormat?: MagicFormat
+  teamMode: TournamentTeamMode
+  phaseMode: TournamentPhaseMode
+  topCut: number
   players: Player[]
   rounds: Round[]
   pendingResults: PendingMatchResult[]

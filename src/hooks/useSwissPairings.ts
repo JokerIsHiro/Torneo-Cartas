@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
-import type { Player, Match, Round, TournamentTiebreakerSystem } from '../types/tournament'
+import type { Player, Match, Round, TournamentPhaseMode, TournamentTiebreakerSystem } from '../types/tournament'
 import {
   calculateTiebreakerMetrics,
   compareByTiebreakers,
@@ -38,6 +38,8 @@ interface UseSwissPairingsReturn {
   unfinishedCount: number
   standings: StandingsRow[]
   tiebreakerSystem: TournamentTiebreakerSystem
+  phaseMode: TournamentPhaseMode
+  topCut: number
   tiebreakerLabel: string
   primaryTiebreakerMetric: TiebreakerMetricKey | null
   roundSummaries: RoundSummary[]
@@ -63,7 +65,7 @@ export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
   // ✅ useShallow evita re-renders cuando el contenido no cambia.
   // Extraemos solo los campos primitivos y arrays que necesitamos,
   // no el objeto torneo entero (que .find() recrea en cada render).
-  const { players, rounds, currentRound, status, tcg, tiebreakerSystem } = useTournamentsStore(
+  const { players, rounds, currentRound, status, tcg, tiebreakerSystem, phaseMode, topCut } = useTournamentsStore(
     useShallow(s => {
       const t = s.tournaments.find(t => t.id === tournamentId)
       return {
@@ -73,6 +75,8 @@ export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
         status:       t?.status       ?? 'setup',
         tcg:          t?.tcg          ?? 'magic',
         tiebreakerSystem: t?.tiebreakerSystem,
+        phaseMode: t?.phaseMode ?? 'swiss',
+        topCut: t?.topCut ?? 8,
       }
     })
   )
@@ -167,6 +171,8 @@ export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
     unfinishedCount,
     standings,
     tiebreakerSystem: activeTiebreakerSystem,
+    phaseMode,
+    topCut,
     tiebreakerLabel,
     primaryTiebreakerMetric,
     roundSummaries,

@@ -6,6 +6,7 @@ import {
   parseDeckLine,
   shouldIgnoreDeckLine,
   tryParseJsonDecklist,
+  tryParseMagicDekBlock,
   tryParsePokemonComBlock,
   type ParsedDeckLine,
 } from './deckListTextParser'
@@ -18,6 +19,8 @@ export interface ImportedDeckCard {
   name: string
   subtitle?: string
   imageUrl?: string
+  artUrl?: string
+  orientation?: 'portrait' | 'landscape'
   kind?: string
   legalities?: Record<string, string>
   section: string
@@ -48,7 +51,10 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     sideb: 'Sideboard',
     banquillo: 'Sideboard',
     reserva: 'Sideboard',
-    commander: 'Main',
+    commander: 'Commander',
+    comandante: 'Commander',
+    'command zone': 'Commander',
+    'zona de mando': 'Commander',
     companion: 'Sideboard',
     creatures: 'Main',
     creature: 'Main',
@@ -100,11 +106,14 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     pokemon: 'Pokemon',
     pokemons: 'Pokemon',
     'pokemon cards': 'Pokemon',
+    'pokemon card': 'Pokemon',
     'pokémon': 'Pokemon',
     'pokémon cards': 'Pokemon',
     trainer: 'Trainers',
     trainers: 'Trainers',
     'trainer cards': 'Trainers',
+    'trainer card': 'Trainers',
+    'trainers cards': 'Trainers',
     entrenador: 'Trainers',
     entrenadores: 'Trainers',
     item: 'Trainers',
@@ -112,6 +121,7 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     energy: 'Energy',
     energies: 'Energy',
     'energy cards': 'Energy',
+    'energy card': 'Energy',
     energia: 'Energy',
     energias: 'Energy',
   },
@@ -159,6 +169,7 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     'mazo principal': 'Main',
     rune: 'Rune',
     runes: 'Rune',
+    'rune pool': 'Rune',
     'rune deck': 'Rune',
     'runes deck': 'Rune',
     'rune cards': 'Rune',
@@ -218,7 +229,10 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
 export function parseDeckImport(game: TournamentTCG, list: string): DeckImportResult {
   const normalized = normalizePasteText(list)
 
-  if (looksLikeYdk(normalized)) return parseYdk(normalized)
+  if (game === 'yugioh' && looksLikeYdk(normalized)) return parseYdk(normalized)
+
+  const magicDekLines = game === 'magic' ? tryParseMagicDekBlock(normalized) : null
+  if (magicDekLines) return linesToResult(game, magicDekLines, [])
 
   const jsonLines = tryParseJsonDecklist(normalized, game)
   if (jsonLines) return linesToResult(game, jsonLines, [])
@@ -365,23 +379,23 @@ export function normalizeImportedSection(game: TournamentTCG, section: string) {
 
 function getSectionFromLine(game: TournamentTCG, line: string) {
   const clean = line
-    .replace(/\s*\(\s*\d+\s*(?:cards?|cartas?)?\s*\)\s*$/gi, '')
-    .replace(/\s*\[\s*\d+\s*(?:cards?|cartas?)?\s*\]\s*$/gi, '')
-    .replace(/\s*[-:]\s*\d+\s*$/g, '')
-    .replace(/\s*[-:]\s*\d+\s*(?:cards?|cartas?)\s*$/gi, '')
+    .replace(/^[=\-_*~\s]+|[=\-_*~\s]+$/g, '')
+    .replace(/[::]$/g, '')
+    .replace(/\s*(?:[-:]\s*)?(?:\[|\()\s*\d+\s*(?:cards?|cartas?)?\s*(?:\]|\))\s*$/gi, '')
+    .replace(/\s*[-:]\s*\d+\s*(?:cards?|cartas?)?\s*$/gi, '')
     .replace(/\s+\d+\s*(?:cards?|cartas?)\s*$/gi, '')
-    .replace(/[:：]$/g, '')
+    .replace(/[::]$/g, '')
+    .replace(/^[=\-_*~\s]+|[=\-_*~\s]+$/g, '')
     .trim()
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
   return sectionAliases[game][clean]
 }
-
 function applyGameMetadata(game: TournamentTCG, parsed: ParsedDeckLine) {
   let name = parsed.name.trim()
   let cardCode = parsed.cardCode
-  let metadata: Partial<Pick<ImportedDeckCard, 'cardId' | 'imageUrl' | 'subtitle' | 'kind'>> | undefined
+    let metadata: Partial<Pick<ImportedDeckCard, 'cardId' | 'imageUrl' | 'artUrl' | 'orientation' | 'subtitle' | 'kind'>> | undefined
 
   const metadataMatch = name.match(/^(.*?)\s+\[([^\]]+)\]\s*$/)
   if (metadataMatch) {
@@ -433,8 +447,16 @@ function createImportedCard(
   const cardId = normalizedCode
     ? game === 'one-piece'
       ? `one-piece:${normalizedCode}`
-      : `import:${normalizedCode}`
-    : `import:${section}:${name.toLowerCase()}`
+      : game === 'yugioh' && /^\d+$/.test(normalizedCode)
+        ? `yugioh:${normalizedCode}`
+        : game === 'magic' && /^MTGO-\d+$/i.test(normalizedCode)
+          ? `import:${section}:${name.toLowerCase()}`
+          : game === 'lorcana'
+            ? `lorcana:${normalizedCode}`
+            : `import:${normalizedCode}`
+    : game === 'lorcana'
+      ? `lorcana:name:${name.toLowerCase()}`
+      : `import:${section}:${name.toLowerCase()}`
   return {
     id: crypto.randomUUID(),
     cardId,
@@ -443,7 +465,6 @@ function createImportedCard(
     quantity,
   }
 }
-
 function mergeImportedCards(cards: ImportedDeckCard[]) {
   const merged = new Map<string, ImportedDeckCard>()
   for (const card of cards) {
@@ -467,6 +488,8 @@ function formatDeckCardLine(card: ImportedDeckCard, includeMetadata: boolean, ga
   const metadata = [
     `id=${encodeURIComponent(card.cardId)}`,
     card.imageUrl ? `img=${encodeURIComponent(card.imageUrl)}` : '',
+    card.artUrl ? `art=${encodeURIComponent(card.artUrl)}` : '',
+    card.orientation ? `orient=${encodeURIComponent(card.orientation)}` : '',
     card.subtitle ? `sub=${encodeURIComponent(card.subtitle)}` : '',
     card.kind ? `kind=${encodeURIComponent(card.kind)}` : '',
   ].filter(Boolean).join('|')
@@ -478,9 +501,9 @@ function parseCardMetadata(value: string) {
   return Object.fromEntries(
     value.split('|').map(part => {
       const [key, raw = ''] = part.split('=')
-      return [key === 'id' ? 'cardId' : key === 'img' ? 'imageUrl' : key === 'sub' ? 'subtitle' : key, decodeURIComponent(raw)]
+      return [key === 'id' ? 'cardId' : key === 'img' ? 'imageUrl' : key === 'art' ? 'artUrl' : key === 'orient' ? 'orientation' : key === 'sub' ? 'subtitle' : key, decodeURIComponent(raw)]
     })
-  ) as Partial<Pick<ImportedDeckCard, 'cardId' | 'imageUrl' | 'subtitle' | 'kind'>>
+  ) as Partial<Pick<ImportedDeckCard, 'cardId' | 'imageUrl' | 'artUrl' | 'orientation' | 'subtitle' | 'kind'>>
 }
 
 function decodeHtmlEntities(value: string) {

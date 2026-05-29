@@ -39,9 +39,9 @@ export const deckRuleConfigs: Record<TournamentTCG, DeckRuleConfig> = {
     label: 'Riftbound',
     sections: [
       { id: 'Legend', label: 'Leyenda', max: 1 },
+      { id: 'Rune', label: 'Mazo de runas' },
       { id: 'Champion', label: 'Campeon', max: 1 },
       { id: 'Main', label: 'Mazo principal', min: 40, max: 40 },
-      { id: 'Rune', label: 'Mazo de runas' },
       { id: 'Battlefield', label: 'Campos de batalla', max: 3 },
       { id: 'Sideboard', label: 'Sideboard' },
     ],
@@ -106,10 +106,12 @@ export function getDefaultSection(game: TournamentTCG, card?: Pick<CardSuggestio
     return 'Pokemon'
   }
   if (game === 'riftbound') {
-    if (text.includes('rune')) return 'Rune'
-    if (text.includes('legend') || text.includes('leyenda')) return 'Legend'
-    if (text.includes('champion')) return 'Champion'
-    if (text.includes('battlefield') || text.includes('field')) return 'Battlefield'
+    const cardType = `${kind} ${subtitle}`
+    if (cardType.includes('rune')) return 'Rune'
+    if (cardType.includes('legend') || cardType.includes('leyenda')) return 'Legend'
+    if (cardType.includes('champion')) return 'Champion'
+    if (cardType.includes('battlefield') || cardType.includes('field')) return 'Battlefield'
+    return 'Main'
   }
   if (game === 'one-piece' && (text.includes('leader') || text.includes('lider') || kind.includes('leader'))) return 'Leader'
 

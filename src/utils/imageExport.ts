@@ -8,14 +8,19 @@ const DISPLAY_DIRECT_HOSTS = [
   "images.ygoprodeck.com",
   "cards.scryfall.io",
   "images.pokemontcg.io",
-  "optcgapi.com",
   "cards.lorcast.io",
 ];
 
 /** CDNs sin CORS o AVIF: en exportar PNG usar proxy (webp) primero. */
-const EXPORT_PROXY_FIRST_HOSTS = /cdn\.riftscribe\.gg|cards\.lorcast\.io/i;
+const EXPORT_PROXY_FIRST_HOSTS = /cdn\.riftscribe\.gg|lorcana-api\.com|cards\.lorcast\.io/i;
+
+const DEAD_HOSTS = [/ravensburger\.com/i];
 
 const displayUrlCache = new Map<string, string | undefined>();
+
+function isDeadUrl(url: string) {
+  return DEAD_HOSTS.some((regex) => regex.test(url));
+}
 
 function hostUsesDirectDisplay(host: string) {
   return DISPLAY_DIRECT_HOSTS.some(
@@ -40,6 +45,8 @@ function unwrapWeservUrl(url: string) {
 export function displayImageUrl(url?: string) {
   if (!url) return undefined;
   if (url.startsWith("data:") || url.startsWith("/")) return url;
+
+  if (isDeadUrl(url)) return undefined;
 
   const cached = displayUrlCache.get(url);
   if (cached !== undefined) return cached;
@@ -69,6 +76,8 @@ export function proxiedImageUrl(url?: string) {
   if (!url) return undefined;
   if (url.startsWith("data:") || url.includes(PROXY_HOST)) return url;
 
+  if (isDeadUrl(url)) return undefined;
+
   const unwrapped = unwrapWeservUrl(url);
   if (unwrapped) url = unwrapped;
 
@@ -92,6 +101,8 @@ function corsProxyUrl(url: string) {
 export function getExportImageCandidates(url: string) {
   if (!url || url.startsWith("data:")) return [url];
   if (!/^https?:\/\//i.test(url)) return [url];
+
+  if (isDeadUrl(url)) return [];
 
   const proxied = proxiedImageUrl(url);
   const corsProxy = corsProxyUrl(url);

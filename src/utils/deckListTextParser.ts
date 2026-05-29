@@ -79,8 +79,8 @@ export function parseDeckLine(game: TournamentTCG, rawLine: string): ParsedDeckL
   if (!line || shouldIgnoreDeckLine(line)) return null
 
   line = line
-    .replace(/^\d+[\.\):]\s+/, '')
-    .replace(/^(?:[-•▪►]\s*)+/, '')
+    .replace(/^\d+[.):]\s+/, "")
+    .replace(/^(?:[-•▪►]\s*)+/, "")
     .replace(/^\[(?:qty|quantity|cantidad)\]\s*/i, '')
     .replace(/^(?:qty|quantity|cantidad|count|copies|copias)\s*[:=]\s*/i, '')
     .trim()
@@ -182,12 +182,12 @@ function parseTcgplayerLine(line: string): ParsedDeckLine | null {
 
 function parseQuantityCodeLine(line: string, game: TournamentTCG): ParsedDeckLine | null {
   const patterns = [
-    new RegExp(`^(\\d+)${MULTIPLY_CHARS}\\s*(.+)$`, 'i'),
+    new RegExp(`^(\\d+)${MULTIPLY_CHARS}\\s*(.+)$`, "i"),
     /^(\d+)\s*x\s*(.+)$/i,
     /^(\d+)\s*[:-]\s*(.+)$/i,
     /^(\d+)\s+(.+)$/i,
     /^(\d+)\s*[,;]\s*(.+)$/i,
-  ]
+  ];
 
   for (const pattern of patterns) {
     const match = line.match(pattern)
@@ -325,6 +325,17 @@ function parseBareCodeOrNameLine(line: string, game: TournamentTCG): ParsedDeckL
 function extractCardCode(game: TournamentTCG, value: string) {
   if (game === 'one-piece') return extractOnePieceCardCode(value)
   if (game === 'riftbound') return value.match(/\b([A-Z]{2,4}-\d{1,3}[A-Z]?(?:-\d+)?)\b/i)?.[1]?.toLowerCase()
+  if (game === 'pokemon') {
+    const setCollector = value.match(/\b([A-Z0-9]{2,8})\s+(0*\d{1,4}[a-z]?)(?:\/\d+)?(?:\s+(?:PH|RH|H|NH|F|REVERSE|HOLO|PROMO|STAFF))?\b/i)
+    if (setCollector) return `${setCollector[1].toUpperCase()}-${setCollector[2].toLowerCase()}`
+  }
+  if (game === 'lorcana') {
+    return value.match(/\b((?:D100|[A-Z]{1,5}|\d{1,2})[\s_/#-]+0*\d{1,3}[a-z]?)\b/i)?.[1]?.toUpperCase()
+  }
+  if (game === 'magic') {
+    const setCollector = value.match(/\b([A-Z0-9]{2,8})[\s_/#-]+([0-9]{1,4}[A-Z]?|[A-Z0-9]{1,8}[★☆])\b/i)
+    if (setCollector) return `${setCollector[1].toUpperCase()}-${setCollector[2].toLowerCase()}`
+  }
 
   const fb = value.match(/\b(FB\d{2}-\d{3}|FS\d{2}-\d{2,3})\b/i)?.[1]?.toUpperCase()
   if (fb) return fb
@@ -357,13 +368,16 @@ function cleanName(game: TournamentTCG, raw: string, cardCode?: string) {
   if (game === 'magic' || game === 'lorcana') {
     name = name.replace(/\s+\([A-Z0-9]{2,6}\)\s+\d+[a-z]?$/i, '')
     name = name.replace(/\s+\([A-Z0-9]{2,6}\)$/i, '')
+    name = name.replace(/\s+[A-Z0-9]{2,8}\s+\d{1,4}[a-z]?\s*$/i, '')
+    name = name.replace(/\s+[A-Z0-9]{2,8}[-/#]\d{1,4}[a-z]?\s*$/i, '')
     name = name.replace(/\s+\*F\*$/i, '')
   }
 
   if (game === 'pokemon') {
-    name = name.replace(/\s+[A-Z]{2,5}\s+\d+[a-z]?$/i, '')
+    name = name.replace(/\s+[A-Z0-9]{2,8}\s+\d+[a-z]?(?:\/\d+)?(?:\s+(?:PH|RH|H|NH|F|REVERSE|HOLO|PROMO|STAFF))?$/i, '')
     name = name.replace(/\s+\d+\/\d+\s*$/i, '')
     name = name.replace(/\s+[A-Z]\d+\s+\d+$/i, '')
+    name = name.replace(/\s+(?:PH|RH|H|NH|F|REVERSE|HOLO|PROMO|STAFF)$/i, '')
   }
 
   if (game === 'riftbound') {
@@ -389,6 +403,40 @@ export function tryParseJsonDecklist(text: string, game: TournamentTCG): ParsedD
   } catch {
     return null
   }
+}
+
+export function tryParseMagicDekBlock(text: string): ParsedDeckLine[] | null {
+  const trimmed = text.trim()
+  if (!/^<\?xml|<Deck\b/i.test(trimmed) || !/<Cards\b/i.test(trimmed)) return null
+
+  const lines: ParsedDeckLine[] = []
+  const cardTagPattern = /<Cards\b[^>]*\/?>/gi
+  const attrPattern = /([A-Za-z_:][\w:.-]*)\s*=\s*"([^"]*)"/g
+
+  for (const tagMatch of trimmed.matchAll(cardTagPattern)) {
+    const attributes = new Map<string, string>()
+    const tag = tagMatch[0]
+
+    for (const attrMatch of tag.matchAll(attrPattern)) {
+      attributes.set(attrMatch[1].toLowerCase(), decodeXmlEntities(attrMatch[2]))
+    }
+
+    const name = attributes.get('name')?.trim()
+    const quantity = Number(attributes.get('quantity') ?? 1)
+    const catId = attributes.get('catid')?.trim()
+    const isSideboard = attributes.get('sideboard')?.toLowerCase() === 'true'
+
+    if (!name || !Number.isFinite(quantity) || quantity <= 0) continue
+
+    lines.push({
+      quantity,
+      name,
+      cardCode: catId ? `mtgo-${catId}` : undefined,
+      sectionHint: isSideboard ? 'Sideboard' : 'Main',
+    })
+  }
+
+  return lines.length ? lines : null
 }
 
 function collectJsonCards(
@@ -432,6 +480,8 @@ function collectJsonCards(
     champion: 'Champion',
     runes: 'Rune',
     rune: 'Rune',
+    runepool: 'Rune',
+    'rune-pool': 'Rune',
     runedeck: 'Rune',
     'rune-deck': 'Rune',
     battlefield: 'Battlefield',
@@ -483,7 +533,7 @@ export function tryParsePokemonComBlock(text: string): ParsedDeckLine[] | null {
     const line = rawLine.trim()
     if (!line || line.startsWith('***')) continue
 
-    const sectionMatch = line.match(/^(Pokémon|Pokemon|Trainer Cards?|Energy)\s*[-–—]\s*(\d+)/i)
+    const sectionMatch = line.match(/^(Pokémon|Pokemon|Trainer Cards?|Trainers|Energy Cards?|Energy)\s*(?:[-–—:]\s*\d+|\(\s*\d+\s*(?:cards?)?\s*\)\s*:?)\s*$/i)
     if (sectionMatch) {
       const label = sectionMatch[1].toLowerCase()
       if (label.includes('trainer')) section = 'Trainers'
@@ -492,15 +542,24 @@ export function tryParsePokemonComBlock(text: string): ParsedDeckLine[] | null {
       continue
     }
 
-    const qtyName = line.match(/^(\d+)\s+(.+)$/)
-    if (qtyName) {
+    const parsed = parseDeckLine('pokemon' as TournamentTCG, line)
+    if (parsed) {
       lines.push({
-        quantity: Number(qtyName[1]),
-        name: qtyName[2].trim(),
+        ...parsed,
         sectionHint: section,
       })
     }
   }
 
   return lines.length ? lines : null
+}
+
+function decodeXmlEntities(value: string) {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
 }

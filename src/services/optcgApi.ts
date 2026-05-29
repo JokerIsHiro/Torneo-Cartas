@@ -3,6 +3,8 @@ import { displayImageUrl } from '../utils/imageExport'
 import { extractOnePieceCardCode, isOnePieceCardCode, ONE_PIECE_CARD_CODE_PATTERN } from '../utils/onePieceCardCode'
 
 const OPTCG_API_BASE = 'https://www.optcgapi.com/api'
+const optcgRowsCache = new Map<string, Promise<OptcgCardRow[]>>()
+const optcgNameCache = new Map<string, Promise<CardSuggestion[]>>()
 
 type OptcgCardRow = {
   card_set_id: string
@@ -35,6 +37,16 @@ function pickBaseVariant(rows: OptcgCardRow[]) {
 }
 
 async function fetchOptcgRows(cardSetId: string): Promise<OptcgCardRow[]> {
+  const cacheKey = cardSetId.toUpperCase()
+  const cached = optcgRowsCache.get(cacheKey)
+  if (cached) return cached
+
+  const request = fetchOptcgRowsUncached(cardSetId)
+  optcgRowsCache.set(cacheKey, request)
+  return request
+}
+
+async function fetchOptcgRowsUncached(cardSetId: string): Promise<OptcgCardRow[]> {
   const endpoints = [
     `${OPTCG_API_BASE}/sets/card/${encodeURIComponent(cardSetId)}/`,
     `${OPTCG_API_BASE}/decks/card/${encodeURIComponent(cardSetId)}/`,
@@ -64,6 +76,7 @@ export function onePieceCardToSuggestion(row: OptcgCardRow): CardSuggestion {
     name: cleanCardName(row.card_name, code),
     subtitle: edition || code,
     imageUrl: displayImageUrl(row.card_image),
+    artUrl: displayImageUrl(row.card_image),
     kind: [row.card_type, row.card_color, row.rarity].filter(Boolean).join(' · '),
     text: undefined,
   }
@@ -78,7 +91,16 @@ export function getOnePieceSectionFromKind(kind?: string) {
 export async function searchOnePieceCardsByName(name: string, signal?: AbortSignal): Promise<CardSuggestion[]> {
   const term = name.replace(ONE_PIECE_CARD_CODE_PATTERN, '').trim() || name.trim()
   if (term.length < 2) return []
+  const cacheKey = term.toLowerCase()
+  const cached = optcgNameCache.get(cacheKey)
+  if (cached) return cached
 
+  const request = searchOnePieceCardsByNameUncached(term, signal)
+  optcgNameCache.set(cacheKey, request)
+  return request
+}
+
+async function searchOnePieceCardsByNameUncached(term: string, signal?: AbortSignal): Promise<CardSuggestion[]> {
   const url = new URL(`${OPTCG_API_BASE}/sets/filtered/`)
   url.searchParams.set('card_name', term)
 

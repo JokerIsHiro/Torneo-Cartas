@@ -424,6 +424,7 @@ interface TournamentViewProps {
 
 function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentViewProps) {
   const { id, status } = tournament
+  const tournamentFormatLabel = getTournamentFormatLabel(tournament)
 
   return (
     <div>
@@ -432,7 +433,7 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
           <h2>{tournament.name}</h2>
           <p>
             {status === 'setup' && 'Configura el torneo antes de iniciar'}
-            {status === 'active' && `Ronda ${tournament.currentRound} en curso · Swiss`}
+            {status === 'active' && `Ronda ${tournament.currentRound} en curso - ${tournamentFormatLabel}`}
             {status === 'finished' && 'Torneo finalizado'}
           </p>
         </div>
@@ -501,6 +502,18 @@ function TopTab({ label, active, status, onClick, onClose }: TopTabProps) {
       )}
     </div>
   )
+}
+
+function getTournamentFormatLabel(tournament: Tournament) {
+  const teamLabel = tournament.teamMode === '2v2'
+    ? '2vs2'
+    : tournament.teamMode === '3v3'
+      ? '3vs3'
+      : 'Normal'
+  const phaseLabel = tournament.phaseMode === 'swiss-top'
+    ? `Suizo + Top ${tournament.topCut ?? 8}`
+    : 'Suizo'
+  return `${teamLabel} - ${phaseLabel}`
 }
 
 function StatusBadge({ status }: { status: Tournament['status'] }) {

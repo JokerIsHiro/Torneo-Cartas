@@ -6,11 +6,14 @@ import type {
   Match,
   Round,
   MatchResult,
+  MagicFormat,
   PendingMatchResult,
   TournamentSnapshot,
   TournamentSnapshotAction,
   TournamentSnapshotData,
   TournamentTCG,
+  TournamentTeamMode,
+  TournamentPhaseMode,
   TournamentTiebreakerSystem,
 } from '../types/tournament'
 import { deleteRemoteTournament, getCurrentUserId, saveRemoteTournament } from '../services/firebase'
@@ -197,6 +200,33 @@ function rebuildPlayersFromRounds(players: Player[], rounds: Round[]): Player[] 
 
 const pendingTournamentWrites = new Map<string, Tournament>()
 const pendingTournamentDeletes = new Set<string>()
+const TOURNAMENT_CACHE_KEY = 'subterra-tournament-cache-v1'
+
+function loadCachedTournaments(): Tournament[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(TOURNAMENT_CACHE_KEY) ?? '[]') as Tournament[]
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function saveCachedTournaments(tournaments: Tournament[]) {
+  try {
+    localStorage.setItem(TOURNAMENT_CACHE_KEY, JSON.stringify(tournaments.slice(-80)))
+  } catch {
+    // El cache local es solo una red de seguridad para pestanas nuevas.
+  }
+}
+
+function cacheTournament(tournament: Tournament) {
+  const cached = loadCachedTournaments().filter(candidate => candidate.id !== tournament.id)
+  saveCachedTournaments([...cached, tournament].sort((a, b) => a.createdAt - b.createdAt))
+}
+
+function uncacheTournament(tournamentId: string) {
+  saveCachedTournaments(loadCachedTournaments().filter(candidate => candidate.id !== tournamentId))
+}
 
 function touchTournament<T extends Tournament>(tournament: T): T {
   return { ...tournament, updatedAt: Date.now() }
@@ -209,6 +239,10 @@ function createEmptyTournament(): Tournament {
     organizerUid: getCurrentUserId() ?? undefined,
     name: 'Nuevo torneo',
     tcg: 'magic',
+    magicFormat: 'pauper',
+    teamMode: 'solo',
+    phaseMode: 'swiss',
+    topCut: 8,
     players: [],
     rounds: [],
     pendingResults: [],
@@ -245,7 +279,14 @@ function withSnapshot(tournament: Tournament, action: TournamentSnapshotAction, 
 }
 
 function applyPendingWrites(remoteTournaments: Tournament[]) {
-  const byId = new Map(remoteTournaments.map(tournament => [tournament.id, tournament]))
+  const byId = new Map<string, Tournament>()
+
+  for (const tournament of [...loadCachedTournaments(), ...remoteTournaments]) {
+    const current = byId.get(tournament.id)
+    if (!current || tournament.updatedAt >= current.updatedAt) {
+      byId.set(tournament.id, tournament)
+    }
+  }
 
   for (const tournamentId of pendingTournamentDeletes) {
     byId.delete(tournamentId)
@@ -266,6 +307,7 @@ function commitTournament(
   tournament: Tournament
 ) {
   pendingTournamentWrites.set(tournament.id, tournament)
+  cacheTournament(tournament)
   set(s => ({
     tournaments: s.tournaments.map(t => t.id === tournament.id ? tournament : t),
   }))
@@ -290,6 +332,7 @@ function commitNewTournament(
   tournament: Tournament
 ) {
   pendingTournamentWrites.set(tournament.id, tournament)
+  cacheTournament(tournament)
   set(s => ({ tournaments: [...s.tournaments, tournament] }))
   void saveRemoteTournament(tournament)
     .then(() => {
@@ -313,6 +356,7 @@ function commitTournamentDelete(
 ) {
   pendingTournamentWrites.delete(tournamentId)
   pendingTournamentDeletes.add(tournamentId)
+  uncacheTournament(tournamentId)
   set(s => ({ tournaments: s.tournaments.filter(t => t.id !== tournamentId) }))
 
   void deleteRemoteTournament(tournamentId)
@@ -340,13 +384,17 @@ interface TournamentsStore {
   setSyncLoaded: (loaded: boolean) => void
   updateTournamentName: (id: string, name: string) => void
   setTournamentTCG: (id: string, tcg: TournamentTCG) => void
+  setTournamentMagicFormat: (id: string, format: MagicFormat) => void
+  setTournamentTeamMode: (id: string, mode: TournamentTeamMode) => void
+  setTournamentPhaseMode: (id: string, mode: TournamentPhaseMode) => void
+  setTournamentTopCut: (id: string, topCut: number) => void
   setTimerDuration: (id: string, seconds: number) => void
   setTiebreakerSystem: (id: string, system: TournamentTiebreakerSystem) => void
 
   // Jugadores
-  addPlayer: (id: string, name: string) => string | null
+  addPlayer: (id: string, name: string, teamDetails?: { members: string[]; captainName: string }) => string | null
   removePlayer: (id: string, playerId: string) => void
-  submitDecklist: (id: string, playerId: string, deck: { name: string; list: string; notes: string }) => void
+  submitDecklist: (id: string, playerId: string, deck: { name: string; list: string; notes: string; playerName?: string; teamName?: string }) => void
   publishDecklist: (id: string, deckId: string, published: boolean) => void
 
   // Torneo
@@ -367,7 +415,7 @@ interface TournamentsStore {
 
 export const useTournamentsStore = create<TournamentsStore>()(
     (set, get) => ({
-      tournaments: [],
+      tournaments: loadCachedTournaments(),
       syncEnabled: false,
       syncLoaded: false,
 
@@ -382,7 +430,9 @@ export const useTournamentsStore = create<TournamentsStore>()(
       },
 
       setRemoteTournaments: (tournaments) => {
-        set({ tournaments: applyPendingWrites(tournaments), syncLoaded: true })
+        const merged = applyPendingWrites(tournaments)
+        saveCachedTournaments(merged)
+        set({ tournaments: merged, syncLoaded: true })
       },
 
       setSyncEnabled: (enabled) => {
@@ -402,7 +452,37 @@ export const useTournamentsStore = create<TournamentsStore>()(
       setTournamentTCG: (id, tcg) => {
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament) return
-        commitTournament(set, touchTournament({ ...tournament, tcg, tiebreakerSystem: getDefaultTiebreakerSystem(tcg) }))
+        commitTournament(set, touchTournament({
+          ...tournament,
+          tcg,
+          magicFormat: tcg === 'magic' ? (tournament.magicFormat ?? 'pauper') : tournament.magicFormat,
+          tiebreakerSystem: getDefaultTiebreakerSystem(tcg),
+        }))
+      },
+
+      setTournamentMagicFormat: (id, format) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament) return
+        commitTournament(set, touchTournament({ ...tournament, magicFormat: format }))
+      },
+
+      setTournamentTeamMode: (id, mode) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament || tournament.status !== 'setup') return
+        commitTournament(set, touchTournament({ ...tournament, teamMode: mode }))
+      },
+
+      setTournamentPhaseMode: (id, mode) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament || tournament.status !== 'setup') return
+        commitTournament(set, touchTournament({ ...tournament, phaseMode: mode }))
+      },
+
+      setTournamentTopCut: (id, topCut) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament || tournament.status !== 'setup') return
+        const safeTopCut = Math.max(2, Math.min(128, Math.floor(topCut || 2)))
+        commitTournament(set, touchTournament({ ...tournament, topCut: safeTopCut }))
       },
 
       setTimerDuration: (id, seconds) => {
@@ -417,15 +497,19 @@ export const useTournamentsStore = create<TournamentsStore>()(
         commitTournament(set, touchTournament({ ...tournament, tiebreakerSystem: system }))
       },
 
-      addPlayer: (id, name) => {
+      addPlayer: (id, name, teamDetails) => {
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament || tournament.status !== 'setup') return null
         if (tournament.players.find(p => p.name.toLowerCase() === name.toLowerCase())) return null
 
+        const members = teamDetails?.members.map(member => member.trim()).filter(Boolean)
+        const captainName = teamDetails?.captainName.trim()
         const newPlayer: Player = {
           id: crypto.randomUUID(),
           uid: getCurrentUserId() ?? undefined,
           name,
+          teamMembers: members?.length ? members : undefined,
+          captainName: captainName || members?.[0],
           points: 0,
           wins: 0,
           losses: 0,
@@ -463,7 +547,8 @@ export const useTournamentsStore = create<TournamentsStore>()(
           id: crypto.randomUUID(),
           playerId,
           ownerUid: player.uid ?? getCurrentUserId() ?? undefined,
-          playerName: player.name,
+          playerName: deck.playerName?.trim() || player.name,
+          teamName: deck.teamName?.trim() || undefined,
           game: tournament.tcg,
           name: deck.name.trim(),
           list: deck.list.trim(),

@@ -35,6 +35,8 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
     unfinishedCount,
     isFinalRound,
     shouldFinish,
+    phaseMode,
+    topCut,
     roundSummaries,
     getPlayerName,
   } = useSwissPairings(tournamentId)
@@ -215,7 +217,7 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
           <div style={{ marginTop: '1rem' }}>
             {shouldFinish ? (
               <button onClick={() => finishTournament(tournamentId)} style={actionBtnStyle('var(--color-accent-secondary)', 'var(--color-border-success)')}>
-                <i className="ti ti-trophy" aria-hidden="true" /> Finalizar torneo y cerrar inscripcion
+                <i className="ti ti-trophy" aria-hidden="true" /> {phaseMode === 'swiss-top' ? `Cerrar suizo y publicar Top ${topCut}` : 'Finalizar torneo y cerrar inscripcion'}
               </button>
             ) : (
               <button onClick={() => nextRound(tournamentId)} style={actionBtnStyle()} title="Genera la siguiente ronda cuando todos los resultados esten listos">

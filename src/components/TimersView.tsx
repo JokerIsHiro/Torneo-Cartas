@@ -11,12 +11,16 @@ export function TimersView() {
   const viewRef = useRef<HTMLDivElement | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const targetTournamentId = getTargetTournamentId()
+  const syncEnabled = useTournamentsStore(s => s.syncEnabled)
+  const syncLoaded = useTournamentsStore(s => s.syncLoaded)
+  const timersLoaded = useTimerStore(s => s.timersLoaded)
   const tournaments = useTournamentsStore(
     useShallow(s => s.tournaments.filter(t =>
       t.status === 'active' && (!targetTournamentId || t.id === targetTournamentId)
     ))
   )
   const density = tournaments.length >= 5 ? 'many' : tournaments.length >= 3 ? 'several' : 'few'
+  const isLoadingSyncedData = syncEnabled && (!syncLoaded || !timersLoaded)
 
   useEffect(() => {
     function handleFullscreenChange() {
@@ -41,6 +45,16 @@ export function TimersView() {
   async function testSound() {
     await unlockTimerSound()
     playTimerFinishedSound()
+  }
+
+  if (isLoadingSyncedData) {
+    return (
+      <div className="timers-loading-state">
+        <i className="ti ti-loader-2" aria-hidden="true" />
+        <strong>Cargando temporizadores</strong>
+        <span>Sincronizando el estado exacto de las rondas...</span>
+      </div>
+    )
   }
 
   if (!tournaments.length) {
