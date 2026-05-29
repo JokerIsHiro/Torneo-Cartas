@@ -150,7 +150,7 @@ export async function resolveOnePieceCard(card: { cardId: string; name: string }
   const fromId = extractOnePieceCardCode(card.cardId) ?? extractOnePieceCardCode(card.name)
   if (fromId) {
     const byCode = await fetchOnePieceCardByCode(fromId)
-    if (byCode?.imageUrl) return byCode
+    return byCode
   }
 
   const name = card.name.replace(ONE_PIECE_CARD_CODE_PATTERN, '').trim()

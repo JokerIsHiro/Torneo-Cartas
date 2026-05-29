@@ -11,7 +11,7 @@ export type ParsedDeckLine = {
 const MULTIPLY_CHARS = '[x×✕✖*]'
 
 /** Patrón interno (sin \\b) para combinar en otras expresiones. */
-const OP_CODE_INNER = '[A-Z]{2,4}\\d{2}-\\d{3}(?:_p\\d+)?[a-z]?'
+const OP_CODE_INNER = '[A-Z]{1,4}\\d{0,2}-\\d{3}(?:_p\\d+)?[a-z]?'
 
 /** Normaliza pegados desde simuladores, web y hojas de calculo. */
 export function normalizePasteText(text: string) {

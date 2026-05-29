@@ -22,6 +22,7 @@ import { getOnePieceSectionFromKind, resolveOnePieceCard } from '../services/opt
 import { DeckCardImage } from './DeckCardImage'
 import { displayImageUrl, fetchImageAsDataUrl, proxiedImageUrl } from '../utils/imageExport'
 import { ActionButton } from './ActionButton'
+import { extractOnePieceCardCode } from '../utils/onePieceCardCode'
 
 type DeckCard = ImportedDeckCard
 type DeckExportFormat = 'normal' | 'feed' | 'story'
@@ -1506,6 +1507,7 @@ async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forE
     if (game === 'one-piece') {
       const enriched = await hydrateOnePieceCard(card, forExport, imageCache).catch(() => null)
       if (enriched) return enriched
+      if (extractOnePieceCardCode(card.cardId) || extractOnePieceCardCode(card.name)) return card
     }
 
     const cardById = await hydrateKnownCardById(card, game, forExport).catch(() => null)
