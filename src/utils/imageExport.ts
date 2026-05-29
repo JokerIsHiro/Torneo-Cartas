@@ -9,6 +9,8 @@ const DISPLAY_DIRECT_HOSTS = [
   "cards.scryfall.io",
   "images.pokemontcg.io",
   "cards.lorcast.io",
+  "www.optcgapi.com",
+  "optcgapi.com",
 ];
 
 /** CDNs sin CORS o AVIF: en exportar PNG usar proxy (webp) primero. */

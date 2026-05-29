@@ -14,7 +14,7 @@ type OptcgCardRow = {
   card_type?: string
   card_color?: string
   rarity?: string
-  card_image?: string
+  card_image?: string | null
   card_image_id?: string
 }
 
@@ -29,10 +29,12 @@ function cleanCardName(rawName: string, cardSetId: string) {
 
 function pickBaseVariant(rows: OptcgCardRow[]) {
   if (!rows.length) return null
+  const candidatesWithImage = rows.filter(row => Boolean(row.card_image))
+  const candidates = candidatesWithImage.length ? candidatesWithImage : rows
   return (
-    rows.find(row => row.card_image_id === row.card_set_id) ??
-    rows.find(row => !row.card_name.toLowerCase().includes('alternate art') && !row.card_image_id?.includes('_p')) ??
-    rows[0]
+    candidates.find(row => row.card_image_id === row.card_set_id) ??
+    candidates.find(row => !row.card_name.toLowerCase().includes('alternate art') && !row.card_image_id?.includes('_p')) ??
+    candidates[0]
   )
 }
 
@@ -75,8 +77,8 @@ export function onePieceCardToSuggestion(row: OptcgCardRow): CardSuggestion {
     id: `one-piece:${code}`,
     name: cleanCardName(row.card_name, code),
     subtitle: edition || code,
-    imageUrl: displayImageUrl(row.card_image),
-    artUrl: displayImageUrl(row.card_image),
+    imageUrl: displayImageUrl(row.card_image ?? undefined),
+    artUrl: displayImageUrl(row.card_image ?? undefined),
     kind: [row.card_type, row.card_color, row.rarity].filter(Boolean).join(' · '),
     text: undefined,
   }
@@ -101,27 +103,36 @@ export async function searchOnePieceCardsByName(name: string, signal?: AbortSign
 }
 
 async function searchOnePieceCardsByNameUncached(term: string, signal?: AbortSignal): Promise<CardSuggestion[]> {
-  const url = new URL(`${OPTCG_API_BASE}/sets/filtered/`)
-  url.searchParams.set('card_name', term)
+  const rows = (
+    await Promise.all(
+      ['sets', 'decks', 'promos'].map(async collection => {
+        const url = new URL(`${OPTCG_API_BASE}/${collection}/filtered/`)
+        url.searchParams.set('card_name', term)
 
-  try {
-    const response = await fetch(url, { signal, headers: { Accept: 'application/json' } })
-    if (!response.ok) return []
-    const payload = await response.json() as OptcgCardRow[] | { value?: OptcgCardRow[] }
-    const rows = Array.isArray(payload) ? payload : payload.value ?? []
-    const seen = new Set<string>()
-    return rows
-      .filter(row => {
-        const key = row.card_set_id.toUpperCase()
-        if (seen.has(key)) return false
-        seen.add(key)
-        return !row.card_name.toLowerCase().includes('alternate art')
-      })
-      .slice(0, 12)
-      .map(onePieceCardToSuggestion)
-  } catch {
-    return []
+        try {
+          const response = await fetch(url, { signal, headers: { Accept: 'application/json' } })
+          if (!response.ok) return []
+          const payload = await response.json() as OptcgCardRow[] | { value?: OptcgCardRow[] }
+          return Array.isArray(payload) ? payload : payload.value ?? []
+        } catch {
+          return []
+        }
+      }),
+    )
+  ).flat()
+
+  const byCode = new Map<string, OptcgCardRow[]>()
+  for (const row of rows) {
+    const key = row.card_set_id.toUpperCase()
+    byCode.set(key, [...(byCode.get(key) ?? []), row])
   }
+
+  return [...byCode.values()]
+    .map(pickBaseVariant)
+    .filter((row): row is OptcgCardRow => Boolean(row))
+    .sort((a, b) => Number(Boolean(b.card_image)) - Number(Boolean(a.card_image)))
+    .slice(0, 12)
+    .map(onePieceCardToSuggestion)
 }
 
 export async function fetchOnePieceCardByCode(code: string): Promise<CardSuggestion | null> {
@@ -139,7 +150,7 @@ export async function resolveOnePieceCard(card: { cardId: string; name: string }
   const fromId = extractOnePieceCardCode(card.cardId) ?? extractOnePieceCardCode(card.name)
   if (fromId) {
     const byCode = await fetchOnePieceCardByCode(fromId)
-    if (byCode) return byCode
+    if (byCode?.imageUrl) return byCode
   }
 
   const name = card.name.replace(ONE_PIECE_CARD_CODE_PATTERN, '').trim()
