@@ -248,7 +248,7 @@ export function Setup({ tournamentId }: SetupProps) {
           </div>
         </div>
 
-        <div className="setup-two-column">
+        <div className="setup-two-column setup-compact-settings">
           {tcg === 'magic' && (
             <div className="setup-card" style={cardStyle}>
               <div style={cardTitleStyle}>

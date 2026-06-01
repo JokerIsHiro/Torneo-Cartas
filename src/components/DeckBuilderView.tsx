@@ -58,11 +58,8 @@ interface SavedDeckTemplate {
 }
 
 type ReusableDeckTemplate = SavedDeckTemplate & {
-  source: 'player-history' | 'library'
   sourceLabel: string
 }
-
-const DECK_LIBRARY_KEY = 'subterra-deck-library-v1'
 
 function now() {
   return Date.now()
@@ -128,7 +125,6 @@ function DeckBuilderEditor({
   const [exportCards, setExportCards] = useState<DeckCard[]>([])
   const exportFormat: DeckExportFormat = 'social'
   const [saveStatus, setSaveStatus] = useState('')
-  const [deckLibrary, setDeckLibrary] = useState<SavedDeckTemplate[]>(loadDeckLibrary)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const deckHydrateRef = useRef(0)
   const { ref: exportRef, exportImage } = useExportImage({ scale: 3 })
@@ -161,16 +157,7 @@ function DeckBuilderEditor({
       selectedDeckOwnerName,
     )
     : []
-  const historyKeys = new Set(playerDeckHistory.map(deck => getReusableDeckKey(deck)))
-  const localDecks: ReusableDeckTemplate[] = deckLibrary
-    .filter(deck => deck.game === tournament?.tcg)
-    .filter(deck => !historyKeys.has(getReusableDeckKey(deck)))
-    .map(deck => ({
-      ...deck,
-      source: 'library' as const,
-      sourceLabel: 'Biblioteca local',
-    }))
-  const reusableDecks = [...playerDeckHistory, ...localDecks]
+  const reusableDecks = playerDeckHistory
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .slice(0, 12)
 
@@ -451,18 +438,6 @@ function DeckBuilderEditor({
       playerName: selectedDeckOwnerName,
       teamName: selectedPlayer.teamMembers?.length ? selectedPlayer.name : undefined,
     })
-    saveReusableDeck({
-      id: `${currentTournament.tcg}:${selectedPlayer.name}:${selectedDeckOwnerName}:${deckName}`.toLowerCase(),
-      game: currentTournament.tcg,
-      playerName: selectedPlayer.teamMembers?.length
-        ? `${selectedPlayer.name} - ${selectedDeckOwnerName}`
-        : selectedDeckOwnerName,
-      archetype: deckArchetype.trim() || deckName.trim(),
-      name: deckName.trim(),
-      list: formattedList,
-      notes: deckNotes.trim(),
-      updatedAt: now(),
-    })
     setSaveStatus('Guardado')
     window.setTimeout(() => setSaveStatus(''), 2200)
   }
@@ -549,22 +524,6 @@ function DeckBuilderEditor({
     setDeckName(deck.name)
     setDeckNotes(deck.notes)
     void loadDeckFromList(deck.list, 'Lista cargada')
-  }
-
-  function saveReusableDeck(deck: SavedDeckTemplate) {
-    setDeckLibrary(current => {
-      const next = [deck, ...current.filter(candidate => candidate.id !== deck.id)].slice(0, 80)
-      localStorage.setItem(DECK_LIBRARY_KEY, JSON.stringify(next))
-      return next
-    })
-  }
-
-  function deleteReusableDeck(deckId: string) {
-    setDeckLibrary(current => {
-      const next = current.filter(deck => deck.id !== deckId)
-      localStorage.setItem(DECK_LIBRARY_KEY, JSON.stringify(next))
-      return next
-    })
   }
 
   async function exportCurrentDeckImage() {
@@ -905,11 +864,6 @@ function DeckBuilderEditor({
               <button onClick={() => loadDeckList(deck)} title="Carga esta plantilla en el editor">
                 Usar plantilla
               </button>
-              {deck.source === 'library' && (
-                <button onClick={() => deleteReusableDeck(deck.id)} title="Elimina la plantilla guardada en este navegador">
-                  Eliminar plantilla
-                </button>
-              )}
             </article>
           ))}
         </aside>
@@ -1567,7 +1521,6 @@ function getReusableDecksFromPlayerHistory(
         list: deck.list,
         notes: deck.notes,
         updatedAt: deck.updatedAt,
-        source: 'player-history',
         sourceLabel: `Historial: ${tournament.name}`,
       }
       const key = getReusableDeckKey(reusableDeck)
@@ -1587,17 +1540,6 @@ function getReusableDeckKey(deck: Pick<SavedDeckTemplate, 'game' | 'name' | 'lis
 
 function normalizePlayerNameForDeckHistory(name: string) {
   return name.trim().toLocaleLowerCase('es-ES').replace(/\s+/g, ' ')
-}
-
-function loadDeckLibrary(): SavedDeckTemplate[] {
-  try {
-    const raw = localStorage.getItem(DECK_LIBRARY_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as SavedDeckTemplate[]
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
 }
 
 async function hydrateMissingImages(cards: DeckCard[], game: TournamentTCG, forExport = false) {

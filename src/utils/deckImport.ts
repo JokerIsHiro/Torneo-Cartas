@@ -261,10 +261,12 @@ function parseYugiohTextLines(list: string): DeckImportResult {
     const line = normalizeLine(rawLine)
     if (!line) continue
 
-    const nextSection = getSectionFromLine('yugioh', line)
-    if (nextSection) {
-      section = nextSection
-      continue
+    if (!looksLikeQuantityCardLine(line)) {
+      const nextSection = getSectionFromLine('yugioh', line)
+      if (nextSection) {
+        section = nextSection
+        continue
+      }
     }
 
     if (shouldIgnoreDeckLine(line) || isDeckCommentLine(line)) continue
@@ -406,6 +408,10 @@ function getFallbackSection(game: TournamentTCG) {
 
 function looksLikeYdk(list: string) {
   return /^#main$/m.test(list) || /^#extra$/m.test(list) || /^!side$/m.test(list)
+}
+
+function looksLikeQuantityCardLine(line: string) {
+  return /^\d+\s*(?:x|×|[*])?\s+\S/i.test(line) || /^\d+\s*[:-]\s*\S/i.test(line)
 }
 
 function normalizeLine(value: string) {

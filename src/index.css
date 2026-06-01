@@ -3947,3 +3947,237 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* Setup fit-to-screen pass */
+.setup-workspace {
+  grid-template-columns: minmax(0, 1fr) 292px;
+  gap: 10px;
+  max-height: calc(100vh - 138px);
+  overflow: hidden;
+}
+
+.setup-main-column,
+.setup-side-column {
+  min-height: 0;
+}
+
+.setup-main-column {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 8px;
+  overflow: hidden;
+}
+
+.setup-side-column {
+  position: static;
+  align-content: start;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.setup-card {
+  padding: .62rem .75rem !important;
+  margin-bottom: 0 !important;
+}
+
+.setup-card-header,
+.player-card-header {
+  margin-bottom: .45rem;
+}
+
+.setup-card-header > span,
+.player-card-header > span {
+  max-width: 18ch;
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.setup-name-row {
+  grid-template-columns: 62px minmax(0, 1fr);
+  margin-bottom: .45rem;
+}
+
+.setup-control-grid {
+  grid-template-columns: minmax(0, 1.15fr) minmax(150px, .72fr) minmax(150px, .72fr);
+  gap: 7px;
+}
+
+.setup-control-block {
+  padding: 7px;
+}
+
+.setup-block-title {
+  margin-bottom: 5px;
+  font-size: 11px;
+}
+
+.setup-compact-settings {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.setup-compact-settings .setup-card {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+}
+
+.setup-compact-settings .setup-note,
+.setup-hint-strip {
+  display: none;
+}
+
+.option-pill {
+  min-height: 28px;
+  padding: 5px 7px;
+  font-size: 11px;
+}
+
+.option-pill-stacked {
+  min-height: 34px;
+  padding: 5px 7px;
+}
+
+.option-pill-stacked strong {
+  font-size: 11px;
+}
+
+.option-grid-compact {
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 5px;
+}
+
+.option-grid-tight {
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  gap: 5px;
+}
+
+.invite-card-header p,
+.setup-summary-list {
+  display: none;
+}
+
+.invite-qr-wrap {
+  width: min(100%, 142px);
+  margin-bottom: 7px;
+  padding: 7px;
+}
+
+.invite-actions {
+  gap: 6px;
+}
+
+.invite-actions input {
+  display: none;
+}
+
+.invite-action-buttons {
+  gap: 5px;
+}
+
+.invite-action-buttons button {
+  min-height: 30px;
+  padding: 6px 8px !important;
+  font-size: 12px !important;
+}
+
+.invite-status {
+  min-height: 0;
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.setup-summary-card .setup-summary-grid {
+  gap: 5px;
+}
+
+.setup-summary-card .setup-summary-cell {
+  padding: 6px 4px;
+}
+
+.setup-summary-card .setup-summary-cell div {
+  font-size: 16px;
+}
+
+.start-tournament-button {
+  min-height: 42px;
+  margin-top: 0;
+}
+
+.player-entry-card {
+  min-height: 0;
+}
+
+.known-player-card {
+  display: none;
+}
+
+.player-list-card {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.setup-main-column > div:last-child {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.setup-main-column > div:last-child,
+.player-list-card {
+  display: grid;
+}
+
+.setup-player-list {
+  max-height: min(32vh, 260px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.player-empty-state {
+  padding: 1.2rem .75rem;
+}
+
+.setup-player-row {
+  padding: 5px 7px;
+}
+
+.setup-player-row button span {
+  display: none;
+}
+
+@media (max-height: 820px) {
+  .setup-workspace {
+    max-height: calc(100vh - 118px);
+  }
+
+  .setup-compact-settings {
+    grid-template-columns: minmax(0, 1fr) minmax(0, .82fr);
+  }
+
+  .setup-compact-settings .setup-card:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .invite-card {
+    display: none;
+  }
+}
+
+@media (max-width: 1180px) {
+  .setup-workspace {
+    max-height: none;
+    overflow: visible;
+    grid-template-columns: 1fr;
+  }
+
+  .setup-main-column,
+  .setup-side-column,
+  .setup-main-column > div:last-child,
+  .player-list-card {
+    overflow: visible;
+  }
+
+  .setup-player-list {
+    max-height: none;
+  }
+}
