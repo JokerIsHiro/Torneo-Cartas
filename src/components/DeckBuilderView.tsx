@@ -1382,7 +1382,7 @@ function getDeckCardTileClass(
 }
 
 function normalizeResolvedDeckSectionsForGame(cards: DeckCard[], game: TournamentTCG) {
-  if (game !== 'riftbound') return cards
+  if (game !== 'riftbound' && game !== 'yugioh') return cards
   return cards.map(card => ({
     ...card,
     section: getHydratedCardSection(game, card, card),
@@ -1485,8 +1485,18 @@ function getHydratedCardSection(
   card: Pick<DeckCard, 'section'>,
   resolved?: Pick<CardSuggestion, 'name' | 'kind' | 'subtitle'>,
 ) {
-  if (game !== 'riftbound' || !resolved) return card.section
+  if (!resolved) return card.section
   const section = getDefaultSection(game, resolved)
+
+  if (game === 'yugioh') {
+    if (card.section === 'Side') return 'Side'
+    if (!resolved.kind && !resolved.subtitle) {
+      return card.section === 'Main' ? 'Monster' : card.section
+    }
+    return section
+  }
+
+  if (game !== 'riftbound') return card.section
 
   if (card.section === 'Legend' || card.section === 'Champion' || card.section === 'Sideboard') {
     return card.section
@@ -1821,7 +1831,7 @@ async function hydrateKnownCardById(
       orientation: inferCardOrientation(match, game),
       kind: match.kind,
       legalities: match.legalities,
-      section: card.section,
+      section: getHydratedCardSection(game, card, match),
       imageUrl: usableImageUrl,
       artUrl: match.artUrl,
     }
