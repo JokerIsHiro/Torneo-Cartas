@@ -4,7 +4,7 @@ import { saveRemoteLocalRanking, subscribeToRemoteLocalRanking } from '../servic
 import { useExportImage } from '../hooks/useExportImage'
 import type { LocalRankingSeason, LocalRankingState, LocalRankingTournamentRecord, Tournament, TournamentTCG } from '../types/tournament'
 
-type RankingFilter = 'all' | TournamentTCG
+type RankingFilter = TournamentTCG
 
 interface RankingEntry {
   key: string
@@ -40,7 +40,7 @@ const storeLogoUrl = '/subterra-logo.jpg'
 
 export function LocalRanking() {
   const tournaments = useTournamentsStore(s => s.tournaments)
-  const [gameFilter, setGameFilter] = useState<RankingFilter>('all')
+  const [gameFilter, setGameFilter] = useState<RankingFilter>('magic')
   const [remoteRanking, setRemoteRanking] = useState<LocalRankingState>(createDefaultRankingState())
   const [remoteLoaded, setRemoteLoaded] = useState(false)
   const { ref: rankingExportRef, exportImage } = useExportImage({ scale: 2 })
@@ -88,17 +88,24 @@ export function LocalRanking() {
     () => rankingRecords.filter(record => record.updatedAt > activeSeason.resetAt),
     [activeSeason.resetAt, rankingRecords],
   )
-  const ranking = useMemo(
-    () => buildLocalRanking(activeRankingRecords, gameFilter),
-    [activeRankingRecords, gameFilter],
-  )
   const availableGames = useMemo(() => {
     return [...new Set(activeRankingRecords.map(tournament => tournament.tcg))]
       .sort((a, b) => gameLabels[a].localeCompare(gameLabels[b]))
   }, [activeRankingRecords])
-  const leaderboardGameLabel = gameFilter === 'all' ? 'Todos los juegos' : gameLabels[gameFilter]
-  const leaderboardLogo = getLeaderboardLogo(gameFilter)
+  const selectedGame = availableGames.includes(gameFilter) ? gameFilter : availableGames[0] ?? gameFilter
+  const ranking = useMemo(
+    () => buildLocalRanking(activeRankingRecords, selectedGame),
+    [activeRankingRecords, selectedGame],
+  )
+  const leaderboardGameLabel = gameLabels[selectedGame]
+  const leaderboardLogo = getLeaderboardLogo(selectedGame)
   const exportedRanking = ranking.slice(0, 16)
+
+  useEffect(() => {
+    if (availableGames.length > 0 && !availableGames.includes(gameFilter)) {
+      setGameFilter(availableGames[0])
+    }
+  }, [availableGames, gameFilter])
 
   return (
     <section>
@@ -119,12 +126,11 @@ export function LocalRanking() {
             ))}
           </select>
           <select
-            value={gameFilter}
+            value={selectedGame}
             onChange={event => setGameFilter(event.target.value as RankingFilter)}
             style={filterStyle}
             aria-label="Filtrar ranking por juego"
           >
-            <option value="all">Todos los juegos</option>
             {availableGames.map(game => (
               <option key={game} value={game}>{gameLabels[game]}</option>
             ))}
@@ -133,7 +139,7 @@ export function LocalRanking() {
             <i className="ti ti-calendar-plus" aria-hidden="true" />
             Nueva temporada
           </button>
-          <button type="button" style={resetButtonStyle} onClick={() => exportRankingCsv(ranking, activeSeason, gameFilter)}>
+          <button type="button" style={resetButtonStyle} onClick={() => exportRankingCsv(ranking, activeSeason, selectedGame)}>
             <i className="ti ti-file-spreadsheet" aria-hidden="true" />
             CSV
           </button>
@@ -334,7 +340,7 @@ function resetRankingSeason(state: LocalRankingState) {
 function exportRankingCsv(ranking: RankingEntry[], season: LocalRankingSeason, filter: RankingFilter) {
   const rows = [
     ['Temporada', season.name],
-    ['Juego', filter === 'all' ? 'Todos los juegos' : gameLabels[filter]],
+    ['Juego', gameLabels[filter]],
     [],
     ['Posicion', 'Jugador', 'Puntos'],
     ...ranking.map((entry, index) => [
@@ -359,7 +365,7 @@ function escapeCsvCell(value: string | undefined) {
 
 function buildLocalRanking(tournaments: LocalRankingTournamentRecord[], filter: RankingFilter) {
   const entries = new Map<string, RankingEntry>()
-  const filtered = tournaments.filter(tournament => filter === 'all' || tournament.tcg === filter)
+  const filtered = tournaments.filter(tournament => tournament.tcg === filter)
 
   filtered.forEach(tournament => {
     getTournamentPlayerOrder(tournament).forEach(({ player }) => {
@@ -415,7 +421,6 @@ function chooseDisplayName(current: string, next: string) {
 }
 
 function getLeaderboardLogo(filter: RankingFilter) {
-  if (filter === 'all') return { icon: 'ti ti-cards' }
   if (filter === 'chess') return { icon: 'ti ti-chess' }
   return gameLogoUrls[filter] ? { src: gameLogoUrls[filter] } : { icon: 'ti ti-cards' }
 }
