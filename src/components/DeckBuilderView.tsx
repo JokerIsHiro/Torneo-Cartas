@@ -50,10 +50,16 @@ interface SavedDeckTemplate {
   id: string
   game: TournamentTCG
   playerName: string
+  archetype?: string
   name: string
   list: string
   notes: string
   updatedAt: number
+}
+
+type ReusableDeckTemplate = SavedDeckTemplate & {
+  source: 'player-history' | 'library'
+  sourceLabel: string
 }
 
 const DECK_LIBRARY_KEY = 'subterra-deck-library-v1'
@@ -94,6 +100,7 @@ function DeckBuilderEditor({
 }) {
   const submitDecklist = useTournamentsStore(s => s.submitDecklist)
   const setTournamentMagicFormat = useTournamentsStore(s => s.setTournamentMagicFormat)
+  const allTournaments = useTournamentsStore(s => s.tournaments)
   const requestedPlayer = tournament?.players.find(player => player.id === requestedPlayerId) ?? null
   const requestedOwnerName = requestedPlayer?.teamMembers?.[0] ?? requestedPlayer?.name ?? ''
   const requestedDeck = requestedPlayer
@@ -127,6 +134,14 @@ function DeckBuilderEditor({
   const { ref: exportRef, exportImage } = useExportImage({ scale: 3 })
   const { standings } = useSwissPairings(tournamentId)
   const magicFormat = tournament?.magicFormat ?? 'pauper'
+  const currentTournament = tournament
+  const rules = deckRuleConfigs[currentTournament.tcg]
+  const ruleSections = getActiveDeckSections(currentTournament.tcg, rules.sections, magicFormat)
+  const activeSections = getVisibleDeckSections(currentTournament.tcg, ruleSections)
+  const sections = ruleSections.map(section => section.id)
+  const selectedPlayer = currentTournament.players.find(player => player.id === playerId) ?? null
+  const selectedTeamMembers = selectedPlayer?.teamMembers ?? []
+  const selectedDeckOwnerName = selectedTeamMembers.length ? deckOwnerName : selectedPlayer?.name ?? ''
 
   const latestDecks = useMemo(() => {
     const latestByPlayer = new Map<string, DeckList>()
@@ -138,12 +153,26 @@ function DeckBuilderEditor({
     return [...latestByPlayer.values()].sort((a, b) => a.playerName.localeCompare(b.playerName))
   }, [tournament?.decklists])
 
-  const reusableDecks = useMemo(() => {
-    return deckLibrary
-      .filter(deck => deck.game === tournament?.tcg)
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, 12)
-  }, [deckLibrary, tournament?.tcg])
+  const playerDeckHistory = selectedDeckOwnerName
+    ? getReusableDecksFromPlayerHistory(
+      allTournaments,
+      currentTournament.id,
+      currentTournament.tcg,
+      selectedDeckOwnerName,
+    )
+    : []
+  const historyKeys = new Set(playerDeckHistory.map(deck => getReusableDeckKey(deck)))
+  const localDecks: ReusableDeckTemplate[] = deckLibrary
+    .filter(deck => deck.game === tournament?.tcg)
+    .filter(deck => !historyKeys.has(getReusableDeckKey(deck)))
+    .map(deck => ({
+      ...deck,
+      source: 'library' as const,
+      sourceLabel: 'Biblioteca local',
+    }))
+  const reusableDecks = [...playerDeckHistory, ...localDecks]
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 12)
 
   useEffect(() => {
     if (!tournament || query.trim().length < 2) {
@@ -172,11 +201,6 @@ function DeckBuilderEditor({
     }
   }, [advancedFilters, magicFormat, onlyImages, query, searchKind, searchText, tournament])
 
-  const currentTournament = tournament
-  const rules = deckRuleConfigs[currentTournament.tcg]
-  const ruleSections = getActiveDeckSections(currentTournament.tcg, rules.sections, magicFormat)
-  const activeSections = getVisibleDeckSections(currentTournament.tcg, ruleSections)
-  const sections = ruleSections.map(section => section.id)
   const warnings = [
     ...(currentTournament.tcg === 'magic' && magicFormat === 'commander'
       ? []
@@ -185,9 +209,6 @@ function DeckBuilderEditor({
   ]
   const filterOptions = getCardFilterOptions(currentTournament.tcg)
   const advancedFilterOptions = getAdvancedCardFilterOptions(currentTournament.tcg)
-  const selectedPlayer = currentTournament.players.find(player => player.id === playerId) ?? null
-  const selectedTeamMembers = selectedPlayer?.teamMembers ?? []
-  const selectedDeckOwnerName = selectedTeamMembers.length ? deckOwnerName : selectedPlayer?.name ?? ''
   const visibleResults = query.trim().length < 2 ? [] : results
   const quickSideSection = activeSections.find(section => ['Side', 'Sideboard'].includes(section.id))
   const activeSearchFilters = [
@@ -247,14 +268,19 @@ function DeckBuilderEditor({
     const existingDeck = [...(currentTournament.decklists ?? [])].reverse().find(deck =>
       deck.playerId === nextPlayerId && (!nextPlayer?.teamMembers?.length || deck.playerName === nextOwnerName)
     )
-    setDeckArchetype(existingDeck?.archetype ?? existingDeck?.name ?? '')
-    setDeckName(existingDeck?.name ?? '')
-    setDeckNotes(existingDeck?.notes ?? '')
-    if (!existingDeck?.list?.trim()) {
+    const historyDeck = !existingDeck?.list?.trim() && nextOwnerName
+      ? getReusableDecksFromPlayerHistory(allTournaments, currentTournament.id, currentTournament.tcg, nextOwnerName)[0]
+      : undefined
+    const deckToLoad = existingDeck?.list?.trim() ? existingDeck : historyDeck
+
+    setDeckArchetype(deckToLoad?.archetype ?? deckToLoad?.name ?? '')
+    setDeckName(deckToLoad?.name ?? '')
+    setDeckNotes(deckToLoad?.notes ?? '')
+    if (!deckToLoad?.list?.trim()) {
       setCards([])
       return
     }
-    void loadDeckFromList(existingDeck.list, 'Mazo cargado')
+    void loadDeckFromList(deckToLoad.list, existingDeck ? 'Mazo cargado' : 'Mazo recuperado del historial')
   }
 
   function handleDeckOwnerChange(nextOwnerName: string) {
@@ -263,14 +289,19 @@ function DeckBuilderEditor({
     const existingDeck = [...(currentTournament.decklists ?? [])].reverse().find(deck =>
       deck.playerId === playerId && deck.playerName === nextOwnerName
     )
-    setDeckArchetype(existingDeck?.archetype ?? existingDeck?.name ?? '')
-    setDeckName(existingDeck?.name ?? '')
-    setDeckNotes(existingDeck?.notes ?? '')
-    if (!existingDeck?.list?.trim()) {
+    const historyDeck = !existingDeck?.list?.trim() && nextOwnerName
+      ? getReusableDecksFromPlayerHistory(allTournaments, currentTournament.id, currentTournament.tcg, nextOwnerName)[0]
+      : undefined
+    const deckToLoad = existingDeck?.list?.trim() ? existingDeck : historyDeck
+
+    setDeckArchetype(deckToLoad?.archetype ?? deckToLoad?.name ?? '')
+    setDeckName(deckToLoad?.name ?? '')
+    setDeckNotes(deckToLoad?.notes ?? '')
+    if (!deckToLoad?.list?.trim()) {
       setCards([])
       return
     }
-    void loadDeckFromList(existingDeck.list, 'Mazo cargado')
+    void loadDeckFromList(deckToLoad.list, existingDeck ? 'Mazo cargado' : 'Mazo recuperado del historial')
   }
 
   function addCard(card: CardSuggestion, section = getDefaultSection(currentTournament.tcg, card)) {
@@ -426,6 +457,7 @@ function DeckBuilderEditor({
       playerName: selectedPlayer.teamMembers?.length
         ? `${selectedPlayer.name} - ${selectedDeckOwnerName}`
         : selectedDeckOwnerName,
+      archetype: deckArchetype.trim() || deckName.trim(),
       name: deckName.trim(),
       list: formattedList,
       notes: deckNotes.trim(),
@@ -860,21 +892,24 @@ function DeckBuilderEditor({
             </article>
           ))}
 
-          <strong>Biblioteca</strong>
+          <strong>{selectedDeckOwnerName ? `Mazos reutilizables de ${selectedDeckOwnerName}` : 'Biblioteca'}</strong>
           {reusableDecks.length === 0 ? (
             <span>No hay mazos reutilizables para este juego.</span>
           ) : reusableDecks.map(deck => (
             <article key={deck.id}>
               <div>
-                <strong>{deck.name}</strong>
+                <strong>{deck.archetype || deck.name}</strong>
                 <span>{deck.playerName}</span>
+                <span>{deck.sourceLabel}</span>
               </div>
               <button onClick={() => loadDeckList(deck)} title="Carga esta plantilla en el editor">
                 Usar plantilla
               </button>
-              <button onClick={() => deleteReusableDeck(deck.id)} title="Elimina la plantilla guardada en este navegador">
-                Eliminar plantilla
-              </button>
+              {deck.source === 'library' && (
+                <button onClick={() => deleteReusableDeck(deck.id)} title="Elimina la plantilla guardada en este navegador">
+                  Eliminar plantilla
+                </button>
+              )}
             </article>
           ))}
         </aside>
@@ -1503,6 +1538,55 @@ function getHydratedCardSection(
 
   if (!resolved.kind && !resolved.subtitle && section === 'Main') return importedSection
   return section
+}
+
+function getReusableDecksFromPlayerHistory(
+  tournaments: Tournament[],
+  currentTournamentId: string,
+  game: TournamentTCG,
+  playerName: string,
+): ReusableDeckTemplate[] {
+  const normalizedPlayerName = normalizePlayerNameForDeckHistory(playerName)
+  if (!normalizedPlayerName) return []
+
+  const byDeck = new Map<string, ReusableDeckTemplate>()
+
+  for (const tournament of tournaments) {
+    if (tournament.id === currentTournamentId || tournament.tcg !== game) continue
+
+    for (const deck of tournament.decklists ?? []) {
+      if (normalizePlayerNameForDeckHistory(deck.playerName) !== normalizedPlayerName) continue
+      if (!deck.list?.trim()) continue
+
+      const reusableDeck: ReusableDeckTemplate = {
+        id: `history:${tournament.id}:${deck.id}`,
+        game: deck.game,
+        playerName: deck.playerName,
+        archetype: deck.archetype,
+        name: deck.name,
+        list: deck.list,
+        notes: deck.notes,
+        updatedAt: deck.updatedAt,
+        source: 'player-history',
+        sourceLabel: `Historial: ${tournament.name}`,
+      }
+      const key = getReusableDeckKey(reusableDeck)
+      const current = byDeck.get(key)
+      if (!current || reusableDeck.updatedAt > current.updatedAt) {
+        byDeck.set(key, reusableDeck)
+      }
+    }
+  }
+
+  return [...byDeck.values()].sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
+function getReusableDeckKey(deck: Pick<SavedDeckTemplate, 'game' | 'name' | 'list'>) {
+  return `${deck.game}:${deck.name.trim().toLowerCase()}:${deck.list.trim()}`
+}
+
+function normalizePlayerNameForDeckHistory(name: string) {
+  return name.trim().toLocaleLowerCase('es-ES').replace(/\s+/g, ' ')
 }
 
 function loadDeckLibrary(): SavedDeckTemplate[] {

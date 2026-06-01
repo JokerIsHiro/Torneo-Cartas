@@ -360,7 +360,7 @@ function cleanName(game: TournamentTCG, raw: string, cardCode?: string) {
 
   name = name
     .replace(/\s*\([^)]*(?:alternate|alt|manga|parallel|reprint|full art|sp|aa|aa)[^)]*\)/gi, '')
-    .replace(/\s*\[[^\]]+\]\s*$/g, '')
+    .replace(/\s*\[(?!(?:id|img|art|orient|sub|kind)=)[^\]]+\]\s*$/gi, '')
     .replace(/\s*[-–—]\s*$/g, '')
     .replace(/\s+/g, ' ')
     .trim()

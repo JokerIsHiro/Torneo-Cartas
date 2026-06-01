@@ -122,3 +122,17 @@ export interface Tournament {
   createdAt: number
   updatedAt: number
 }
+
+export interface LocalRankingTournamentRecord {
+  id: string
+  name: string
+  tcg: TournamentTCG
+  players: Player[]
+  updatedAt: number
+}
+
+export interface LocalRankingState {
+  resetAt: number
+  records: LocalRankingTournamentRecord[]
+  updatedAt: number
+}

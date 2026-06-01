@@ -19,7 +19,7 @@ import {
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore'
-import type { Tournament } from '../types/tournament'
+import type { LocalRankingState, Tournament } from '../types/tournament'
 import type { SyncedTimerState } from '../store/timerStore'
 import { ADMIN_AUTH_EMAIL, bundledFirebaseConfig, hasBundledFirebaseConfig } from '../config/appConfig'
 import { getDefaultTiebreakerSystem } from '../utils/tiebreakers'
@@ -158,6 +158,22 @@ export async function subscribeToRemoteTimers(
   )
 }
 
+export async function subscribeToRemoteLocalRanking(
+  onRanking: (ranking: LocalRankingState) => void,
+  onError: (error: Error) => void
+): Promise<Unsubscribe | null> {
+  const firestore = await getDb()
+  if (!firestore) return null
+
+  return onSnapshot(
+    doc(firestore, 'ranking', 'local'),
+    snapshot => {
+      onRanking(normalizeLocalRanking(snapshot.exists() ? snapshot.data() : {}))
+    },
+    error => onError(error)
+  )
+}
+
 export async function saveRemoteTournament(tournament: Tournament) {
   const firestore = await getDb()
   if (!firestore) return
@@ -181,6 +197,13 @@ export async function saveRemoteTimer(tournamentId: string, timer: SyncedTimerSt
   if (!firestore) return
   await ensureFirebaseAuth()
   await setDoc(doc(firestore, 'timers', tournamentId), timer)
+}
+
+export async function saveRemoteLocalRanking(ranking: LocalRankingState) {
+  const firestore = await getDb()
+  if (!firestore) return
+  await ensureFirebaseAuth()
+  await setDoc(doc(firestore, 'ranking', 'local'), ranking)
 }
 
 function normalizeTournament(data: Partial<Tournament> & { id: string }): Tournament {
@@ -224,6 +247,25 @@ function normalizeTimer(data: Partial<SyncedTimerState>): SyncedTimerState {
     secondsLeft: data.secondsLeft ?? 50 * 60,
     status: data.status ?? 'idle',
     endsAt: data.endsAt ?? null,
+    updatedAt: data.updatedAt ?? 0,
+  }
+}
+
+function normalizeLocalRanking(data: Partial<LocalRankingState>): LocalRankingState {
+  return {
+    resetAt: data.resetAt ?? 0,
+    records: (data.records ?? []).map(record => ({
+      id: record.id,
+      name: record.name ?? 'Torneo',
+      tcg: record.tcg ?? 'magic',
+      players: (record.players ?? []).map(player => ({
+        ...player,
+        playerKind: player.playerKind ?? 'new',
+        droppedAt: player.droppedAt ?? null,
+        droppedRound: player.droppedRound ?? null,
+      })),
+      updatedAt: record.updatedAt ?? 0,
+    })),
     updatedAt: data.updatedAt ?? 0,
   }
 }
