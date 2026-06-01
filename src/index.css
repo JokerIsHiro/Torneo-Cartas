@@ -4168,6 +4168,7 @@ button:disabled {
   overflow: hidden;
   border-color: rgba(31, 122, 255, 0.38) !important;
   box-shadow: inset 0 0 0 1px rgba(31, 122, 255, 0.08);
+  padding-bottom: .75rem !important;
 }
 
 .player-list-card > div:first-child {
@@ -4181,7 +4182,8 @@ button:disabled {
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 2px;
-  padding-bottom: 2px;
+  padding-bottom: 8px;
+  margin-bottom: 1px;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
