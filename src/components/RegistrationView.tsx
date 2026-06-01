@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
+import { useSwissPairings } from '../hooks/useSwissPairings'
 import type { MatchResult, Player, Tournament } from '../types/tournament'
 
 interface PlayerSession {
@@ -166,14 +167,18 @@ function PlayerPortal({
   player: Player
   tournament: Tournament
   onSubmitResult: (matchId: string, result: Exclude<MatchResult, 'bye' | null>) => void
-  onSubmitDeck: (deck: { name: string; list: string; notes: string }) => void
+  onSubmitDeck: (deck: { name: string; archetype?: string; list: string; notes: string }) => void
   message: string
   error: string
 }) {
+  const { standings } = useSwissPairings(tournament.id)
   const existingDeck = [...(tournament.decklists ?? [])].reverse().find(deck => deck.playerId === player.id)
+  const [deckArchetype, setDeckArchetype] = useState(existingDeck?.archetype ?? existingDeck?.name ?? '')
   const [deckName, setDeckName] = useState(existingDeck?.name ?? '')
   const [deckList, setDeckList] = useState(existingDeck?.list ?? '')
   const [deckNotes, setDeckNotes] = useState(existingDeck?.notes ?? '')
+  const standing = standings.find(row => row.player.id === player.id)
+  const isDropped = Boolean(player.droppedAt)
   const round = tournament.rounds[tournament.currentRound - 1]
   const match = round?.matches.find(m => m.p1Id === player.id || m.p2Id === player.id)
   const opponentId = match?.p1Id === player.id ? match.p2Id : match?.p1Id
@@ -183,8 +188,24 @@ function PlayerPortal({
   const pendingResult = tournament.pendingResults?.find(p =>
     p.playerId === player.id && p.matchId === match?.id
   )
+  const playerHistory = tournament.rounds
+    .map(historyRound => {
+      const historyMatch = historyRound.matches.find(m => m.p1Id === player.id || m.p2Id === player.id)
+      if (!historyMatch) return null
+      const historyOpponentId = historyMatch.p1Id === player.id ? historyMatch.p2Id : historyMatch.p1Id
+      const historyOpponent = historyOpponentId === 'BYE'
+        ? 'BYE'
+        : tournament.players.find(candidate => candidate.id === historyOpponentId)?.name ?? 'Rival'
+      return {
+        roundNumber: historyRound.number,
+        tableNumber: historyMatch.tableNumber,
+        opponent: historyOpponent,
+        result: getResultLabelForPlayer(historyMatch.result, historyMatch.p1Id === player.id, historyMatch.p2Id === 'BYE'),
+      }
+    })
+    .filter(Boolean)
   const allowsDraw = tournament.tcg !== 'yugioh'
-  const canReport = tournament.status === 'active' && match && match.p2Id !== 'BYE' && match.result === null
+  const canReport = !isDropped && tournament.status === 'active' && match && match.p2Id !== 'BYE' && match.result === null
 
   function resultFromPlayerPerspective(playerWon: boolean): Exclude<MatchResult, 'bye' | null> {
     if (!match) return 'draw'
@@ -197,6 +218,27 @@ function PlayerPortal({
       <i className="ti ti-user-check" aria-hidden="true" />
       <h1>{player.name}</h1>
       <p>{tournament.name}</p>
+
+      <div className="player-summary-grid">
+        <div>
+          <span>Posicion</span>
+          <strong>{standing ? `#${standing.position}` : '-'}</strong>
+        </div>
+        <div>
+          <span>Puntos</span>
+          <strong>{player.points}</strong>
+        </div>
+        <div>
+          <span>Record</span>
+          <strong>{player.wins}-{player.draws}-{player.losses}</strong>
+        </div>
+      </div>
+
+      {isDropped && (
+        <div className="registration-feedback error">
+          Estas retirado del torneo. No seras emparejado en las siguientes rondas.
+        </div>
+      )}
 
       {tournament.status === 'setup' && (
         <div className="player-panel">
@@ -250,7 +292,7 @@ function PlayerPortal({
         </div>
       )}
 
-      {tournament.status === 'active' && !match && (
+      {tournament.status === 'active' && !match && !isDropped && (
         <div className="player-panel">
           <strong>Sin emparejamiento activo</strong>
           <span>Espera a que se publique la siguiente ronda.</span>
@@ -264,19 +306,39 @@ function PlayerPortal({
         </div>
       )}
 
+      {playerHistory.length > 0 && (
+        <div className="player-panel player-history-panel">
+          <strong>Historial de rondas</strong>
+          {playerHistory.map(item => item && (
+            <div key={item.roundNumber} className="player-history-row">
+              <span>R{item.roundNumber} · Mesa {item.tableNumber}</span>
+              <div>
+                <strong>{item.opponent}</strong>
+                <em>{item.result}</em>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <form
         className="player-panel deck-submit-panel"
         onSubmit={event => {
           event.preventDefault()
-          onSubmitDeck({ name: deckName, list: deckList, notes: deckNotes })
+          onSubmitDeck({ name: deckName, archetype: deckArchetype, list: deckList, notes: deckNotes })
         }}
       >
         <strong>Mazo del torneo</strong>
-        <span>Envia tu lista para que la tienda pueda publicarla en redes.</span>
+        <span>Envia tu lista cuando la tengas. La tienda decidira que listas se publican al finalizar.</span>
+        <input
+          value={deckArchetype}
+          onChange={event => setDeckArchetype(event.target.value)}
+          placeholder="Arquetipo (ej. Enel, Mono Red, Charizard)"
+        />
         <input
           value={deckName}
           onChange={event => setDeckName(event.target.value)}
-          placeholder="Nombre del mazo"
+          placeholder="Nombre de publicacion"
         />
         <textarea
           value={deckList}
@@ -308,6 +370,15 @@ function PlayerPortal({
       )}
     </div>
   )
+}
+
+function getResultLabelForPlayer(result: MatchResult, isP1: boolean, isBye: boolean) {
+  if (result === null) return 'Pendiente'
+  if (result === 'bye' || isBye) return 'BYE'
+  if (result === 'draw') return 'Empate'
+  if (result === 'timeout') return 'Tiempo'
+  if ((result === 'p1' && isP1) || (result === 'p2' && !isP1)) return 'Victoria'
+  return 'Derrota'
 }
 
 function getTargetTournamentId() {

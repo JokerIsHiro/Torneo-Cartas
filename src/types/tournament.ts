@@ -6,6 +6,9 @@ export interface Player {
   name: string
   teamMembers?: string[]
   captainName?: string
+  playerKind?: 'regular' | 'new'
+  droppedAt?: number | null
+  droppedRound?: number | null
   points: number
   wins: number
   losses: number
@@ -22,6 +25,7 @@ export interface DeckList {
   playerName: string
   teamName?: string
   game: TournamentTCG
+  archetype?: string
   name: string
   list: string
   notes: string
@@ -84,6 +88,7 @@ export type TournamentSnapshotAction =
   | 'delete-tournament'
   | 'manual-pairings'
   | 'edit-result'
+  | 'drop-player'
   | 'restore'
 
 export type TournamentSnapshotData = Omit<Tournament, 'snapshots'>

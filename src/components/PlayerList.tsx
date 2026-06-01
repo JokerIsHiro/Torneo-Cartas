@@ -1,25 +1,45 @@
 import { useMemo, useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
-import type { Player, TournamentTeamMode } from '../types/tournament'
+import type { Player, TournamentTCG, TournamentTeamMode } from '../types/tournament'
 
 interface PlayerListProps {
   tournamentId: string
 }
 
+const EMPTY_PLAYERS: Player[] = []
+
 export function PlayerList({ tournamentId }: PlayerListProps) {
   const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
-  const { addPlayer, removePlayer } = useTournamentsStore()
+  const { addPlayer, removePlayer, setPlayerKind, dropPlayer, restorePlayer } = useTournamentsStore()
   const { standings, totalRounds } = useSwissPairings(tournamentId)
   const [input, setInput] = useState('')
   const [error, setError] = useState('')
   const [teamModalOpen, setTeamModalOpen] = useState(false)
+  const [knownPlayers, setKnownPlayers] = useState<KnownPlayer[]>(loadKnownPlayers)
+  const [selectedKnownIds, setSelectedKnownIds] = useState<string[]>([])
 
-  const players = tournament?.players ?? []
+  const players = tournament?.players ?? EMPTY_PLAYERS
+  const activePlayers = players.filter(player => !player.droppedAt)
   const status = tournament?.status ?? 'setup'
+  const tcg = tournament?.tcg ?? 'magic'
   const teamMode = tournament?.teamMode ?? 'solo'
   const isSetup = status === 'setup'
   const isTeamMode = teamMode === '2v2' || teamMode === '3v3'
+  const registeredNames = useMemo(
+    () => new Set(players.map(player => player.name.toLowerCase())),
+    [players]
+  )
+  const gameKnownPlayers = useMemo(
+    () => knownPlayers
+      .filter(player => player.games.includes(tcg))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    [knownPlayers, tcg]
+  )
+  const addableKnownPlayers = useMemo(
+    () => gameKnownPlayers.filter(player => !registeredNames.has(player.name.toLowerCase())),
+    [gameKnownPlayers, registeredNames]
+  )
   const participantSingular = isTeamMode ? 'equipo' : 'jugador'
   const participantPlural = isTeamMode ? 'equipos' : 'jugadores'
   const participantTitle = isTeamMode ? 'Equipos' : 'Jugadores'
@@ -36,7 +56,7 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
       setError(`Ya existe un ${participantSingular} con ese nombre`)
       return
     }
-    addPlayer(tournamentId, name)
+    addPlayer(tournamentId, name, undefined, { playerKind: 'new' })
     setInput('')
     setError('')
   }
@@ -46,9 +66,36 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
       setError('Ya existe un equipo con ese nombre')
       return false
     }
-    addPlayer(tournamentId, teamName, { members, captainName })
+    addPlayer(tournamentId, teamName, { members, captainName }, { playerKind: 'new' })
     setError('')
     return true
+  }
+
+  function rememberKnownPlayer(name: string, game: TournamentTCG, kind: Player['playerKind'] = 'regular') {
+    const cleanName = name.trim()
+    if (!cleanName) return
+    setKnownPlayers(current => saveKnownPlayers(upsertKnownPlayer(current, cleanName, game, kind)))
+  }
+
+  function forgetKnownPlayer(id: string) {
+    setKnownPlayers(current => saveKnownPlayers(current.filter(player => player.id !== id)))
+    setSelectedKnownIds(current => current.filter(candidate => candidate !== id))
+  }
+
+  function toggleKnownPlayer(id: string) {
+    setSelectedKnownIds(current =>
+      current.includes(id) ? current.filter(candidate => candidate !== id) : [...current, id]
+    )
+  }
+
+  function addSelectedKnownPlayers() {
+    const selected = gameKnownPlayers.filter(player => selectedKnownIds.includes(player.id))
+    selected.forEach(player => {
+      if (!registeredNames.has(player.name.toLowerCase())) {
+        addPlayer(tournamentId, player.name, undefined, { playerKind: 'regular' })
+      }
+    })
+    setSelectedKnownIds([])
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -97,13 +144,59 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
         </div>
       )}
 
+      {isSetup && (
+        <div className="setup-card known-player-card" style={cardStyle}>
+          <div style={listHeaderStyle}>
+            <span style={cardTitleStyle}>
+              <i className="ti ti-address-book" aria-hidden="true" /> Habituales de este juego
+            </span>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+              {gameKnownPlayers.length} guardados
+            </span>
+          </div>
+
+          {addableKnownPlayers.length === 0 ? (
+            <div className="known-player-empty">Guarda jugadores desde la lista de inscritos para anadirlos rapido en proximos torneos.</div>
+          ) : (
+            <>
+              <div className="known-player-list">
+                {addableKnownPlayers.map(player => (
+                  <label key={player.id} className="known-player-pill">
+                    <input
+                      type="checkbox"
+                      checked={selectedKnownIds.includes(player.id)}
+                      onChange={() => toggleKnownPlayer(player.id)}
+                    />
+                    <span>{player.name}</span>
+                    <button type="button" onClick={() => forgetKnownPlayer(player.id)} title={`Quitar ${player.name} de habituales`}>
+                      <i className="ti ti-x" aria-hidden="true" />
+                    </button>
+                  </label>
+                ))}
+              </div>
+              <button
+                onClick={addSelectedKnownPlayers}
+                disabled={selectedKnownIds.length === 0}
+                style={{ ...btnStyle, marginTop: 8 }}
+                title="Anade al torneo los jugadores habituales seleccionados"
+              >
+                <i className="ti ti-user-check" aria-hidden="true" />
+                Anadir seleccionados
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="setup-card player-list-card" style={cardStyle}>
         <div style={listHeaderStyle}>
           <span style={cardTitleStyle}>
             <i className="ti ti-users" aria-hidden="true" /> {participantTitle}
           </span>
           <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
-            {players.length} {participantPlural} - {totalRounds} rondas estimadas
+            {isSetup
+              ? `${players.length} ${participantPlural} - ${totalRounds} rondas estimadas`
+              : `${activePlayers.length}/${players.length} ${participantPlural} activos`}
           </span>
         </div>
 
@@ -123,6 +216,8 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
                 isTeamMode={isTeamMode}
                 participantSingular={participantSingular}
                 onRemove={() => removePlayer(tournamentId, p.id)}
+                onRemember={() => rememberKnownPlayer(p.name, tcg, 'regular')}
+                onKindChange={kind => setPlayerKind(tournamentId, p.id, kind)}
               />
             ))}
           </div>
@@ -135,7 +230,14 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
                 player={row.player}
                 position={row.position}
                 isEliminated={row.isEliminated}
+                isDropped={row.isDropped}
                 isTeamMode={isTeamMode}
+                onDrop={() => {
+                  if (confirm(`Retirar a "${row.player.name}" de las siguientes rondas?`)) {
+                    dropPlayer(tournamentId, row.player.id)
+                  }
+                }}
+                onRestore={() => restorePlayer(tournamentId, row.player.id)}
               />
             ))}
           </div>
@@ -233,13 +335,18 @@ function SetupPlayerRow({
   isTeamMode,
   participantSingular,
   onRemove,
+  onRemember,
+  onKindChange,
 }: {
   player: Player
   index: number
   isTeamMode: boolean
   participantSingular: string
   onRemove: () => void
+  onRemember: () => void
+  onKindChange: (kind: Player['playerKind']) => void
 }) {
+  const isRegular = player.playerKind === 'regular'
   return (
     <div className="setup-player-row">
       <span className="setup-player-index">{index}</span>
@@ -249,6 +356,14 @@ function SetupPlayerRow({
           <small>Capitan: {player.captainName ?? player.teamMembers[0]} - {player.teamMembers.join(' / ')}</small>
         ) : null}
       </div>
+      <button onClick={() => onKindChange(isRegular ? 'new' : 'regular')} style={rowButtonStyle} title="Alterna entre jugador habitual y nuevo">
+        <i className={`ti ${isRegular ? 'ti-star-filled' : 'ti-sparkles'}`} aria-hidden="true" />
+        <span>{isRegular ? 'Habitual' : 'Nuevo'}</span>
+      </button>
+      <button onClick={onRemember} style={rowButtonStyle} title={`Guardar ${player.name} como habitual de este juego`}>
+        <i className="ti ti-address-book" aria-hidden="true" />
+        <span>Guardar</span>
+      </button>
       <button onClick={onRemove} style={rowButtonStyle} title={`Quitar a ${player.name} del torneo`} aria-label={`Quitar ${participantSingular} ${player.name}`}>
         <i className="ti ti-trash" aria-hidden="true" />
         <span>Quitar</span>
@@ -265,19 +380,39 @@ function StandingsHeader({ participantTitle }: { participantTitle: string }) {
       <span style={{ textAlign: 'center' }}>V</span>
       <span style={{ textAlign: 'center' }}>E</span>
       <span style={{ textAlign: 'center' }}>D</span>
+      <span style={{ textAlign: 'right' }}>Estado</span>
     </div>
   )
 }
 
-function ActivePlayerRow({ player, position, isEliminated, isTeamMode }: { player: Player; position: number; isEliminated: boolean; isTeamMode: boolean }) {
+function ActivePlayerRow({
+  player,
+  position,
+  isEliminated,
+  isDropped,
+  isTeamMode,
+  onDrop,
+  onRestore,
+}: {
+  player: Player
+  position: number
+  isEliminated: boolean
+  isDropped: boolean
+  isTeamMode: boolean
+  onDrop: () => void
+  onRestore: () => void
+}) {
   const medals: Record<number, string> = { 1: '1', 2: '2', 3: '3' }
 
   return (
-    <div style={{ ...standingsGridStyle, alignItems: 'center', padding: '7px 10px', borderRadius: 'var(--border-radius-md)', background: position % 2 === 0 ? 'var(--color-background-secondary)' : 'transparent', opacity: isEliminated ? 0.5 : 1 }}>
+    <div style={{ ...standingsGridStyle, alignItems: 'center', padding: '7px 10px', borderRadius: 'var(--border-radius-md)', background: position % 2 === 0 ? 'var(--color-background-secondary)' : 'transparent', opacity: isEliminated || isDropped ? 0.62 : 1 }}>
       <span style={{ fontSize: '13px', textAlign: 'center' }}>{medals[position] ?? <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{position}</span>}</span>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
         <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{player.name}</span>
         {isTeamMode && player.captainName && <Badge label={`Cap. ${player.captainName}`} bg="var(--color-draw-bg)" color="var(--color-accent-secondary)" border="var(--color-border-primary)" />}
+        {player.playerKind === 'regular' && <Badge label="habitual" bg="var(--color-draw-bg)" color="var(--color-accent-secondary)" border="var(--color-border-primary)" />}
+        {player.playerKind === 'new' && <Badge label="nuevo" bg="var(--color-warning-bg)" color="var(--color-text-warning)" border="var(--color-border-warning)" />}
+        {isDropped && <Badge label="drop" bg="var(--color-danger-bg)" color="var(--color-text-danger)" border="var(--color-border-danger)" />}
         {isEliminated && <Badge label="eliminado" bg="var(--color-danger-bg)" color="var(--color-text-danger)" border="var(--color-border-danger)" />}
         {player.timeoutLosses > 0 && <Badge label={`T ${player.timeoutLosses}`} bg="var(--color-warning-bg)" color="var(--color-text-warning)" border="var(--color-border-warning)" />}
         {player.byes > 0 && <Badge label="bye" bg="var(--color-draw-bg)" color="var(--color-accent-secondary)" border="var(--color-border-primary)" />}
@@ -286,6 +421,14 @@ function ActivePlayerRow({ player, position, isEliminated, isTeamMode }: { playe
       <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{player.wins}</span>
       <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{player.draws}</span>
       <span style={{ fontSize: '13px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{player.losses}</span>
+      <button
+        onClick={isDropped ? onRestore : onDrop}
+        style={{ ...rowButtonStyle, justifySelf: 'end', color: isDropped ? 'var(--color-accent-secondary)' : 'var(--color-text-secondary)' }}
+        title={isDropped ? `Reincorporar a ${player.name}` : `Retirar a ${player.name} de las siguientes rondas`}
+      >
+        <i className={`ti ${isDropped ? 'ti-arrow-back-up' : 'ti-user-minus'}`} aria-hidden="true" />
+        <span>{isDropped ? 'Reactivar' : 'Drop'}</span>
+      </button>
     </div>
   )
 }
@@ -302,6 +445,59 @@ function getTeamSize(mode: TournamentTeamMode) {
   if (mode === '2v2') return 2
   if (mode === '3v3') return 3
   return 1
+}
+
+interface KnownPlayer {
+  id: string
+  name: string
+  games: TournamentTCG[]
+  kind: Player['playerKind']
+  updatedAt: number
+}
+
+const KNOWN_PLAYERS_KEY = 'subterra-known-players-v1'
+
+function loadKnownPlayers(): KnownPlayer[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(KNOWN_PLAYERS_KEY) ?? '[]') as KnownPlayer[]
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function saveKnownPlayers(players: KnownPlayer[]) {
+  const sorted = players.slice(-250).sort((a, b) => a.name.localeCompare(b.name))
+  localStorage.setItem(KNOWN_PLAYERS_KEY, JSON.stringify(sorted))
+  return sorted
+}
+
+function upsertKnownPlayer(players: KnownPlayer[], name: string, game: TournamentTCG, kind: Player['playerKind']) {
+  const existing = players.find(player => player.name.toLowerCase() === name.toLowerCase())
+  if (!existing) {
+    return [
+      ...players,
+      {
+        id: crypto.randomUUID(),
+        name,
+        games: [game],
+        kind,
+        updatedAt: Date.now(),
+      },
+    ]
+  }
+
+  return players.map(player =>
+    player.id === existing.id
+      ? {
+          ...player,
+          name,
+          kind,
+          games: player.games.includes(game) ? player.games : [...player.games, game],
+          updatedAt: Date.now(),
+        }
+      : player
+  )
 }
 
 const cardStyle: React.CSSProperties = {
@@ -368,7 +564,7 @@ const listHeaderStyle: React.CSSProperties = {
 
 const standingsGridStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '28px 1fr 44px 44px 44px 44px',
+  gridTemplateColumns: '28px minmax(0, 1fr) 44px 44px 44px 44px 92px',
   gap: '4px',
   padding: '4px 10px',
   fontSize: '11px',

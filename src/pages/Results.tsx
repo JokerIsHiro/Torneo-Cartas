@@ -1,8 +1,10 @@
+import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { Standings } from '../components/Standings'
 import { RoundExport } from '../components/RoundExport'
 import { useExportImage } from '../hooks/useExportImage'
+import { useSwissPairings } from '../hooks/useSwissPairings'
 
 // Pantalla final del torneo: permite exportar el standing final y eliminar el torneo.
 interface ResultsProps {
@@ -10,20 +12,36 @@ interface ResultsProps {
 }
 
 export function Results({ tournamentId }: ResultsProps) {
-  const { name, tcg, exists } = useTournamentsStore(
+  const { name, tcg, players, decklists, exists } = useTournamentsStore(
     useShallow(s => {
       const t = s.tournaments.find(t => t.id === tournamentId)
-      return { name: t?.name ?? '', tcg: t?.tcg ?? 'magic', exists: !!t }
+      return {
+        name: t?.name ?? '',
+        tcg: t?.tcg ?? 'magic',
+        players: t?.players ?? [],
+        decklists: t?.decklists ?? [],
+        exists: !!t,
+      }
     })
   )
   const deleteTournament = useTournamentsStore(s => s.deleteTournament)
   const { ref: standingsExportRef, exportImage: exportStandingsImage } = useExportImage()
+  const { standings } = useSwissPairings(tournamentId)
+  const latestDeckByPlayer = useMemo(() => {
+    const latestByPlayer = new Map<string, typeof decklists[number]>()
+    for (const deck of decklists) {
+      const current = latestByPlayer.get(deck.playerId)
+      if (!current || deck.updatedAt >= current.updatedAt) latestByPlayer.set(deck.playerId, deck)
+    }
+    return latestByPlayer
+  }, [decklists])
 
   if (!exists) return null
 
-  function openDeckBuilder() {
+  function openDeckBuilder(playerId?: string) {
     const url = new URL('/deckbuilder', window.location.origin)
     url.searchParams.set('torneo', tournamentId)
+    if (playerId) url.searchParams.set('jugador', playerId)
     window.open(url.toString(), '_blank', 'noopener,noreferrer')
   }
 
@@ -59,12 +77,39 @@ export function Results({ tournamentId }: ResultsProps) {
 
       {tcg !== 'chess' && (
         <button
-          onClick={openDeckBuilder}
+          onClick={() => openDeckBuilder()}
           style={primaryActionStyle}
           title="Monta y exporta las listas de los jugadores"
         >
           <i className="ti ti-cards" aria-hidden="true" /> Abrir constructor de mazos
         </button>
+      )}
+
+      {tcg !== 'chess' && (
+        <section className="results-decklist-panel">
+          <header>
+            <div>
+              <strong>Decklists del torneo</strong>
+              <span>{latestDeckByPlayer.size}/{players.length} recibidas</span>
+            </div>
+            <i className="ti ti-cards" aria-hidden="true" />
+          </header>
+
+          {standings.map(row => {
+            const deck = latestDeckByPlayer.get(row.player.id)
+            return (
+              <div key={row.player.id} className="results-decklist-row">
+                <span>#{row.position}</span>
+                <strong>{row.player.name}</strong>
+                <em>{deck ? deck.archetype || deck.name : 'Sin lista'}</em>
+                <button onClick={() => openDeckBuilder(row.player.id)} title={`Abrir mazo de ${row.player.name} en el constructor`}>
+                  <i className="ti ti-pencil" aria-hidden="true" />
+                  {deck ? 'Abrir deck' : 'Crear deck'}
+                </button>
+              </div>
+            )
+          })}
+        </section>
       )}
 
       <Standings tournamentId={tournamentId} showPodium={false} />

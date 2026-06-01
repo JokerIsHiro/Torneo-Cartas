@@ -51,13 +51,19 @@ service cloud.firestore {
           'draws',
           'byes',
           'timeoutLosses',
-          'opponents'
+          'opponents',
+          'playerKind',
+          'droppedAt',
+          'droppedRound'
         ])
         && player.id is string
         && player.uid == request.auth.uid
         && player.name is string
         && player.name.size() >= 1
         && player.name.size() <= 60
+        && (!('playerKind' in player) || player.playerKind == 'new')
+        && (!('droppedAt' in player) || player.droppedAt == null)
+        && (!('droppedRound' in player) || player.droppedRound == null)
         && player.points == 0
         && player.wins == 0
         && player.losses == 0
@@ -116,7 +122,9 @@ service cloud.firestore {
           'playerId',
           'ownerUid',
           'playerName',
+          'teamName',
           'game',
+          'archetype',
           'name',
           'list',
           'notes',
@@ -130,7 +138,9 @@ service cloud.firestore {
         && decklist.playerName is string
         && decklist.playerName.size() >= 1
         && decklist.playerName.size() <= 60
+        && (!('teamName' in decklist) || (decklist.teamName is string && decklist.teamName.size() <= 80))
         && decklist.game in ['magic', 'riftbound', 'pokemon', 'yugioh', 'lorcana', 'one-piece']
+        && (!('archetype' in decklist) || (decklist.archetype is string && decklist.archetype.size() <= 80))
         && decklist.name is string
         && decklist.name.size() >= 1
         && decklist.name.size() <= 80
@@ -147,7 +157,7 @@ service cloud.firestore {
     function publicDeckSubmission() {
       let decklist = request.resource.data.decklists[resource.data.decklists.size()];
       return signedIn()
-        && resource.data.status == 'finished'
+        && resource.data.status in ['setup', 'active', 'finished']
         && onlyChanged(['decklists', 'updatedAt', 'tiebreakerSystem'])
         && unchangedOrBackfilledTiebreaker()
         && request.resource.data.decklists is list

@@ -8,8 +8,13 @@ interface UseExportImageReturn {
   exportImage: (filename?: string) => Promise<void>
 }
 
-export function useExportImage(): UseExportImageReturn {
+interface UseExportImageOptions {
+  scale?: number
+}
+
+export function useExportImage(options: UseExportImageOptions = {}): UseExportImageReturn {
   const ref = useRef<HTMLDivElement | null>(null)
+  const scale = options.scale ?? 2
 
   const exportImage = useCallback(async (filename = 'torneo') => {
     if (!ref.current) return
@@ -18,7 +23,7 @@ export function useExportImage(): UseExportImageReturn {
 
     const canvas = await html2canvas(ref.current, {
       backgroundColor: '#000000',
-      scale: 2,
+      scale,
       useCORS: true,
       allowTaint: false,
       logging: false,
@@ -28,7 +33,7 @@ export function useExportImage(): UseExportImageReturn {
     link.download = `${filename}.png`
     link.href = canvas.toDataURL('image/png')
     link.click()
-  }, [])
+  }, [scale])
 
   return { ref, exportImage }
 }

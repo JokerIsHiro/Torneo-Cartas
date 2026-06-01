@@ -15,7 +15,7 @@ import {
 } from '../services/cardSearch'
 import { useExportImage } from '../hooks/useExportImage'
 import { useSwissPairings } from '../hooks/useSwissPairings'
-import type { DeckList, MagicFormat, TournamentTCG } from '../types/tournament'
+import type { DeckList, MagicFormat, Tournament, TournamentTCG } from '../types/tournament'
 import { deckRuleConfigs, getDefaultSection, validateDeck } from '../utils/deckRules'
 import { formatDeckCards, parseDeckImport, parseSavedDeckCards, type ImportedDeckCard } from '../utils/deckImport'
 import { getOnePieceSectionFromKind, resolveOnePieceCard } from '../services/optcgApi'
@@ -25,7 +25,7 @@ import { ActionButton } from './ActionButton'
 import { extractOnePieceCardCode } from '../utils/onePieceCardCode'
 
 type DeckCard = ImportedDeckCard
-type DeckExportFormat = 'normal' | 'feed' | 'story'
+type DeckExportFormat = 'social'
 type DeckExportVisualCard = DeckCard & {
   exportBadge?: number
   exportRole?: 'rune-summary'
@@ -64,29 +64,68 @@ function now() {
 
 export function DeckBuilderView() {
   const tournamentId = new URLSearchParams(window.location.search).get('torneo') ?? ''
+  const requestedPlayerId = new URLSearchParams(window.location.search).get('jugador') ?? ''
   const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
+
+  if (!tournamentId) return <BuilderEmpty icon="ti-link-off" title="Falta torneo" text="Abre el constructor desde un torneo." />
+  if (!tournament) return <BuilderEmpty icon="ti-loader-2" title="Cargando torneo" text="Sincronizando datos del evento." />
+  if (tournament.tcg === 'chess') {
+    return <BuilderEmpty icon="ti-chess" title="Ajedrez no usa mazos" text="Este torneo no tiene constructor de decks." />
+  }
+
+  return (
+    <DeckBuilderEditor
+      key={`${tournament.id}:${requestedPlayerId}`}
+      tournamentId={tournamentId}
+      tournament={tournament}
+      requestedPlayerId={requestedPlayerId}
+    />
+  )
+}
+
+function DeckBuilderEditor({
+  tournamentId,
+  tournament,
+  requestedPlayerId,
+}: {
+  tournamentId: string
+  tournament: Tournament
+  requestedPlayerId: string
+}) {
   const submitDecklist = useTournamentsStore(s => s.submitDecklist)
   const publishDecklist = useTournamentsStore(s => s.publishDecklist)
   const setTournamentMagicFormat = useTournamentsStore(s => s.setTournamentMagicFormat)
-  const [playerId, setPlayerId] = useState('')
-  const [deckOwnerName, setDeckOwnerName] = useState('')
-  const [deckName, setDeckName] = useState('')
-  const [deckNotes, setDeckNotes] = useState('')
+  const requestedPlayer = tournament?.players.find(player => player.id === requestedPlayerId) ?? null
+  const requestedOwnerName = requestedPlayer?.teamMembers?.[0] ?? requestedPlayer?.name ?? ''
+  const requestedDeck = requestedPlayer
+    ? [...(tournament?.decklists ?? [])].reverse().find(deck =>
+        deck.playerId === requestedPlayer.id && (!requestedPlayer.teamMembers?.length || deck.playerName === requestedOwnerName)
+      )
+    : undefined
+  const [playerId, setPlayerId] = useState(() => requestedPlayer?.id ?? '')
+  const [deckOwnerName, setDeckOwnerName] = useState(() => requestedOwnerName)
+  const [deckArchetype, setDeckArchetype] = useState(() => requestedDeck?.archetype ?? requestedDeck?.name ?? '')
+  const [deckName, setDeckName] = useState(() => requestedDeck?.name ?? '')
+  const [deckNotes, setDeckNotes] = useState(() => requestedDeck?.notes ?? '')
   const [query, setQuery] = useState('')
   const [searchKind, setSearchKind] = useState('')
   const [searchText, setSearchText] = useState('')
   const [advancedFilters, setAdvancedFilters] = useState<Partial<CardSearchFilters>>({})
   const [onlyImages, setOnlyImages] = useState(true)
   const [results, setResults] = useState<CardSuggestion[]>([])
-  const [cards, setCards] = useState<DeckCard[]>([])
+  const [cards, setCards] = useState<DeckCard[]>(() =>
+    requestedDeck?.list?.trim() && tournament
+      ? normalizeResolvedDeckSectionsForGame(parseSavedDeckCards(tournament.tcg, requestedDeck.list), tournament.tcg)
+      : []
+  )
   const [exportDeck, setExportDeck] = useState<DeckList | null>(null)
   const [exportCards, setExportCards] = useState<DeckCard[]>([])
-  const [exportFormat, setExportFormat] = useState<DeckExportFormat>('feed')
+  const exportFormat: DeckExportFormat = 'social'
   const [saveStatus, setSaveStatus] = useState('')
   const [deckLibrary, setDeckLibrary] = useState<SavedDeckTemplate[]>(loadDeckLibrary)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const deckHydrateRef = useRef(0)
-  const { ref: exportRef, exportImage } = useExportImage()
+  const { ref: exportRef, exportImage } = useExportImage({ scale: 3 })
   const { standings } = useSwissPairings(tournamentId)
   const magicFormat = tournament?.magicFormat ?? 'pauper'
 
@@ -133,15 +172,6 @@ export function DeckBuilderView() {
       controller.abort()
     }
   }, [advancedFilters, magicFormat, onlyImages, query, searchKind, searchText, tournament])
-
-  if (!tournamentId) return <BuilderEmpty icon="ti-link-off" title="Falta torneo" text="Abre el constructor desde un torneo finalizado." />
-  if (!tournament) return <BuilderEmpty icon="ti-loader-2" title="Cargando torneo" text="Sincronizando datos del evento." />
-  if (tournament.tcg === 'chess') {
-    return <BuilderEmpty icon="ti-chess" title="Ajedrez no usa mazos" text="Este torneo no tiene constructor de decks." />
-  }
-  if (tournament.status !== 'finished') {
-    return <BuilderEmpty icon="ti-lock" title="Decklists bloqueadas" text="El constructor se activa cuando el torneo esta finalizado." />
-  }
 
   const currentTournament = tournament
   const rules = deckRuleConfigs[currentTournament.tcg]
@@ -218,6 +248,7 @@ export function DeckBuilderView() {
     const existingDeck = [...(currentTournament.decklists ?? [])].reverse().find(deck =>
       deck.playerId === nextPlayerId && (!nextPlayer?.teamMembers?.length || deck.playerName === nextOwnerName)
     )
+    setDeckArchetype(existingDeck?.archetype ?? existingDeck?.name ?? '')
     setDeckName(existingDeck?.name ?? '')
     setDeckNotes(existingDeck?.notes ?? '')
     if (!existingDeck?.list?.trim()) {
@@ -233,6 +264,7 @@ export function DeckBuilderView() {
     const existingDeck = [...(currentTournament.decklists ?? [])].reverse().find(deck =>
       deck.playerId === playerId && deck.playerName === nextOwnerName
     )
+    setDeckArchetype(existingDeck?.archetype ?? existingDeck?.name ?? '')
     setDeckName(existingDeck?.name ?? '')
     setDeckNotes(existingDeck?.notes ?? '')
     if (!existingDeck?.list?.trim()) {
@@ -382,6 +414,7 @@ export function DeckBuilderView() {
     setSaveStatus('Guardando...')
     const formattedList = formatDeckCards(cards, sections, true, currentTournament.tcg)
     submitDecklist(currentTournament.id, selectedPlayer.id, {
+      archetype: deckArchetype,
       name: deckName,
       list: formattedList,
       notes: deckNotes,
@@ -480,7 +513,8 @@ export function DeckBuilderView() {
     window.setTimeout(() => setSaveStatus(''), 3500)
   }
 
-  function loadDeckList(deck: Pick<DeckList, 'name' | 'list' | 'notes'>) {
+  function loadDeckList(deck: Pick<DeckList, 'name' | 'archetype' | 'list' | 'notes'>) {
+    setDeckArchetype(deck.archetype ?? deck.name)
     setDeckName(deck.name)
     setDeckNotes(deck.notes)
     void loadDeckFromList(deck.list, 'Lista cargada')
@@ -514,6 +548,7 @@ export function DeckBuilderView() {
         playerName: selectedDeckOwnerName,
         teamName: selectedPlayer.teamMembers?.length ? selectedPlayer.name : undefined,
         game: currentTournament.tcg,
+        archetype: deckArchetype.trim() || deckName,
         name: deckName,
         list: formatDeckCards(hydratedCards, sections, false, currentTournament.tcg),
         notes: deckNotes,
@@ -524,7 +559,7 @@ export function DeckBuilderView() {
       setExportCards(hydratedCards)
     })
     await waitForExportPaint()
-    await exportImage(`deck-${selectedPlayer.name}-${selectedDeckOwnerName}-${deckName}-${exportFormat}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+    await exportImage(`deck-${selectedPlayer.name}-${selectedDeckOwnerName}-${deckArchetype || deckName}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
     setSaveStatus(`Imagen descargada (${withImages}/${hydratedCards.length} cartas con foto).`)
     window.setTimeout(() => setSaveStatus(''), 3500)
   }
@@ -537,7 +572,7 @@ export function DeckBuilderView() {
       setExportCards(hydratedCards)
     })
     await waitForExportPaint()
-    await exportImage(`deck-${deck.playerName}-${deck.name}-${exportFormat}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+    await exportImage(`deck-${deck.playerName}-${deck.archetype || deck.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
     setSaveStatus('Imagen del mazo descargada.')
     window.setTimeout(() => setSaveStatus(''), 3500)
   }
@@ -548,7 +583,7 @@ export function DeckBuilderView() {
         <div>
           <span>{rules.label}</span>
           <h1>{currentTournament.name}</h1>
-          <p>Constructor bloqueado al juego del torneo</p>
+          <p>{currentTournament.status === 'finished' ? 'Listas listas para revisar, publicar y exportar' : 'Recepcion de listas abierta antes de finalizar'}</p>
         </div>
         <ActionButton className="deck-action-ghost" onClick={() => window.close()} icon="ti-x" title="Cierra esta ventana del constructor">
           Cerrar constructor
@@ -623,6 +658,7 @@ export function DeckBuilderView() {
             ))}
           </select>
         )}
+        <input value={deckArchetype} onChange={event => setDeckArchetype(event.target.value)} placeholder="Arquetipo para redes" />
         <input value={deckName} onChange={event => setDeckName(event.target.value)} placeholder="Nombre del mazo" />
         <input value={deckNotes} onChange={event => setDeckNotes(event.target.value)} placeholder="Notas para redes" />
         {currentTournament.tcg === 'magic' && (
@@ -632,11 +668,6 @@ export function DeckBuilderView() {
             ))}
           </select>
         )}
-        <select value={exportFormat} onChange={event => setExportFormat(event.target.value as DeckExportFormat)}>
-          <option value="feed">Feed vertical 4:5</option>
-          <option value="story">Historias / Reels 9:16</option>
-          <option value="normal">Imagen normal</option>
-        </select>
         {saveStatus && <span className="deck-save-status">{saveStatus}</span>}
       </section>
 
@@ -817,14 +848,16 @@ export function DeckBuilderView() {
           ) : latestDecks.map(deck => (
             <article key={deck.id}>
               <div>
-                <strong>{deck.name}</strong>
+                <strong>{deck.archetype || deck.name}</strong>
                 <span>{deck.teamName ? `${deck.teamName} - ${deck.playerName}` : deck.playerName}</span>
+                {deck.archetype && deck.archetype !== deck.name && <span>{deck.name}</span>}
               </div>
               <button
+                disabled={currentTournament.status !== 'finished'}
                 onClick={() => publishDecklist(currentTournament.id, deck.id, deck.status !== 'published')}
-                title={deck.status === 'published' ? 'Deja de mostrar este mazo como publicado' : 'Marca el mazo como listo para redes'}
+                title={currentTournament.status !== 'finished' ? 'Solo se puede publicar al finalizar el torneo' : deck.status === 'published' ? 'Deja de mostrar este mazo como publicado' : 'Marca el mazo como listo para redes'}
               >
-                {deck.status === 'published' ? 'Ocultar de redes' : 'Publicar en redes'}
+                {currentTournament.status !== 'finished' ? 'Publicable al finalizar' : deck.status === 'published' ? 'Ocultar de redes' : 'Publicar en redes'}
               </button>
               <button onClick={() => loadDeckList(deck)} title="Abre esta lista en el editor">
                 Abrir en editor
@@ -1031,7 +1064,7 @@ function DeckImageExport({
   if (!deck) return <div ref={ref} />
   const standing = standings.find(row => row.player.id === deck.playerId || row.player.name === (deck.teamName ?? deck.playerName))
   const rankLabel = getPlacementLabel(standing?.position)
-  const titleParts = getDeckTitleParts(deck.name)
+  const titleParts = getDeckTitleParts(deck.archetype || deck.name)
 
   return (
     <div ref={ref} className={`deck-export-card deck-export-card-${format} deck-export-game-${deck.game}`}>
@@ -1107,6 +1140,7 @@ function DeckImageExport({
                 <strong>{deck.playerName}</strong>
               </>
             )}
+            {deck.archetype && deck.archetype !== deck.name && <small>{deck.name}</small>}
           </div>
 
           <div className="deck-export-promo">

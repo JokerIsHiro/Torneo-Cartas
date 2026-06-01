@@ -26,7 +26,7 @@ import { getDefaultTiebreakerSystem } from '../utils/tiebreakers'
 
 function generatePairings(players: Player[], roundNumber: number, tournamentId: string): Match[] {
   // Ordenamos por puntos para emparejar jugadores con rendimiento parecido.
-  const sorted = [...players].sort((a, b) => {
+  const sorted = players.filter(player => !player.droppedAt).sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points
     return a.name.localeCompare(b.name)
   })
@@ -392,9 +392,12 @@ interface TournamentsStore {
   setTiebreakerSystem: (id: string, system: TournamentTiebreakerSystem) => void
 
   // Jugadores
-  addPlayer: (id: string, name: string, teamDetails?: { members: string[]; captainName: string }) => string | null
+  addPlayer: (id: string, name: string, teamDetails?: { members: string[]; captainName: string }, options?: { playerKind?: Player['playerKind'] }) => string | null
   removePlayer: (id: string, playerId: string) => void
-  submitDecklist: (id: string, playerId: string, deck: { name: string; list: string; notes: string; playerName?: string; teamName?: string }) => void
+  setPlayerKind: (id: string, playerId: string, kind: Player['playerKind']) => void
+  dropPlayer: (id: string, playerId: string) => void
+  restorePlayer: (id: string, playerId: string) => void
+  submitDecklist: (id: string, playerId: string, deck: { name: string; list: string; notes: string; archetype?: string; playerName?: string; teamName?: string }) => void
   publishDecklist: (id: string, deckId: string, published: boolean) => void
 
   // Torneo
@@ -497,7 +500,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         commitTournament(set, touchTournament({ ...tournament, tiebreakerSystem: system }))
       },
 
-      addPlayer: (id, name, teamDetails) => {
+      addPlayer: (id, name, teamDetails, options) => {
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament || tournament.status !== 'setup') return null
         if (tournament.players.find(p => p.name.toLowerCase() === name.toLowerCase())) return null
@@ -508,8 +511,13 @@ export const useTournamentsStore = create<TournamentsStore>()(
           id: crypto.randomUUID(),
           uid: getCurrentUserId() ?? undefined,
           name,
-          teamMembers: members?.length ? members : undefined,
-          captainName: captainName || members?.[0],
+          ...(members?.length ? {
+            teamMembers: members,
+            captainName: captainName || members[0],
+          } : {}),
+          playerKind: options?.playerKind ?? 'new',
+          droppedAt: null,
+          droppedRound: null,
           points: 0,
           wins: 0,
           losses: 0,
@@ -534,22 +542,68 @@ export const useTournamentsStore = create<TournamentsStore>()(
         }))
       },
 
+      setPlayerKind: (id, playerId, kind) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament) return
+        commitTournament(set, touchTournament({
+          ...tournament,
+          players: tournament.players.map(player =>
+            player.id === playerId ? { ...player, playerKind: kind } : player
+          ),
+        }))
+      },
+
+      dropPlayer: (id, playerId) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        const player = tournament?.players.find(candidate => candidate.id === playerId)
+        if (!tournament || !player || tournament.status !== 'active' || player.droppedAt) return
+
+        commitTournament(set, touchTournament({
+          ...withSnapshot(tournament, 'drop-player', `Antes de retirar a ${player.name}`),
+          players: tournament.players.map(candidate =>
+            candidate.id === playerId
+              ? { ...candidate, droppedAt: Date.now(), droppedRound: tournament.currentRound }
+              : candidate
+          ),
+          pendingResults: (tournament.pendingResults ?? []).filter(pending => pending.playerId !== playerId),
+        }))
+      },
+
+      restorePlayer: (id, playerId) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        const player = tournament?.players.find(candidate => candidate.id === playerId)
+        if (!tournament || !player || tournament.status !== 'active' || !player.droppedAt) return
+
+        commitTournament(set, touchTournament({
+          ...withSnapshot(tournament, 'drop-player', `Antes de reincorporar a ${player.name}`),
+          players: tournament.players.map(candidate =>
+            candidate.id === playerId
+              ? { ...candidate, droppedAt: null, droppedRound: null }
+              : candidate
+          ),
+        }))
+      },
+
       submitDecklist: (id, playerId, deck) => {
         const tournament = get().tournaments.find(t => t.id === id)
         const player = tournament?.players.find(p => p.id === playerId)
-        if (!tournament || !player || tournament.status !== 'finished') return
+        if (!tournament || !player || tournament.tcg === 'chess') return
 
         const now = Date.now()
         const existing = [...(tournament.decklists ?? [])]
           .reverse()
           .find(candidate => candidate.playerId === playerId)
+        const teamName = deck.teamName?.trim()
+        const archetype = deck.archetype?.trim() || deck.name.trim()
+        const ownerUid = player.uid ?? getCurrentUserId() ?? undefined
         const decklist: DeckList = {
           id: crypto.randomUUID(),
           playerId,
-          ownerUid: player.uid ?? getCurrentUserId() ?? undefined,
+          ...(ownerUid ? { ownerUid } : {}),
           playerName: deck.playerName?.trim() || player.name,
-          teamName: deck.teamName?.trim() || undefined,
+          ...(teamName ? { teamName } : {}),
           game: tournament.tcg,
+          archetype,
           name: deck.name.trim(),
           list: deck.list.trim(),
           notes: deck.notes.trim(),
@@ -568,7 +622,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
 
       publishDecklist: (id, deckId, published) => {
         const tournament = get().tournaments.find(t => t.id === id)
-        if (!tournament) return
+        if (!tournament || tournament.status !== 'finished') return
 
         commitTournament(set, touchTournament({
           ...tournament,

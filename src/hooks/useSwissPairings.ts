@@ -18,6 +18,7 @@ interface StandingsRow {
   player: Player
   position: number
   isEliminated: boolean
+  isDropped: boolean
   tiebreakers: TiebreakerMetrics
 }
 
@@ -121,6 +122,7 @@ export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
       player,
       position: 0,
       isEliminated: player.losses >= 2,
+      isDropped: Boolean(player.droppedAt),
       tiebreakers: calculateTiebreakerMetrics(player, players, rounds),
     }))
 

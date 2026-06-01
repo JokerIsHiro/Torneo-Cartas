@@ -159,7 +159,7 @@ async function loadImageViaCanvas(src: string) {
           return;
         }
         context.drawImage(image, 0, 0);
-        resolve(canvas.toDataURL("image/jpeg", 0.92));
+        resolve(canvas.toDataURL("image/png"));
       } catch (error) {
         reject(error);
       }
