@@ -70,38 +70,45 @@ const sectionAliases: Record<TournamentTCG, Record<string, string>> = {
     maybe: 'Sideboard',
   },
   yugioh: {
-    main: 'Monster',
-    md: 'Monster',
-    'main deck': 'Monster',
-    'mainboard': 'Monster',
-    '#main': 'Monster',
-    monster: 'Monster',
-    monsters: 'Monster',
-    'monster cards': 'Monster',
-    monstruo: 'Monster',
-    monstruos: 'Monster',
-    spell: 'Spell',
-    'spell cards': 'Spell',
-    'spell/trap': 'Spell',
-    spells: 'Spell',
-    magia: 'Spell',
-    magias: 'Spell',
-    trap: 'Trap',
-    'trap cards': 'Trap',
-    traps: 'Trap',
-    trampa: 'Trap',
-    trampas: 'Trap',
+    main: 'Main',
+    md: 'Main',
+    'main deck': 'Main',
+    'mainboard': 'Main',
+    '#main': 'Main',
+    monster: 'Main',
+    monsters: 'Main',
+    'monster cards': 'Main',
+    monstruo: 'Main',
+    monstruos: 'Main',
+    spell: 'Main',
+    'spell cards': 'Main',
+    'spell/trap': 'Main',
+    spells: 'Main',
+    magia: 'Main',
+    magias: 'Main',
+    trap: 'Main',
+    'trap cards': 'Main',
+    traps: 'Main',
+    trampa: 'Main',
+    trampas: 'Main',
     extra: 'Extra',
     'extra deck': 'Extra',
     '#extra': 'Extra',
+    'extra deck card': 'Extra',
     'extra deck cards': 'Extra',
     side: 'Side',
     sd: 'Side',
+    sidedeck: 'Side',
+    'side-deck': 'Side',
+    'side board': 'Side',
+    sideboard: 'Side',
     'side deck': 'Side',
+    'side card': 'Side',
+    'side cards': 'Side',
+    'side deck card': 'Side',
     '!side': 'Side',
     'side deck cards': 'Side',
     banquillo: 'Side',
-    sideboard: 'Side',
   },
   pokemon: {
     pokemon: 'Pokemon',
@@ -323,13 +330,13 @@ function linesToResult(game: TournamentTCG, lines: ParsedDeckLine[], ignoredLine
 
 function parseYdk(list: string): DeckImportResult {
   const cards: ImportedDeckCard[] = []
-  let section = 'Monster'
+  let section = 'Main'
 
   for (const rawLine of list.split('\n')) {
     const line = rawLine.trim()
     if (!line || line.startsWith('#created')) continue
     if (line === '#main') {
-      section = 'Monster'
+      section = 'Main'
       continue
     }
     if (line === '#extra') {
@@ -375,7 +382,6 @@ export function normalizeImportedSection(game: TournamentTCG, section: string) {
   if (mapped) return mapped
   if ((game === 'riftbound' || game === 'magic') && section === 'Side') return 'Sideboard'
   if (game === 'yugioh') {
-    if (section === 'Main') return 'Monster'
     if (section === 'Sideboard') return 'Side'
   }
   return section

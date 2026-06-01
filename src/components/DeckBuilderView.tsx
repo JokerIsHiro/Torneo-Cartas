@@ -1490,10 +1490,11 @@ function getHydratedCardSection(
 
   if (game === 'yugioh') {
     if (card.section === 'Side') return 'Side'
+    if (card.section === 'Extra') return 'Extra'
     if (!resolved.kind && !resolved.subtitle) {
-      return card.section === 'Main' ? 'Monster' : card.section
+      return card.section
     }
-    return section
+    return section === 'Extra' ? 'Extra' : 'Main'
   }
 
   if (game !== 'riftbound') return card.section

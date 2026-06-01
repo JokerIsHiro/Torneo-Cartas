@@ -59,9 +59,7 @@ export const deckRuleConfigs: Record<TournamentTCG, DeckRuleConfig> = {
   yugioh: {
     label: 'YuGiOh',
     sections: [
-      { id: 'Monster', label: 'Monstruos' },
-      { id: 'Spell', label: 'Magias' },
-      { id: 'Trap', label: 'Trampas' },
+      { id: 'Main', label: 'Mazo principal', min: 40, max: 60 },
       { id: 'Extra', label: 'Extra Deck', max: 15 },
       { id: 'Side', label: 'Side Deck', max: 15 },
     ],
@@ -103,9 +101,7 @@ export function getDefaultSection(game: TournamentTCG, card?: Pick<CardSuggestio
 
   if (game === 'yugioh') {
     if (kind.includes('monster') && yugiohExtraTypes.some(type => kind.includes(type))) return 'Extra'
-    if (text.includes('spell') || text.includes('magia')) return 'Spell'
-    if (text.includes('trap') || text.includes('trampa')) return 'Trap'
-    return 'Monster'
+    return 'Main'
   }
   if (game === 'pokemon') {
     if (text.includes('energy')) return 'Energy'
@@ -140,15 +136,6 @@ export function validateDeck(game: TournamentTCG, cards: RuleDeckCard[]) {
     const total = totals.get(section.id) ?? 0
     if (section.min !== undefined && total < section.min) warnings.push(`${section.label}: minimo ${section.min} cartas`)
     if (section.max !== undefined && total > section.max) warnings.push(`${section.label}: maximo ${section.max} cartas`)
-  }
-
-  if (game === 'yugioh') {
-    const mainTotal =
-      (totals.get('Monster') ?? 0) +
-      (totals.get('Spell') ?? 0) +
-      (totals.get('Trap') ?? 0)
-    if (mainTotal < 40) warnings.push('Mazo principal: minimo 40 cartas')
-    if (mainTotal > 60) warnings.push('Mazo principal: maximo 60 cartas')
   }
 
   const deckTotal = [...totals.values()].reduce((sum, total) => sum + total, 0)
