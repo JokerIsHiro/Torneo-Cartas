@@ -37,10 +37,6 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
       .sort((a, b) => a.name.localeCompare(b.name)),
     [knownPlayers, tcg]
   )
-  const addableKnownPlayers = useMemo(
-    () => gameKnownPlayers.filter(player => !registeredNames.has(player.name.toLowerCase())),
-    [gameKnownPlayers, registeredNames]
-  )
   const participantSingular = isTeamMode ? 'equipo' : 'jugador'
   const participantPlural = isTeamMode ? 'equipos' : 'jugadores'
   const participantTitle = isTeamMode ? 'Equipos' : 'Jugadores'
@@ -187,24 +183,29 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
             </span>
           </div>
 
-          {addableKnownPlayers.length === 0 ? (
+          {gameKnownPlayers.length === 0 ? (
             <div className="known-player-empty">Guarda jugadores desde la lista de inscritos para anadirlos rapido en proximos torneos.</div>
           ) : (
             <>
               <div className="known-player-list">
-                {addableKnownPlayers.map(player => (
+                {gameKnownPlayers.map(player => {
+                  const isRegistered = registeredNames.has(player.name.toLowerCase())
+                  return (
                   <label key={player.id} className="known-player-pill">
                     <input
                       type="checkbox"
                       checked={selectedKnownIds.includes(player.id)}
+                      disabled={isRegistered}
                       onChange={() => toggleKnownPlayer(player.id)}
                     />
                     <span>{player.name}</span>
+                    {isRegistered && <em>inscrito</em>}
                     <button type="button" onClick={() => forgetKnownPlayer(player.id)} title={`Quitar ${player.name} de habituales`}>
                       <i className="ti ti-x" aria-hidden="true" />
                     </button>
                   </label>
-                ))}
+                  )
+                })}
               </div>
               <button
                 onClick={addSelectedKnownPlayers}

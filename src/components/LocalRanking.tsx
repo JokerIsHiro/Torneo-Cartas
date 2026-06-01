@@ -29,8 +29,10 @@ const gameLabels: Record<TournamentTCG, string> = {
 
 const gameLogoUrls: Partial<Record<TournamentTCG, string>> = {
   magic: '/game-logos/magic.png',
+  riftbound: '/game-logos/riftbound.png',
   pokemon: '/game-logos/pokemon.png',
-  yugioh: '/game-logos/yugioh.jpg',
+  yugioh: '/game-logos/yugioh.png',
+  lorcana: '/game-logos/lorcana.png',
   'one-piece': '/game-logos/one-piece.png',
 }
 
@@ -96,6 +98,7 @@ export function LocalRanking() {
   }, [activeRankingRecords])
   const leaderboardGameLabel = gameFilter === 'all' ? 'Todos los juegos' : gameLabels[gameFilter]
   const leaderboardLogo = getLeaderboardLogo(gameFilter)
+  const exportedRanking = ranking.slice(0, 16)
 
   return (
     <section>
@@ -155,7 +158,7 @@ export function LocalRanking() {
           <div style={leaderboardHeaderStyle}>
             <img src={storeLogoUrl} alt="Subterra TCG" style={storeLogoStyle} />
             <div style={seasonTitleWrapStyle}>
-              <span style={leaderboardEyebrowStyle}>Leaderboard</span>
+              <span style={leaderboardEyebrowStyle}>Top de la temporada</span>
               <h2 style={leaderboardTitleStyle}>{activeSeason.name}</h2>
               <strong style={leaderboardGameLabelStyle}>{leaderboardGameLabel}</strong>
             </div>
@@ -174,7 +177,7 @@ export function LocalRanking() {
             <span>Puntos</span>
           </div>
 
-          {ranking.map((entry, index) => (
+          {exportedRanking.map((entry, index) => (
             <div key={entry.key} style={rowStyle(index)}>
               <span style={positionStyle}>{index + 1}</span>
               <div style={{ minWidth: 0 }}>
@@ -482,7 +485,7 @@ const seasonTitleWrapStyle: React.CSSProperties = {
 
 const leaderboardEyebrowStyle: React.CSSProperties = {
   color: 'var(--color-text-secondary)',
-  fontSize: '12px',
+  fontSize: '14px',
   textTransform: 'uppercase',
   letterSpacing: 0,
 }
@@ -490,34 +493,35 @@ const leaderboardEyebrowStyle: React.CSSProperties = {
 const leaderboardTitleStyle: React.CSSProperties = {
   margin: 0,
   color: 'var(--color-text-primary)',
-  fontSize: '28px',
+  fontSize: '36px',
   lineHeight: 1.1,
 }
 
 const leaderboardGameLabelStyle: React.CSSProperties = {
   color: 'var(--color-accent-secondary)',
-  fontSize: '15px',
+  fontSize: '18px',
 }
 
 const gameLogoFrameStyle: React.CSSProperties = {
-  width: '104px',
+  width: '112px',
   height: '82px',
   display: 'grid',
   placeItems: 'center',
   justifySelf: 'center',
+  overflow: 'hidden',
 }
 
 const gameLogoStyle: React.CSSProperties = {
-  maxWidth: '104px',
-  maxHeight: '76px',
+  width: '104px',
+  height: '64px',
   objectFit: 'contain',
 }
 
 const gameIconStyle: React.CSSProperties = {
   display: 'grid',
   placeItems: 'center',
-  width: '72px',
-  height: '72px',
+  width: '64px',
+  height: '64px',
   borderRadius: '50%',
   border: '1px solid var(--color-border-tertiary)',
   color: 'var(--color-text-primary)',
@@ -531,7 +535,7 @@ const headerRowStyle: React.CSSProperties = {
   gap: '12px',
   padding: '8px 14px',
   color: 'var(--color-text-secondary)',
-  fontSize: '12px',
+  fontSize: '14px',
   fontWeight: 500,
 }
 
@@ -549,7 +553,7 @@ function rowStyle(index: number): React.CSSProperties {
       ? 'linear-gradient(90deg, rgba(245, 158, 11, 0.16), rgba(0, 122, 255, 0.1))'
       : index % 2 === 0 ? 'var(--color-background-secondary)' : 'transparent',
     color: 'var(--color-text-primary)',
-    fontSize: '14px',
+    fontSize: '16px',
     marginBottom: '6px',
   }
 }
@@ -564,11 +568,11 @@ const playerNameStyle: React.CSSProperties = {
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
-  fontSize: '16px',
+  fontSize: '20px',
 }
 
 const pointsStyle: React.CSSProperties = {
   color: 'var(--color-accent-secondary)',
-  fontSize: '22px',
+  fontSize: '28px',
   textAlign: 'center',
 }

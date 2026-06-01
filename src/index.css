@@ -1017,6 +1017,16 @@ button:disabled {
   white-space: nowrap;
 }
 
+.known-player-pill em {
+  padding: 2px 6px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
 .known-player-pill button {
   width: 22px;
   height: 22px;
@@ -4143,7 +4153,7 @@ button:disabled {
 }
 
 .known-player-card {
-  display: none;
+  min-height: 0;
 }
 
 .player-list-card {
@@ -4153,7 +4163,7 @@ button:disabled {
 
 .setup-player-panel {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 8px;
   min-height: 0;
   overflow: hidden;
