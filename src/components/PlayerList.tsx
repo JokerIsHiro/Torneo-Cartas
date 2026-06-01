@@ -200,48 +200,50 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
           </span>
         </div>
 
-        {players.length === 0 ? (
-          <div className="player-empty-state">
-            <i className="ti ti-user-off" aria-hidden="true" />
-            <div>Sin {participantPlural} aun</div>
-            <span>Anade al menos 2 {participantPlural} para iniciar.</span>
-          </div>
-        ) : isSetup ? (
-          <div className="setup-player-list">
-            {players.map((p, i) => (
-              <SetupPlayerRow
-                key={p.id}
-                player={p}
-                index={i + 1}
-                isTeamMode={isTeamMode}
-                participantSingular={participantSingular}
-                onRemove={() => removePlayer(tournamentId, p.id)}
-                onRemember={() => rememberKnownPlayer(p.name, tcg, 'regular')}
-                onKindChange={kind => setPlayerKind(tournamentId, p.id, kind)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div>
-            <StandingsHeader participantTitle={participantTitle} />
-            {standings.map(row => (
-              <ActivePlayerRow
-                key={row.player.id}
-                player={row.player}
-                position={row.position}
-                isEliminated={row.isEliminated}
-                isDropped={row.isDropped}
-                isTeamMode={isTeamMode}
-                onDrop={() => {
-                  if (confirm(`Retirar a "${row.player.name}" de las siguientes rondas?`)) {
-                    dropPlayer(tournamentId, row.player.id)
-                  }
-                }}
-                onRestore={() => restorePlayer(tournamentId, row.player.id)}
-              />
-            ))}
-          </div>
-        )}
+        <div className="setup-player-list-body">
+          {players.length === 0 ? (
+            <div className="player-empty-state">
+              <i className="ti ti-user-off" aria-hidden="true" />
+              <div>Sin {participantPlural} aun</div>
+              <span>Anade al menos 2 {participantPlural} para iniciar.</span>
+            </div>
+          ) : isSetup ? (
+            <div className="setup-player-list">
+              {players.map((p, i) => (
+                <SetupPlayerRow
+                  key={p.id}
+                  player={p}
+                  index={i + 1}
+                  isTeamMode={isTeamMode}
+                  participantSingular={participantSingular}
+                  onRemove={() => removePlayer(tournamentId, p.id)}
+                  onRemember={() => rememberKnownPlayer(p.name, tcg, 'regular')}
+                  onKindChange={kind => setPlayerKind(tournamentId, p.id, kind)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="setup-player-list-active">
+              <StandingsHeader participantTitle={participantTitle} />
+              {standings.map(row => (
+                <ActivePlayerRow
+                  key={row.player.id}
+                  player={row.player}
+                  position={row.position}
+                  isEliminated={row.isEliminated}
+                  isDropped={row.isDropped}
+                  isTeamMode={isTeamMode}
+                  onDrop={() => {
+                    if (confirm(`Retirar a "${row.player.name}" de las siguientes rondas?`)) {
+                      dropPlayer(tournamentId, row.player.id)
+                    }
+                  }}
+                  onRestore={() => restorePlayer(tournamentId, row.player.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {teamModalOpen && (
