@@ -238,6 +238,7 @@ export function parseDeckImport(game: TournamentTCG, list: string): DeckImportRe
   const normalized = normalizePasteText(list)
 
   if (game === 'yugioh' && looksLikeYdk(normalized)) return parseYdk(normalized)
+  if (game === 'yugioh') return parseYugiohTextLines(normalized)
 
   const magicDekLines = game === 'magic' ? tryParseMagicDekBlock(normalized) : null
   if (magicDekLines) return linesToResult(game, magicDekLines, [])
@@ -251,6 +252,40 @@ export function parseDeckImport(game: TournamentTCG, list: string): DeckImportRe
   return parseTextLines(game, normalized)
 }
 
+function parseYugiohTextLines(list: string): DeckImportResult {
+  const cards: ImportedDeckCard[] = []
+  const ignoredLines: string[] = []
+  let section = 'Main'
+
+  for (const rawLine of list.split('\n')) {
+    const line = normalizeLine(rawLine)
+    if (!line) continue
+
+    const nextSection = getSectionFromLine('yugioh', line)
+    if (nextSection) {
+      section = nextSection
+      continue
+    }
+
+    if (shouldIgnoreDeckLine(line) || isDeckCommentLine(line)) continue
+
+    const parsed = parseDeckLine('yugioh', line)
+    if (!parsed) {
+      ignoredLines.push(rawLine.trim())
+      continue
+    }
+
+    const targetSection = normalizeImportedSection('yugioh', parsed.sectionHint ?? section)
+    const cleaned = applyGameMetadata('yugioh', parsed)
+    cards.push({
+      ...createImportedCard('yugioh', cleaned.name, parsed.quantity, targetSection, cleaned.cardCode),
+      ...cleaned.metadata,
+    })
+  }
+
+  return { cards: mergeImportedCards(cards), ignoredLines }
+}
+
 export function parseSavedDeckCards(game: TournamentTCG, list: string): ImportedDeckCard[] {
   return parseDeckImport(game, list).cards
 }
@@ -261,8 +296,18 @@ export function formatDeckCards(
   includeMetadata = false,
   game?: TournamentTCG,
 ) {
-  const groupedCards = mergeImportedCards(cards)
-  return sections
+  const groupedCards = mergeImportedCards(cards.map(card => ({
+    ...card,
+    section: game ? normalizeImportedSection(game, card.section) : card.section,
+  })))
+  const orderedSections = [
+    ...sections,
+    ...groupedCards
+      .map(card => card.section)
+      .filter((section, index, allSections) => !sections.includes(section) && allSections.indexOf(section) === index),
+  ]
+
+  return orderedSections
     .map(section => {
       const sectionCards = groupedCards.filter(card => card.section === section)
       if (!sectionCards.length) return ''
@@ -289,7 +334,7 @@ function parseTextLines(game: TournamentTCG, list: string): DeckImportResult {
       continue
     }
 
-    if (shouldIgnoreDeckLine(line)) continue
+    if (shouldIgnoreDeckLine(line) || isDeckCommentLine(line)) continue
 
     const parsed = parseDeckLine(game, line)
     if (!parsed) {
@@ -372,6 +417,10 @@ function normalizeLine(value: string) {
     .trim()
 }
 
+function isDeckCommentLine(line: string) {
+  return line.startsWith('//') || line.startsWith(';')
+}
+
 export function normalizeImportedSection(game: TournamentTCG, section: string) {
   const key = section
     .trim()
@@ -400,7 +449,22 @@ function getSectionFromLine(game: TournamentTCG, line: string) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+  if (game === 'yugioh') return getYugiohSectionFromHeader(clean)
   return sectionAliases[game][clean]
+}
+
+function getYugiohSectionFromHeader(clean: string) {
+  const compact = clean.replace(/[^a-z0-9!]+/g, ' ').trim()
+  const words = new Set(compact.split(/\s+/).filter(Boolean))
+
+  if (compact === '!side' || compact === 'side' || compact === 'sideboard' || compact === 'sidedeck') return 'Side'
+  if (words.has('side') && (words.has('deck') || words.has('cards') || words.has('card') || words.has('board'))) return 'Side'
+  if (words.has('extra') && (words.has('deck') || words.has('cards') || words.has('card'))) return 'Extra'
+  if (words.has('monster') || words.has('monsters')) return 'Main'
+  if (words.has('spell') || words.has('spells')) return 'Main'
+  if (words.has('trap') || words.has('traps')) return 'Main'
+
+  return sectionAliases.yugioh[clean]
 }
 function applyGameMetadata(game: TournamentTCG, parsed: ParsedDeckLine) {
   let name = parsed.name.trim()

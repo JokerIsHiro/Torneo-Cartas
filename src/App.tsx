@@ -11,6 +11,7 @@ import { TimersView } from './components/TimersView'
 import { RegistrationView } from './components/RegistrationView'
 import { SnapshotPanel } from './components/SnapshotPanel'
 import { DeckBuilderView } from './components/DeckBuilderView'
+import { LocalRanking } from './components/LocalRanking'
 import type { Tournament } from './types/tournament'
 import { unlockTimerSound } from './utils/timerSound'
 import { useFirebaseSync } from './hooks/useFirebaseSync'
@@ -26,6 +27,7 @@ type TournamentInnerTab = 'ronda' | 'organizar' | 'clasificacion'
 const ADMIN_SESSION_KEY = 'torneo-admin-session'
 const ADMIN_SESSION_VALUE = 'firebase-admin-v1'
 const MIN_ADMIN_CODE_LENGTH = 8
+const RANKING_TAB_ID = '__ranking__'
 
 const routePaths: Record<AppRoute, string> = {
   admin: '/',
@@ -157,6 +159,7 @@ export default function App() {
 
   const selectedTab = activeTab || tournaments[0]?.id || ''
   const activeTournament = tournaments.find(t => t.id === selectedTab)
+  const rankingSelected = selectedTab === RANKING_TAB_ID
   const mobileBlocked = isMobileDevice && route !== 'inscripcion'
   const adminLocked = (route === 'admin' || route === 'deckbuilder') && !adminUnlocked
 
@@ -182,6 +185,12 @@ export default function App() {
                 onClose={() => handleDeleteTournament(t)}
               />
             ))}
+
+            <TopTab
+              label="Ranking local"
+              active={rankingSelected}
+              onClick={() => setActiveTab(RANKING_TAB_ID)}
+            />
 
             {tournaments.length > 0 && (
               <div className="admin-public-actions">
@@ -253,7 +262,9 @@ export default function App() {
         {!mobileBlocked && route === 'qr' && <QrView />}
         {!mobileBlocked && route === 'deckbuilder' && !adminLocked && <DeckBuilderView />}
 
-        {!mobileBlocked && route === 'admin' && !adminLocked && activeTournament && (
+        {!mobileBlocked && route === 'admin' && !adminLocked && rankingSelected && <LocalRanking />}
+
+        {!mobileBlocked && route === 'admin' && !adminLocked && activeTournament && !rankingSelected && (
           <TournamentView
             tournament={activeTournament}
             innerTab={getInnerTab(activeTournament.id)}
@@ -268,7 +279,7 @@ export default function App() {
           </div>
         )}
 
-        {!mobileBlocked && route === 'admin' && !adminLocked && syncLoaded && !activeTournament && (
+        {!mobileBlocked && route === 'admin' && !adminLocked && syncLoaded && !activeTournament && !rankingSelected && (
           <div className="empty-state">
             <i className="ti ti-trophy-off" aria-hidden="true" />
             <div>No hay torneos creados</div>

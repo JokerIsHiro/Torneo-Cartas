@@ -17,7 +17,7 @@ import { useExportImage } from '../hooks/useExportImage'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import type { DeckList, MagicFormat, Tournament, TournamentTCG } from '../types/tournament'
 import { deckRuleConfigs, getDefaultSection, validateDeck } from '../utils/deckRules'
-import { formatDeckCards, parseDeckImport, parseSavedDeckCards, type ImportedDeckCard } from '../utils/deckImport'
+import { formatDeckCards, normalizeImportedSection, parseDeckImport, parseSavedDeckCards, type ImportedDeckCard } from '../utils/deckImport'
 import { getOnePieceSectionFromKind, resolveOnePieceCard } from '../services/optcgApi'
 import { DeckCardImage } from './DeckCardImage'
 import { displayImageUrl, fetchImageAsDataUrl, proxiedImageUrl } from '../utils/imageExport'
@@ -93,7 +93,6 @@ function DeckBuilderEditor({
   requestedPlayerId: string
 }) {
   const submitDecklist = useTournamentsStore(s => s.submitDecklist)
-  const publishDecklist = useTournamentsStore(s => s.publishDecklist)
   const setTournamentMagicFormat = useTournamentsStore(s => s.setTournamentMagicFormat)
   const requestedPlayer = tournament?.players.find(player => player.id === requestedPlayerId) ?? null
   const requestedOwnerName = requestedPlayer?.teamMembers?.[0] ?? requestedPlayer?.name ?? ''
@@ -115,7 +114,7 @@ function DeckBuilderEditor({
   const [results, setResults] = useState<CardSuggestion[]>([])
   const [cards, setCards] = useState<DeckCard[]>(() =>
     requestedDeck?.list?.trim() && tournament
-      ? normalizeResolvedDeckSectionsForGame(parseSavedDeckCards(tournament.tcg, requestedDeck.list), tournament.tcg)
+      ? splitCardCopies(normalizeResolvedDeckSectionsForGame(parseSavedDeckCards(tournament.tcg, requestedDeck.list), tournament.tcg))
       : []
   )
   const [exportDeck, setExportDeck] = useState<DeckList | null>(null)
@@ -852,13 +851,6 @@ function DeckBuilderEditor({
                 <span>{deck.teamName ? `${deck.teamName} - ${deck.playerName}` : deck.playerName}</span>
                 {deck.archetype && deck.archetype !== deck.name && <span>{deck.name}</span>}
               </div>
-              <button
-                disabled={currentTournament.status !== 'finished'}
-                onClick={() => publishDecklist(currentTournament.id, deck.id, deck.status !== 'published')}
-                title={currentTournament.status !== 'finished' ? 'Solo se puede publicar al finalizar el torneo' : deck.status === 'published' ? 'Deja de mostrar este mazo como publicado' : 'Marca el mazo como listo para redes'}
-              >
-                {currentTournament.status !== 'finished' ? 'Publicable al finalizar' : deck.status === 'published' ? 'Ocultar de redes' : 'Publicar en redes'}
-              </button>
               <button onClick={() => loadDeckList(deck)} title="Abre esta lista en el editor">
                 Abrir en editor
               </button>
@@ -1487,31 +1479,29 @@ function getHydratedCardSection(
 ) {
   if (!resolved) return card.section
   const section = getDefaultSection(game, resolved)
+  const importedSection = normalizeImportedSection(game, card.section)
 
   if (game === 'yugioh') {
-    if (card.section === 'Side') return 'Side'
-    if (card.section === 'Extra') return 'Extra'
-    if (!resolved.kind && !resolved.subtitle) {
-      return card.section
-    }
-    return section === 'Extra' ? 'Extra' : 'Main'
+    if (importedSection === 'Side') return 'Side'
+    if (importedSection === 'Extra') return 'Extra'
+    return 'Main'
   }
 
-  if (game !== 'riftbound') return card.section
+  if (game !== 'riftbound') return importedSection
 
-  if (card.section === 'Legend' || card.section === 'Champion' || card.section === 'Sideboard') {
-    return card.section
+  if (importedSection === 'Legend' || importedSection === 'Champion' || importedSection === 'Sideboard') {
+    return importedSection
   }
 
-  if (card.section === 'Rune') {
+  if (importedSection === 'Rune') {
     return section === 'Main' ? 'Main' : 'Rune'
   }
 
-  if (card.section === 'Battlefield') {
+  if (importedSection === 'Battlefield') {
     return section === 'Rune' ? 'Rune' : 'Battlefield'
   }
 
-  if (!resolved.kind && !resolved.subtitle && section === 'Main') return card.section
+  if (!resolved.kind && !resolved.subtitle && section === 'Main') return importedSection
   return section
 }
 
