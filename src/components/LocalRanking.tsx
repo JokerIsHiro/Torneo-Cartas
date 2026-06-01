@@ -9,16 +9,11 @@ type RankingFilter = 'all' | TournamentTCG
 interface RankingEntry {
   key: string
   name: string
-  games: Set<TournamentTCG>
-  tournaments: number
   points: number
-  localScore: number
   wins: number
   draws: number
   losses: number
   byes: number
-  firstPlaces: number
-  topFour: number
   lastPlayedAt: number
 }
 
@@ -31,6 +26,16 @@ const gameLabels: Record<TournamentTCG, string> = {
   'one-piece': 'One Piece',
   chess: 'Ajedrez',
 }
+
+const gameLogoUrls: Partial<Record<TournamentTCG, string>> = {
+  magic: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Magicthegathering-logo.svg/512px-Magicthegathering-logo.svg.png',
+  pokemon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/International_Pok%C3%A9mon_logo.svg/512px-International_Pok%C3%A9mon_logo.svg.png',
+  yugioh: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Yu-Gi-Oh%21_%28Logo%29.jpg/512px-Yu-Gi-Oh%21_%28Logo%29.jpg',
+  lorcana: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Disney_Lorcana_logo.svg/512px-Disney_Lorcana_logo.svg.png',
+  'one-piece': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/One_Piece_Logo.svg/512px-One_Piece_Logo.svg.png',
+}
+
+const storeLogoUrl = '/subterra-logo.jpg'
 
 export function LocalRanking() {
   const tournaments = useTournamentsStore(s => s.tournaments)
@@ -90,6 +95,8 @@ export function LocalRanking() {
     return [...new Set(activeRankingRecords.map(tournament => tournament.tcg))]
       .sort((a, b) => gameLabels[a].localeCompare(gameLabels[b]))
   }, [activeRankingRecords])
+  const leaderboardGameLabel = gameFilter === 'all' ? 'Todos los juegos' : gameLabels[gameFilter]
+  const leaderboardLogo = getLeaderboardLogo(gameFilter)
 
   return (
     <section>
@@ -146,21 +153,26 @@ export function LocalRanking() {
         </div>
       ) : (
         <div ref={rankingExportRef} style={panelStyle}>
-          <div style={summaryStyle}>
-            <RankingSummary label="Torneos" value={String(activeRankingRecords.length)} />
-            <RankingSummary label="Jugadores" value={String(ranking.length)} />
-            <RankingSummary label="Temporada" value={activeSeason.name} />
-            <RankingSummary label="Filtro" value={gameFilter === 'all' ? 'Todos' : gameLabels[gameFilter]} />
+          <div style={leaderboardHeaderStyle}>
+            <img src={storeLogoUrl} alt="Subterra TCG" style={storeLogoStyle} />
+            <div style={seasonTitleWrapStyle}>
+              <span style={leaderboardEyebrowStyle}>Leaderboard</span>
+              <h2 style={leaderboardTitleStyle}>{activeSeason.name}</h2>
+              <strong style={leaderboardGameLabelStyle}>{leaderboardGameLabel}</strong>
+            </div>
+            <div style={gameLogoFrameStyle} aria-label={leaderboardGameLabel}>
+              {leaderboardLogo.src ? (
+                <img src={leaderboardLogo.src} alt={leaderboardGameLabel} style={gameLogoStyle} crossOrigin="anonymous" />
+              ) : (
+                <i className={leaderboardLogo.icon} aria-hidden="true" style={gameIconStyle} />
+              )}
+            </div>
           </div>
 
           <div style={headerRowStyle}>
             <span>#</span>
             <span>Jugador</span>
-            <span>Score</span>
-            <span>Torneos</span>
-            <span>V/E/D</span>
-            <span>Top 1</span>
-            <span>Top 4</span>
+            <span>Victorias</span>
           </div>
 
           {ranking.map((entry, index) => (
@@ -168,13 +180,8 @@ export function LocalRanking() {
               <span style={positionStyle}>{index + 1}</span>
               <div style={{ minWidth: 0 }}>
                 <strong style={playerNameStyle}>{entry.name}</strong>
-                <span style={gamesStyle}>{[...entry.games].map(game => gameLabels[game]).join(' · ')}</span>
               </div>
-              <strong style={scoreStyle}>{entry.localScore}</strong>
-              <span>{entry.tournaments}</span>
-              <span>{entry.wins}/{entry.draws}/{entry.losses}</span>
-              <span>{entry.firstPlaces}</span>
-              <span>{entry.topFour}</span>
+              <strong style={winsStyle}>{entry.wins}</strong>
             </div>
           ))}
         </div>
@@ -325,21 +332,13 @@ function resetRankingSeason(state: LocalRankingState) {
 function exportRankingCsv(ranking: RankingEntry[], season: LocalRankingSeason, filter: RankingFilter) {
   const rows = [
     ['Temporada', season.name],
-    ['Filtro', filter === 'all' ? 'Todos' : gameLabels[filter]],
+    ['Juego', filter === 'all' ? 'Todos los juegos' : gameLabels[filter]],
     [],
-    ['Posicion', 'Jugador', 'Score', 'Torneos', 'Puntos', 'Victorias', 'Empates', 'Derrotas', 'Top 1', 'Top 4', 'Juegos'],
+    ['Posicion', 'Jugador', 'Victorias'],
     ...ranking.map((entry, index) => [
       String(index + 1),
       entry.name,
-      String(entry.localScore),
-      String(entry.tournaments),
-      String(entry.points),
       String(entry.wins),
-      String(entry.draws),
-      String(entry.losses),
-      String(entry.firstPlaces),
-      String(entry.topFour),
-      [...entry.games].map(game => gameLabels[game]).join(' / '),
     ]),
   ]
   const csv = rows.map(row => row.map(escapeCsvCell).join(',')).join('\n')
@@ -361,45 +360,34 @@ function buildLocalRanking(tournaments: LocalRankingTournamentRecord[], filter: 
   const filtered = tournaments.filter(tournament => filter === 'all' || tournament.tcg === filter)
 
   filtered.forEach(tournament => {
-    getTournamentPlayerOrder(tournament).forEach(({ player, position }) => {
+    getTournamentPlayerOrder(tournament).forEach(({ player }) => {
       const key = normalizePlayerName(player.name)
       const current = entries.get(key) ?? {
         key,
         name: player.name,
-        games: new Set<TournamentTCG>(),
-        tournaments: 0,
         points: 0,
-        localScore: 0,
         wins: 0,
         draws: 0,
         losses: 0,
         byes: 0,
-        firstPlaces: 0,
-        topFour: 0,
         lastPlayedAt: 0,
       }
 
       current.name = chooseDisplayName(current.name, player.name)
-      current.games.add(tournament.tcg)
-      current.tournaments += 1
       current.points += player.points
       current.wins += player.wins
       current.draws += player.draws
       current.losses += player.losses
       current.byes += player.byes
-      current.firstPlaces += position === 1 ? 1 : 0
-      current.topFour += position <= 4 ? 1 : 0
       current.lastPlayedAt = Math.max(current.lastPlayedAt, tournament.updatedAt)
-      current.localScore += player.points + 2 + getPlacementBonus(position)
       entries.set(key, current)
     })
   })
 
   return [...entries.values()].sort((a, b) => {
-    if (b.localScore !== a.localScore) return b.localScore - a.localScore
-    if (b.firstPlaces !== a.firstPlaces) return b.firstPlaces - a.firstPlaces
-    if (b.topFour !== a.topFour) return b.topFour - a.topFour
     if (b.wins !== a.wins) return b.wins - a.wins
+    if (b.points !== a.points) return b.points - a.points
+    if (a.losses !== b.losses) return a.losses - b.losses
     return b.lastPlayedAt - a.lastPlayedAt
   })
 }
@@ -424,21 +412,10 @@ function chooseDisplayName(current: string, next: string) {
   return next.length > current.length ? next : current
 }
 
-function getPlacementBonus(position: number) {
-  if (position === 1) return 8
-  if (position === 2) return 5
-  if (position === 3) return 3
-  if (position === 4) return 2
-  return 0
-}
-
-function RankingSummary({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={summaryCardStyle}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  )
+function getLeaderboardLogo(filter: RankingFilter) {
+  if (filter === 'all') return { icon: 'ti ti-cards' }
+  if (filter === 'chess') return { icon: 'ti ti-chess' }
+  return gameLogoUrls[filter] ? { src: gameLogoUrls[filter] } : { icon: 'ti ti-cards' }
 }
 
 const filterStyle: React.CSSProperties = {
@@ -473,49 +450,108 @@ const panelStyle: React.CSSProperties = {
   background: 'var(--color-background-primary)',
   border: '0.5px solid var(--color-border-tertiary)',
   borderRadius: 'var(--border-radius-lg)',
-  padding: '12px',
+  padding: '18px',
 }
 
-const summaryStyle: React.CSSProperties = {
+const leaderboardHeaderStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-  gap: '8px',
-  marginBottom: '12px',
+  gridTemplateColumns: '120px minmax(0, 1fr) 120px',
+  alignItems: 'center',
+  gap: '18px',
+  minHeight: '116px',
+  padding: '14px 18px',
+  marginBottom: '16px',
+  borderRadius: 'var(--border-radius-lg)',
+  background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.92), rgba(2, 6, 23, 0.96))',
+  border: '0.5px solid var(--color-border-tertiary)',
 }
 
-const summaryCardStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  background: 'var(--color-background-secondary)',
-  border: '0.5px solid var(--color-border-tertiary)',
-  borderRadius: 'var(--border-radius-md)',
-  padding: '10px 12px',
+const storeLogoStyle: React.CSSProperties = {
+  width: '86px',
+  height: '86px',
+  objectFit: 'contain',
+  justifySelf: 'center',
+}
+
+const seasonTitleWrapStyle: React.CSSProperties = {
+  display: 'grid',
+  justifyItems: 'center',
+  gap: '4px',
+  minWidth: 0,
+  textAlign: 'center',
+}
+
+const leaderboardEyebrowStyle: React.CSSProperties = {
   color: 'var(--color-text-secondary)',
   fontSize: '12px',
+  textTransform: 'uppercase',
+  letterSpacing: 0,
+}
+
+const leaderboardTitleStyle: React.CSSProperties = {
+  margin: 0,
+  color: 'var(--color-text-primary)',
+  fontSize: '28px',
+  lineHeight: 1.1,
+}
+
+const leaderboardGameLabelStyle: React.CSSProperties = {
+  color: 'var(--color-accent-secondary)',
+  fontSize: '15px',
+}
+
+const gameLogoFrameStyle: React.CSSProperties = {
+  width: '104px',
+  height: '82px',
+  display: 'grid',
+  placeItems: 'center',
+  justifySelf: 'center',
+}
+
+const gameLogoStyle: React.CSSProperties = {
+  maxWidth: '104px',
+  maxHeight: '76px',
+  objectFit: 'contain',
+}
+
+const gameIconStyle: React.CSSProperties = {
+  display: 'grid',
+  placeItems: 'center',
+  width: '72px',
+  height: '72px',
+  borderRadius: '50%',
+  border: '1px solid var(--color-border-tertiary)',
+  color: 'var(--color-text-primary)',
+  fontSize: '44px',
+  lineHeight: 1,
 }
 
 const headerRowStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '34px minmax(180px, 1fr) 70px 70px 90px 60px 60px',
-  gap: '8px',
-  padding: '8px 10px',
+  gridTemplateColumns: '56px minmax(180px, 1fr) 120px',
+  gap: '12px',
+  padding: '8px 14px',
   color: 'var(--color-text-secondary)',
-  fontSize: '11px',
+  fontSize: '12px',
   fontWeight: 500,
 }
 
 function rowStyle(index: number): React.CSSProperties {
   return {
     display: 'grid',
-    gridTemplateColumns: '34px minmax(180px, 1fr) 70px 70px 90px 60px 60px',
-    gap: '8px',
+    gridTemplateColumns: '56px minmax(180px, 1fr) 120px',
+    gap: '12px',
     alignItems: 'center',
-    padding: '9px 10px',
+    minHeight: '58px',
+    padding: '10px 14px',
     borderRadius: 'var(--border-radius-md)',
-    background: index % 2 === 0 ? 'var(--color-background-secondary)' : 'transparent',
+    border: index === 0 ? '0.5px solid rgba(245, 158, 11, 0.65)' : '0.5px solid transparent',
+    background: index === 0
+      ? 'linear-gradient(90deg, rgba(245, 158, 11, 0.16), rgba(0, 122, 255, 0.1))'
+      : index % 2 === 0 ? 'var(--color-background-secondary)' : 'transparent',
     color: 'var(--color-text-primary)',
-    fontSize: '13px',
+    fontSize: '14px',
+    marginBottom: '6px',
   }
 }
 
@@ -529,18 +565,11 @@ const playerNameStyle: React.CSSProperties = {
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
+  fontSize: '16px',
 }
 
-const gamesStyle: React.CSSProperties = {
-  display: 'block',
-  marginTop: '2px',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  color: 'var(--color-text-secondary)',
-  fontSize: '11px',
-}
-
-const scoreStyle: React.CSSProperties = {
+const winsStyle: React.CSSProperties = {
   color: 'var(--color-accent-secondary)',
+  fontSize: '22px',
+  textAlign: 'center',
 }
