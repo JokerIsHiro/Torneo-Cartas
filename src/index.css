@@ -4176,8 +4176,8 @@ button:disabled {
 
 .setup-player-list-body {
   min-height: 0;
-  height: 100%;
-  max-height: none;
+  height: auto;
+  max-height: clamp(210px, 30vh, 340px);
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 2px;
