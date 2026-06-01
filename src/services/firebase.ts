@@ -19,7 +19,7 @@ import {
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore'
-import type { LocalRankingState, Tournament } from '../types/tournament'
+import type { KnownPlayersState, LocalRankingState, Tournament } from '../types/tournament'
 import type { SyncedTimerState } from '../store/timerStore'
 import { ADMIN_AUTH_EMAIL, bundledFirebaseConfig, hasBundledFirebaseConfig } from '../config/appConfig'
 import { getDefaultTiebreakerSystem } from '../utils/tiebreakers'
@@ -174,6 +174,22 @@ export async function subscribeToRemoteLocalRanking(
   )
 }
 
+export async function subscribeToRemoteKnownPlayers(
+  onKnownPlayers: (knownPlayers: KnownPlayersState) => void,
+  onError: (error: Error) => void
+): Promise<Unsubscribe | null> {
+  const firestore = await getDb()
+  if (!firestore) return null
+
+  return onSnapshot(
+    doc(firestore, 'knownPlayers', 'local'),
+    snapshot => {
+      onKnownPlayers(normalizeKnownPlayers(snapshot.exists() ? snapshot.data() : {}))
+    },
+    error => onError(error)
+  )
+}
+
 export async function saveRemoteTournament(tournament: Tournament) {
   const firestore = await getDb()
   if (!firestore) return
@@ -204,6 +220,13 @@ export async function saveRemoteLocalRanking(ranking: LocalRankingState) {
   if (!firestore) return
   await ensureFirebaseAuth()
   await setDoc(doc(firestore, 'ranking', 'local'), ranking)
+}
+
+export async function saveRemoteKnownPlayers(knownPlayers: KnownPlayersState) {
+  const firestore = await getDb()
+  if (!firestore) return
+  await ensureFirebaseAuth()
+  await setDoc(doc(firestore, 'knownPlayers', 'local'), knownPlayers)
 }
 
 function normalizeTournament(data: Partial<Tournament> & { id: string }): Tournament {
@@ -266,6 +289,39 @@ function normalizeLocalRanking(data: Partial<LocalRankingState>): LocalRankingSt
       })),
       updatedAt: record.updatedAt ?? 0,
     })),
+    activeSeasonId: data.activeSeasonId,
+    seasons: (data.seasons ?? []).map(season => ({
+      id: season.id,
+      name: season.name ?? 'Temporada',
+      resetAt: season.resetAt ?? data.resetAt ?? 0,
+      records: (season.records ?? []).map(record => ({
+        id: record.id,
+        name: record.name ?? 'Torneo',
+        tcg: record.tcg ?? 'magic',
+        players: (record.players ?? []).map(player => ({
+          ...player,
+          playerKind: player.playerKind ?? 'new',
+          droppedAt: player.droppedAt ?? null,
+          droppedRound: player.droppedRound ?? null,
+        })),
+        updatedAt: record.updatedAt ?? 0,
+      })),
+      createdAt: season.createdAt ?? 0,
+      updatedAt: season.updatedAt ?? 0,
+    })),
+    updatedAt: data.updatedAt ?? 0,
+  }
+}
+
+function normalizeKnownPlayers(data: Partial<KnownPlayersState>): KnownPlayersState {
+  return {
+    players: (data.players ?? []).map(player => ({
+      id: player.id,
+      name: player.name ?? '',
+      games: player.games ?? [],
+      kind: player.kind ?? 'regular',
+      updatedAt: player.updatedAt ?? 0,
+    })).filter(player => player.name.trim()),
     updatedAt: data.updatedAt ?? 0,
   }
 }

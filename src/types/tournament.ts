@@ -131,8 +131,32 @@ export interface LocalRankingTournamentRecord {
   updatedAt: number
 }
 
+export interface LocalRankingSeason {
+  id: string
+  name: string
+  resetAt: number
+  records: LocalRankingTournamentRecord[]
+  createdAt: number
+  updatedAt: number
+}
+
 export interface LocalRankingState {
   resetAt: number
   records: LocalRankingTournamentRecord[]
+  activeSeasonId?: string
+  seasons?: LocalRankingSeason[]
+  updatedAt: number
+}
+
+export interface KnownPlayer {
+  id: string
+  name: string
+  games: TournamentTCG[]
+  kind: Player['playerKind']
+  updatedAt: number
+}
+
+export interface KnownPlayersState {
+  players: KnownPlayer[]
   updatedAt: number
 }

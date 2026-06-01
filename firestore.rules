@@ -180,5 +180,10 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create, update, delete: if isAdmin();
     }
+
+    match /knownPlayers/{knownPlayersId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
   }
 }

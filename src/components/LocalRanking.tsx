@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { saveRemoteLocalRanking, subscribeToRemoteLocalRanking } from '../services/firebase'
-import type { LocalRankingState, LocalRankingTournamentRecord, Tournament, TournamentTCG } from '../types/tournament'
+import { useExportImage } from '../hooks/useExportImage'
+import type { LocalRankingSeason, LocalRankingState, LocalRankingTournamentRecord, Tournament, TournamentTCG } from '../types/tournament'
 
 type RankingFilter = 'all' | TournamentTCG
 
@@ -34,15 +35,18 @@ const gameLabels: Record<TournamentTCG, string> = {
 export function LocalRanking() {
   const tournaments = useTournamentsStore(s => s.tournaments)
   const [gameFilter, setGameFilter] = useState<RankingFilter>('all')
-  const [remoteRanking, setRemoteRanking] = useState<LocalRankingState>({ resetAt: 0, records: [], updatedAt: 0 })
+  const [remoteRanking, setRemoteRanking] = useState<LocalRankingState>(createDefaultRankingState())
   const [remoteLoaded, setRemoteLoaded] = useState(false)
+  const { ref: rankingExportRef, exportImage } = useExportImage({ scale: 2 })
+  const rankingState = useMemo(() => normalizeRankingSeasons(remoteRanking), [remoteRanking])
+  const activeSeason = getActiveSeason(rankingState)
   const finishedTournaments = useMemo(
-    () => tournaments.filter(tournament => tournament.status === 'finished' && tournament.updatedAt > remoteRanking.resetAt),
-    [remoteRanking.resetAt, tournaments],
+    () => tournaments.filter(tournament => tournament.status === 'finished' && tournament.updatedAt > activeSeason.resetAt),
+    [activeSeason.resetAt, tournaments],
   )
   const rankingRecords = useMemo(
-    () => mergeRankingRecords(remoteRanking.records, finishedTournaments),
-    [finishedTournaments, remoteRanking.records],
+    () => mergeRankingRecords(activeSeason.records, finishedTournaments),
+    [activeSeason.records, finishedTournaments],
   )
 
   useEffect(() => {
@@ -70,17 +74,13 @@ export function LocalRanking() {
   }, [])
 
   useEffect(() => {
-    if (!remoteLoaded || recordsEqual(remoteRanking.records, rankingRecords)) return
-    void saveRemoteLocalRanking({
-      resetAt: remoteRanking.resetAt,
-      records: rankingRecords,
-      updatedAt: Date.now(),
-    })
-  }, [rankingRecords, remoteLoaded, remoteRanking.records, remoteRanking.resetAt])
+    if (!remoteLoaded || recordsEqual(activeSeason.records, rankingRecords)) return
+    void saveRemoteLocalRanking(updateActiveSeason(rankingState, { records: rankingRecords }))
+  }, [activeSeason.records, rankingRecords, rankingState, remoteLoaded])
 
   const activeRankingRecords = useMemo(
-    () => rankingRecords.filter(record => record.updatedAt > remoteRanking.resetAt),
-    [rankingRecords, remoteRanking.resetAt],
+    () => rankingRecords.filter(record => record.updatedAt > activeSeason.resetAt),
+    [activeSeason.resetAt, rankingRecords],
   )
   const ranking = useMemo(
     () => buildLocalRanking(activeRankingRecords, gameFilter),
@@ -96,9 +96,19 @@ export function LocalRanking() {
       <div className="tournament-header">
         <div>
           <h2>Ranking local</h2>
-          <p>Historial de jugadores basado en torneos finalizados</p>
+          <p>{activeSeason.name} - historial basado en torneos finalizados</p>
         </div>
         <div style={actionsStyle}>
+          <select
+            value={rankingState.activeSeasonId}
+            onChange={event => setActiveRankingSeason(rankingState, event.target.value)}
+            style={filterStyle}
+            aria-label="Temporada del ranking"
+          >
+            {rankingState.seasons?.map(season => (
+              <option key={season.id} value={season.id}>{season.name}</option>
+            ))}
+          </select>
           <select
             value={gameFilter}
             onChange={event => setGameFilter(event.target.value as RankingFilter)}
@@ -110,9 +120,21 @@ export function LocalRanking() {
               <option key={game} value={game}>{gameLabels[game]}</option>
             ))}
           </select>
-          <button type="button" style={resetButtonStyle} onClick={() => resetRanking()}>
+          <button type="button" style={resetButtonStyle} onClick={() => createRankingSeason(rankingState)}>
+            <i className="ti ti-calendar-plus" aria-hidden="true" />
+            Nueva temporada
+          </button>
+          <button type="button" style={resetButtonStyle} onClick={() => exportRankingCsv(ranking, activeSeason, gameFilter)}>
+            <i className="ti ti-file-spreadsheet" aria-hidden="true" />
+            CSV
+          </button>
+          <button type="button" style={resetButtonStyle} onClick={() => void exportImage(`ranking-${activeSeason.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}>
+            <i className="ti ti-photo-down" aria-hidden="true" />
+            PNG
+          </button>
+          <button type="button" style={resetButtonStyle} onClick={() => resetRankingSeason(rankingState)}>
             <i className="ti ti-refresh" aria-hidden="true" />
-            Resetear ranking
+            Resetear temporada
           </button>
         </div>
       </div>
@@ -120,13 +142,14 @@ export function LocalRanking() {
       {ranking.length === 0 ? (
         <div className="empty-state">
           <i className="ti ti-chart-bar-off" aria-hidden="true" />
-          <div>{remoteRanking.resetAt ? 'Finaliza un torneo nuevo para alimentar el ranking local' : 'Finaliza algun torneo para alimentar el ranking local'}</div>
+          <div>{activeSeason.resetAt ? 'Finaliza un torneo nuevo para alimentar esta temporada' : 'Finaliza algun torneo para alimentar el ranking local'}</div>
         </div>
       ) : (
-        <div style={panelStyle}>
+        <div ref={rankingExportRef} style={panelStyle}>
           <div style={summaryStyle}>
             <RankingSummary label="Torneos" value={String(activeRankingRecords.length)} />
             <RankingSummary label="Jugadores" value={String(ranking.length)} />
+            <RankingSummary label="Temporada" value={activeSeason.name} />
             <RankingSummary label="Filtro" value={gameFilter === 'all' ? 'Todos' : gameLabels[gameFilter]} />
           </div>
 
@@ -186,14 +209,151 @@ function recordsEqual(a: LocalRankingTournamentRecord[], b: LocalRankingTourname
   return JSON.stringify(a) === JSON.stringify(b)
 }
 
-function resetRanking() {
-  if (!confirm('Resetear el ranking local? Los torneos ya finalizados dejaran de contar para el ranking.')) return
+function createDefaultRankingState(): LocalRankingState {
   const now = Date.now()
+  const season: LocalRankingSeason = {
+    id: 'default',
+    name: 'General',
+    resetAt: 0,
+    records: [],
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  return {
+    resetAt: 0,
+    records: [],
+    activeSeasonId: season.id,
+    seasons: [season],
+    updatedAt: now,
+  }
+}
+
+function normalizeRankingSeasons(state: LocalRankingState): LocalRankingState {
+  const legacySeason: LocalRankingSeason = {
+    id: 'default',
+    name: 'General',
+    resetAt: state.resetAt ?? 0,
+    records: state.records ?? [],
+    createdAt: state.updatedAt || Date.now(),
+    updatedAt: state.updatedAt || Date.now(),
+  }
+  const seasons = state.seasons?.length ? state.seasons : [legacySeason]
+  const activeSeasonId = state.activeSeasonId && seasons.some(season => season.id === state.activeSeasonId)
+    ? state.activeSeasonId
+    : seasons[0].id
+
+  return {
+    ...state,
+    activeSeasonId,
+    seasons,
+  }
+}
+
+function getActiveSeason(state: LocalRankingState): LocalRankingSeason {
+  const normalized = normalizeRankingSeasons(state)
+  return normalized.seasons?.find(season => season.id === normalized.activeSeasonId) ?? normalized.seasons![0]
+}
+
+function updateActiveSeason(state: LocalRankingState, patch: Partial<LocalRankingSeason>): LocalRankingState {
+  const normalized = normalizeRankingSeasons(state)
+  const now = Date.now()
+  const seasons = normalized.seasons!.map(season =>
+    season.id === normalized.activeSeasonId
+      ? { ...season, ...patch, updatedAt: now }
+      : season
+  )
+  const activeSeason = seasons.find(season => season.id === normalized.activeSeasonId) ?? seasons[0]
+
+  return {
+    resetAt: activeSeason.resetAt,
+    records: activeSeason.records,
+    activeSeasonId: activeSeason.id,
+    seasons,
+    updatedAt: now,
+  }
+}
+
+function setActiveRankingSeason(state: LocalRankingState, seasonId: string) {
+  const normalized = normalizeRankingSeasons(state)
+  const activeSeason = normalized.seasons?.find(season => season.id === seasonId) ?? getActiveSeason(normalized)
   void saveRemoteLocalRanking({
+    ...normalized,
+    resetAt: activeSeason.resetAt,
+    records: activeSeason.records,
+    activeSeasonId: activeSeason.id,
+    updatedAt: Date.now(),
+  })
+}
+
+function createRankingSeason(state: LocalRankingState) {
+  const name = window.prompt('Nombre de la nueva temporada', `Temporada ${new Date().toLocaleDateString('es-ES')}`)?.trim()
+  if (!name) return
+  const normalized = normalizeRankingSeasons(state)
+  const now = Date.now()
+  const seasonId = crypto.randomUUID()
+  void saveRemoteLocalRanking({
+    ...normalized,
     resetAt: now,
     records: [],
+    activeSeasonId: seasonId,
+    seasons: [
+      ...(normalized.seasons ?? []),
+      {
+        id: seasonId,
+        name,
+        resetAt: now,
+        records: [],
+        createdAt: now,
+        updatedAt: now,
+      },
+    ],
     updatedAt: now,
   })
+}
+
+function resetRankingSeason(state: LocalRankingState) {
+  const activeSeason = getActiveSeason(state)
+  if (!confirm(`Resetear la temporada "${activeSeason.name}"? Los torneos ya finalizados dejaran de contar para esta temporada.`)) return
+  const now = Date.now()
+  void saveRemoteLocalRanking(updateActiveSeason(state, {
+    resetAt: now,
+    records: [],
+  }))
+}
+
+function exportRankingCsv(ranking: RankingEntry[], season: LocalRankingSeason, filter: RankingFilter) {
+  const rows = [
+    ['Temporada', season.name],
+    ['Filtro', filter === 'all' ? 'Todos' : gameLabels[filter]],
+    [],
+    ['Posicion', 'Jugador', 'Score', 'Torneos', 'Puntos', 'Victorias', 'Empates', 'Derrotas', 'Top 1', 'Top 4', 'Juegos'],
+    ...ranking.map((entry, index) => [
+      String(index + 1),
+      entry.name,
+      String(entry.localScore),
+      String(entry.tournaments),
+      String(entry.points),
+      String(entry.wins),
+      String(entry.draws),
+      String(entry.losses),
+      String(entry.firstPlaces),
+      String(entry.topFour),
+      [...entry.games].map(game => gameLabels[game]).join(' / '),
+    ]),
+  ]
+  const csv = rows.map(row => row.map(escapeCsvCell).join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `ranking-${season.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.csv'
+  link.click()
+  URL.revokeObjectURL(link.href)
+}
+
+function escapeCsvCell(value: string | undefined) {
+  const cell = value ?? ''
+  return /[",\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell
 }
 
 function buildLocalRanking(tournaments: LocalRankingTournamentRecord[], filter: RankingFilter) {
@@ -318,7 +478,7 @@ const panelStyle: React.CSSProperties = {
 
 const summaryStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
   gap: '8px',
   marginBottom: '12px',
 }

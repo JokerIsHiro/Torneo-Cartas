@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
-import type { Player, TournamentTCG, TournamentTeamMode } from '../types/tournament'
+import { saveRemoteKnownPlayers, subscribeToRemoteKnownPlayers } from '../services/firebase'
+import type { KnownPlayer, Player, TournamentTCG, TournamentTeamMode } from '../types/tournament'
 
 interface PlayerListProps {
   tournamentId: string
@@ -16,7 +17,7 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
   const [input, setInput] = useState('')
   const [error, setError] = useState('')
   const [teamModalOpen, setTeamModalOpen] = useState(false)
-  const [knownPlayers, setKnownPlayers] = useState<KnownPlayer[]>(loadKnownPlayers)
+  const [knownPlayers, setKnownPlayers] = useState<KnownPlayer[]>([])
   const [selectedKnownIds, setSelectedKnownIds] = useState<string[]>([])
 
   const players = tournament?.players ?? EMPTY_PLAYERS
@@ -49,6 +50,37 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
       ? 'Registra cada trio como un equipo, con capitan.'
       : 'Registra participantes individuales.'
 
+  useEffect(() => {
+    let isMounted = true
+    let unsubscribe: (() => void) | null = null
+
+    void subscribeToRemoteKnownPlayers(
+      state => {
+        if (!isMounted) return
+        setKnownPlayers(state.players)
+      },
+      error => {
+        console.error('No se han podido cargar los jugadores habituales', error)
+      },
+    ).then(nextUnsubscribe => {
+      unsubscribe = nextUnsubscribe
+    })
+
+    return () => {
+      isMounted = false
+      unsubscribe?.()
+    }
+  }, [])
+
+  function updateKnownPlayers(nextPlayers: KnownPlayer[], updatedAt: number) {
+    const sorted = nextPlayers.slice(-250).sort((a, b) => a.name.localeCompare(b.name))
+    setKnownPlayers(sorted)
+    void saveRemoteKnownPlayers({
+      players: sorted,
+      updatedAt,
+    })
+  }
+
   function addSoloPlayer() {
     const name = input.trim()
     if (!name) return
@@ -74,11 +106,11 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
   function rememberKnownPlayer(name: string, game: TournamentTCG, kind: Player['playerKind'] = 'regular') {
     const cleanName = name.trim()
     if (!cleanName) return
-    setKnownPlayers(current => saveKnownPlayers(upsertKnownPlayer(current, cleanName, game, kind)))
+    updateKnownPlayers(upsertKnownPlayer(knownPlayers, cleanName, game, kind), getNow())
   }
 
   function forgetKnownPlayer(id: string) {
-    setKnownPlayers(current => saveKnownPlayers(current.filter(player => player.id !== id)))
+    updateKnownPlayers(knownPlayers.filter(player => player.id !== id), getNow())
     setSelectedKnownIds(current => current.filter(candidate => candidate !== id))
   }
 
@@ -449,31 +481,6 @@ function getTeamSize(mode: TournamentTeamMode) {
   return 1
 }
 
-interface KnownPlayer {
-  id: string
-  name: string
-  games: TournamentTCG[]
-  kind: Player['playerKind']
-  updatedAt: number
-}
-
-const KNOWN_PLAYERS_KEY = 'subterra-known-players-v1'
-
-function loadKnownPlayers(): KnownPlayer[] {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(KNOWN_PLAYERS_KEY) ?? '[]') as KnownPlayer[]
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-function saveKnownPlayers(players: KnownPlayer[]) {
-  const sorted = players.slice(-250).sort((a, b) => a.name.localeCompare(b.name))
-  localStorage.setItem(KNOWN_PLAYERS_KEY, JSON.stringify(sorted))
-  return sorted
-}
-
 function upsertKnownPlayer(players: KnownPlayer[], name: string, game: TournamentTCG, kind: Player['playerKind']) {
   const existing = players.find(player => player.name.toLowerCase() === name.toLowerCase())
   if (!existing) {
@@ -500,6 +507,10 @@ function upsertKnownPlayer(players: KnownPlayer[], name: string, game: Tournamen
         }
       : player
   )
+}
+
+function getNow() {
+  return Date.now()
 }
 
 const cardStyle: React.CSSProperties = {
