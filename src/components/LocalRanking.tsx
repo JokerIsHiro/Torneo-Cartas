@@ -28,11 +28,10 @@ const gameLabels: Record<TournamentTCG, string> = {
 }
 
 const gameLogoUrls: Partial<Record<TournamentTCG, string>> = {
-  magic: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Magicthegathering-logo.svg/512px-Magicthegathering-logo.svg.png',
-  pokemon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/International_Pok%C3%A9mon_logo.svg/512px-International_Pok%C3%A9mon_logo.svg.png',
-  yugioh: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Yu-Gi-Oh%21_%28Logo%29.jpg/512px-Yu-Gi-Oh%21_%28Logo%29.jpg',
-  lorcana: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Disney_Lorcana_logo.svg/512px-Disney_Lorcana_logo.svg.png',
-  'one-piece': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/One_Piece_Logo.svg/512px-One_Piece_Logo.svg.png',
+  magic: '/game-logos/magic.png',
+  pokemon: '/game-logos/pokemon.png',
+  yugioh: '/game-logos/yugioh.jpg',
+  'one-piece': '/game-logos/one-piece.png',
 }
 
 const storeLogoUrl = '/subterra-logo.jpg'
@@ -172,7 +171,7 @@ export function LocalRanking() {
           <div style={headerRowStyle}>
             <span>#</span>
             <span>Jugador</span>
-            <span>Victorias</span>
+            <span>Puntos</span>
           </div>
 
           {ranking.map((entry, index) => (
@@ -181,7 +180,7 @@ export function LocalRanking() {
               <div style={{ minWidth: 0 }}>
                 <strong style={playerNameStyle}>{entry.name}</strong>
               </div>
-              <strong style={winsStyle}>{entry.wins}</strong>
+              <strong style={pointsStyle}>{entry.points}</strong>
             </div>
           ))}
         </div>
@@ -334,11 +333,11 @@ function exportRankingCsv(ranking: RankingEntry[], season: LocalRankingSeason, f
     ['Temporada', season.name],
     ['Juego', filter === 'all' ? 'Todos los juegos' : gameLabels[filter]],
     [],
-    ['Posicion', 'Jugador', 'Victorias'],
+    ['Posicion', 'Jugador', 'Puntos'],
     ...ranking.map((entry, index) => [
       String(index + 1),
       entry.name,
-      String(entry.wins),
+      String(entry.points),
     ]),
   ]
   const csv = rows.map(row => row.map(escapeCsvCell).join(',')).join('\n')
@@ -385,8 +384,8 @@ function buildLocalRanking(tournaments: LocalRankingTournamentRecord[], filter: 
   })
 
   return [...entries.values()].sort((a, b) => {
-    if (b.wins !== a.wins) return b.wins - a.wins
     if (b.points !== a.points) return b.points - a.points
+    if (b.wins !== a.wins) return b.wins - a.wins
     if (a.losses !== b.losses) return a.losses - b.losses
     return b.lastPlayedAt - a.lastPlayedAt
   })
@@ -568,7 +567,7 @@ const playerNameStyle: React.CSSProperties = {
   fontSize: '16px',
 }
 
-const winsStyle: React.CSSProperties = {
+const pointsStyle: React.CSSProperties = {
   color: 'var(--color-accent-secondary)',
   fontSize: '22px',
   textAlign: 'center',
