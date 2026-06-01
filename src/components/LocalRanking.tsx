@@ -457,10 +457,10 @@ const panelStyle: React.CSSProperties = {
 
 const leaderboardHeaderStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '120px minmax(0, 1fr) 120px',
+  gridTemplateColumns: '120px minmax(0, 1fr) 150px',
   alignItems: 'center',
   gap: '18px',
-  minHeight: '116px',
+  minHeight: '132px',
   padding: '14px 18px',
   marginBottom: '16px',
   borderRadius: 'var(--border-radius-lg)',
@@ -503,8 +503,8 @@ const leaderboardGameLabelStyle: React.CSSProperties = {
 }
 
 const gameLogoFrameStyle: React.CSSProperties = {
-  width: '112px',
-  height: '82px',
+  width: '140px',
+  height: '104px',
   display: 'grid',
   placeItems: 'center',
   justifySelf: 'center',
@@ -512,8 +512,8 @@ const gameLogoFrameStyle: React.CSSProperties = {
 }
 
 const gameLogoStyle: React.CSSProperties = {
-  width: '104px',
-  height: '64px',
+  width: '132px',
+  height: '96px',
   objectFit: 'contain',
 }
 
