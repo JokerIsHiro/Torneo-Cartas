@@ -104,7 +104,7 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
   }
 
   return (
-    <div>
+    <div className="setup-player-panel">
       {isSetup && (
         <div className="setup-card player-entry-card" style={cardStyle}>
           <div className="player-card-header">
