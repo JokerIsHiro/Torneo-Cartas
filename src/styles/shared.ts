@@ -1,3 +1,5 @@
+// Estilos inline compartidos por componentes que aun no usan CSS de clase.
+// Mueve aqui patrones repetidos antes de duplicar objetos de estilo.
 import type { CSSProperties } from 'react'
 
 // Estilos reutilizables para mantener consistencia entre componentes.

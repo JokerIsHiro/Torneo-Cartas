@@ -1,3 +1,5 @@
+// Configuracion inicial del torneo. Ajusta aqui opciones previas al inicio:
+// juego, formato, equipos, duracion, QR y participantes.
 import { useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useShallow } from 'zustand/react/shallow'

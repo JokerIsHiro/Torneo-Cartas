@@ -1,3 +1,5 @@
+// Pantalla publica de inscripcion de jugadores. Cambia aqui el formulario visible
+// desde QR/enlace, no la gestion interna de participantes.
 import { useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'

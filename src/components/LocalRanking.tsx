@@ -1,3 +1,5 @@
+// Ranking local acumulado por temporadas. Cambia aqui filtros, exportacion CSV/PNG
+// o reglas de puntuacion historica entre torneos finalizados.
 import { useEffect, useMemo, useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { saveRemoteLocalRanking, subscribeToRemoteLocalRanking } from '../services/firebase'

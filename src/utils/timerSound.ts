@@ -1,3 +1,5 @@
+// Sonido del temporizador. Ajusta aqui desbloqueo de audio, volumen y patron
+// de aviso cuando una ronda termina.
 let audioContext: AudioContext | null = null
 let activeAlert: AudioNode[] = []
 let activeStopTimeout: number | null = null

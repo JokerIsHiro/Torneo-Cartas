@@ -1,3 +1,5 @@
+// Configuracion de entorno y Firebase embebida. Cambia aqui nombres de variables
+// o valores por defecto que deben existir antes de iniciar servicios externos.
 import type { FirebaseOptions } from 'firebase/app'
 
 export const DEFAULT_ADMIN_AUTH_EMAIL = 'admin@subterra-torneos.local'

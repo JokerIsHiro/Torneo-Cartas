@@ -1,3 +1,5 @@
+// Plantillas ocultas para exportar rondas y clasificaciones como imagen.
+// Mantener estilos inline aqui ayuda a que html2canvas capture un resultado estable.
 import { forwardRef } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'

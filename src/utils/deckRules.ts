@@ -1,3 +1,5 @@
+// Reglas de validacion de mazos por juego. Modifica aqui limites de copias,
+// tamanos minimos y mensajes de error del deck builder.
 import type { CardSuggestion } from '../services/cardSearch'
 import type { TournamentTCG } from '../types/tournament'
 

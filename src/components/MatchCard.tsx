@@ -1,3 +1,5 @@
+// Tarjeta de una mesa/rivalidad. Ajusta aqui botones de resultado, lectura publica
+// y presentacion de jugadores dentro de cada emparejamiento.
 import type { Match, MatchResult } from '../types/tournament'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'

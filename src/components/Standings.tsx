@@ -1,3 +1,5 @@
+// Clasificacion visual del torneo actual. Cambia aqui columnas, podium o resumen
+// de rondas; los calculos de desempate salen de useSwissPairings.
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'

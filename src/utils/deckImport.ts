@@ -1,3 +1,5 @@
+// Importacion de mazos desde texto/listas externas. Cambia aqui deteccion de juegos,
+// resolucion de cartas y reglas para convertir texto en deck interno.
 import type { TournamentTCG } from '../types/tournament'
 import { deckRuleConfigs } from './deckRules'
 import { extractOnePieceCardCode, ONE_PIECE_CARD_CODE_PATTERN } from './onePieceCardCode'

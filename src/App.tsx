@@ -1,3 +1,5 @@
+// Orquestador principal de la app: decide la vista segun la URL, controla el acceso admin
+// y conecta sincronizacion global. Si anades una pantalla nueva, registra aqui su ruta.
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useTournamentsStore } from './store/tournamentsStore'

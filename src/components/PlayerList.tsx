@@ -1,3 +1,5 @@
+// Gestion de jugadores del torneo: alta manual, habituales, equipos y bajas.
+// Modifica aqui flujos de registro interno; las reglas de torneo viven en el store.
 import { useEffect, useMemo, useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'

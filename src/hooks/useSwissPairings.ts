@@ -1,3 +1,5 @@
+// Lecturas derivadas del torneo Swiss: rondas, clasificacion, desempates y helpers.
+// Si cambia como se calcula la vista, toca aqui; si cambia el estado base, toca el store.
 import { useMemo, useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'

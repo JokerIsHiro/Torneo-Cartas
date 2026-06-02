@@ -1,3 +1,5 @@
+// Hook de exportacion PNG. Si la descarga falla, revisa aqui la preparacion de
+// imagenes y la carga diferida de html2canvas.
 import { useRef, useCallback, type RefObject } from 'react'
 import { prepareImagesInElement, waitForImages } from '../utils/imageExport'
 

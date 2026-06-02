@@ -1,3 +1,5 @@
+// Cliente de busqueda para One Piece Card Game. Modifica aqui codigos, imagenes
+// y transformacion de respuestas externas.
 import type { CardSuggestion } from './cardSearch'
 import { displayImageUrl } from '../utils/imageExport'
 import { extractOnePieceCardCode, isOnePieceCardCode, ONE_PIECE_CARD_CODE_PATTERN } from '../utils/onePieceCardCode'

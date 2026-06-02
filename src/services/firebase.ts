@@ -1,3 +1,5 @@
+// Capa unica de acceso a Firebase. Cambia aqui colecciones, normalizacion de datos
+// y metodos remotos; el resto de la app no deberia importar Firebase directamente.
 import { initializeApp, type FirebaseApp, type FirebaseOptions } from 'firebase/app'
 import {
   browserLocalPersistence,

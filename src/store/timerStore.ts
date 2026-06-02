@@ -1,3 +1,5 @@
+// Store global de temporizadores sincronizados. Toca aqui estados del reloj,
+// persistencia entre pestanas y escritura remota de timers.
 import { create } from 'zustand'
 import { useTournamentsStore } from './tournamentsStore'
 import { playTimerFinishedSound } from '../utils/timerSound'

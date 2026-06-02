@@ -1,4 +1,5 @@
 // Códigos oficiales OPTCG: OP15-058, ST10-010, EB01-012, PRB01-001, etc.
+// Toca aqui alias o formatos cuando la API y las listas escriban codigos distintos.
 export const ONE_PIECE_CARD_CODE_PATTERN = /\b([A-Z]{1,4}\d{0,2}-\d{3}[a-z]?)\b/i
 
 export function extractOnePieceCardCode(value: string) {

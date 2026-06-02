@@ -1,3 +1,5 @@
+// Mesa de trabajo de la ronda activa. Aqui se introducen resultados, se organizan
+// emparejamientos y se exportan imagenes de ronda/clasificacion.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'

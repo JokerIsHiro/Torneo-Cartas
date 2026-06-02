@@ -1,5 +1,5 @@
 // Carga y convierte imágenes externas para html2canvas (evita CORS y canvas contaminado).
-
+// Cambia aqui proxy, conversion de imagenes y espera de recursos antes del PNG.
 const PROXY_HOST = "images.weserv.nl";
 
 // Hosts/CDN que cargan bien en <img> sin proxy (más rápido que images.weserv.nl).

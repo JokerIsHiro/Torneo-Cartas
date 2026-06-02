@@ -1,3 +1,5 @@
+// Panel de snapshots del torneo. Usa este archivo para mostrar, crear o restaurar
+// puntos de recuperacion antes de acciones peligrosas.
 import { useTournamentsStore } from '../store/tournamentsStore'
 
 interface SnapshotPanelProps {

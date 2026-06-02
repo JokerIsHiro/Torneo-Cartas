@@ -1,3 +1,5 @@
+// Cliente de busqueda para Riftbound/RiftScribe. Cambia aqui proxy, endpoint
+// o adaptacion de cartas al formato comun del deck builder.
 const RIFTSCRIBE_ORIGIN = "https://riftscribe.gg";
 const CACHE_TTL_MS = 10 * 60 * 1000;
 

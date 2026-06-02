@@ -1,3 +1,5 @@
+// Hook de timer local antiguo/aislado. Preferir timerStore para relojes sincronizados
+// entre pantallas, y usar este solo si una vista necesita contador independiente.
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 // Hook de temporizador local. Los timers de torneo usan timerStore para sincronizarse

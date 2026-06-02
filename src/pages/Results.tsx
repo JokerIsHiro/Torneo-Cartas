@@ -1,3 +1,5 @@
+// Pantalla final del torneo. Cambia aqui acciones post-torneo, exportacion final
+// y presentacion de resultados cerrados.
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
