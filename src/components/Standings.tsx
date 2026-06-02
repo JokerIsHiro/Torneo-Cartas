@@ -283,7 +283,13 @@ export function Standings({
   );
 }
 
-export function RoundHistoryPanel({ tournamentId }: { tournamentId: string }) {
+export function RoundHistoryPanel({
+  tournamentId,
+  variant = "panel",
+}: {
+  tournamentId: string;
+  variant?: "panel" | "title-action";
+}) {
   const [historyOpen, setHistoryOpen] = useState(false)
 
   const { rounds } = useTournamentsStore(
@@ -297,22 +303,36 @@ export function RoundHistoryPanel({ tournamentId }: { tournamentId: string }) {
 
   const { roundSummaries, totalRounds, getPlayerName } = useSwissPairings(tournamentId)
 
+  const historyButton = (
+    <button onClick={() => setHistoryOpen(true)}>
+      <i className="ti ti-list-details" aria-hidden="true" />
+      Ver historial
+    </button>
+  )
+
   return (
     <>
-      <section className="history-compact-panel">
-        <div>
-          <i className="ti ti-history" aria-hidden="true" />
+      {variant === "title-action" ? (
+        <div className="history-title-action">
           <div>
-            <strong>Historial de rondas</strong>
+            <i className="ti ti-history" aria-hidden="true" />
             <span>{roundSummaries.length} rondas jugadas</span>
           </div>
+          {historyButton}
         </div>
+      ) : (
+        <section className="history-compact-panel">
+          <div>
+            <i className="ti ti-history" aria-hidden="true" />
+            <div>
+              <strong>Historial de rondas</strong>
+              <span>{roundSummaries.length} rondas jugadas</span>
+            </div>
+          </div>
 
-        <button onClick={() => setHistoryOpen(true)}>
-          <i className="ti ti-list-details" aria-hidden="true" />
-          Ver historial
-        </button>
-      </section>
+          {historyButton}
+        </section>
+      )}
 
       {historyOpen && (
         <RoundHistoryDialog

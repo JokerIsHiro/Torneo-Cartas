@@ -74,6 +74,7 @@ export function Results({ tournamentId }: ResultsProps) {
               </p>
             )}
           </div>
+          <RoundHistoryPanel tournamentId={tournamentId} variant="title-action" />
         </div>
 
         <div className="results-summary-grid">
@@ -159,7 +160,6 @@ export function Results({ tournamentId }: ResultsProps) {
                 );
               })}
             </section>
-            <RoundHistoryPanel tournamentId={tournamentId} />
           </div>
         </div>
       )}
