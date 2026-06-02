@@ -3,7 +3,7 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useTournamentsStore } from './store/tournamentsStore'
-import { syncTimersFromStorage, TIMER_SYNC_KEY, useTimerStore } from './store/timerStore'
+import { syncTimersFromStorage, TIMER_SYNC_KEY, useTimerData, useTimerStore } from './store/timerStore'
 import { Setup } from './pages/Setup'
 import { Round } from './pages/Round'
 import { Results } from './pages/Results'
@@ -12,6 +12,7 @@ import { SnapshotPanel } from './components/SnapshotPanel'
 import type { Tournament } from './types/tournament'
 import { unlockTimerSound } from './utils/timerSound'
 import { useFirebaseSync } from './hooks/useFirebaseSync'
+import { useSwissPairings } from './hooks/useSwissPairings'
 import { signInAdmin, signOutAdmin } from './services/firebase'
 import { ADMIN_AUTH_EMAIL } from './config/appConfig'
 
@@ -601,6 +602,13 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
       </div>
 
       {status === 'active' && (
+        <TournamentDayBar
+          tournament={tournament}
+          onInnerTabChange={onInnerTabChange}
+        />
+      )}
+
+      {status === 'active' && (
         <div className="segmented-tabs">
           {([
             { id: 'ronda', label: 'Ronda', icon: 'ti-swords' },
@@ -626,6 +634,119 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
       {status === 'finished' && <Results tournamentId={id} />}
     </div>
   )
+}
+
+function TournamentDayBar({
+  tournament,
+  onInnerTabChange,
+}: {
+  tournament: Tournament
+  onInnerTabChange: (tab: TournamentInnerTab) => void
+}) {
+  const nextRound = useTournamentsStore(s => s.nextRound)
+  const finishTournament = useTournamentsStore(s => s.finishTournament)
+  const timerData = useTimerData(tournament.id)
+  const {
+    allResultsIn,
+    unfinishedCount,
+    shouldFinish,
+    phaseMode,
+    topCut,
+    roundSummaries,
+  } = useSwissPairings(tournament.id)
+  const currentSummary = roundSummaries.find(summary => summary.number === tournament.currentRound)
+  const pendingCount = tournament.pendingResults?.length ?? 0
+  const completedMatches = currentSummary?.matchesDone ?? 0
+  const totalMatches = currentSummary?.matchesTotal ?? 0
+  const canCloseRound = allResultsIn && pendingCount === 0
+  const roundActionLabel = shouldFinish
+    ? phaseMode === 'swiss-top' ? `Publicar Top ${topCut}` : 'Finalizar torneo'
+    : 'Siguiente ronda'
+
+  function openTournamentScreen(target: 'proyeccion' | 'temporizadores' | 'organizar') {
+    const url = new URL(routePaths[target], window.location.origin)
+    if (target === 'proyeccion' || target === 'organizar') {
+      url.searchParams.set('torneo', tournament.id)
+    }
+    window.open(url.toString(), '_blank', 'noopener,noreferrer')
+  }
+
+  function handleRoundAction() {
+    if (!canCloseRound) return
+    if (shouldFinish) {
+      finishTournament(tournament.id)
+      return
+    }
+    nextRound(tournament.id)
+  }
+
+  return (
+    <section className="tournament-day-bar" aria-label="Estado rapido del torneo">
+      <div className="day-bar-status">
+        <span>Ronda {tournament.currentRound}</span>
+        <strong>{timerData?.formatted ?? '--:--'}</strong>
+        <em>{timerLabel(timerData?.status)}</em>
+      </div>
+
+      <div className="day-bar-metrics">
+        <DayBarMetric label="Resultados" value={`${completedMatches}/${totalMatches}`} tone={allResultsIn ? 'ready' : 'default'} />
+        <DayBarMetric label="Faltan" value={String(Math.max(0, unfinishedCount))} tone={unfinishedCount === 0 ? 'ready' : 'warning'} />
+        <DayBarMetric label="Por confirmar" value={String(pendingCount)} tone={pendingCount === 0 ? 'ready' : 'warning'} />
+      </div>
+
+      <div className="day-bar-actions">
+        <button type="button" onClick={() => openTournamentScreen('proyeccion')} title="Abre la pantalla publica de emparejamientos">
+          <i className="ti ti-external-link" aria-hidden="true" />
+          Emparejamientos
+        </button>
+        <button type="button" onClick={() => openTournamentScreen('temporizadores')} title="Abre la pantalla de temporizadores">
+          <i className="ti ti-clock" aria-hidden="true" />
+          Timer
+        </button>
+        <button type="button" onClick={() => {
+          onInnerTabChange('organizar')
+          openTournamentScreen('organizar')
+        }} title="Abre la pantalla de organizar mesas">
+          <i className="ti ti-arrows-shuffle" aria-hidden="true" />
+          Organizar
+        </button>
+        <button
+          type="button"
+          className="primary"
+          disabled={!canCloseRound}
+          onClick={handleRoundAction}
+          title={canCloseRound ? roundActionLabel : 'Introduce o confirma todos los resultados primero'}
+        >
+          <i className={shouldFinish ? 'ti ti-trophy' : 'ti ti-arrow-right'} aria-hidden="true" />
+          {roundActionLabel}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function DayBarMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string
+  value: string
+  tone: 'default' | 'ready' | 'warning'
+}) {
+  return (
+    <div className={`day-bar-metric ${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  )
+}
+
+function timerLabel(status?: string) {
+  if (status === 'running') return 'en marcha'
+  if (status === 'paused') return 'pausado'
+  if (status === 'finished') return 'finalizado'
+  return 'sin iniciar'
 }
 
 function getTournamentFormatLabel(tournament: Tournament) {
