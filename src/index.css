@@ -1928,6 +1928,27 @@ button:disabled {
   line-height: 1.35;
 }
 
+.late-player-panel {
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1.15fr) auto;
+  align-items: end;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.late-player-panel header {
+  margin: 0;
+}
+
+.late-player-panel button {
+  padding-inline: 14px;
+  white-space: nowrap;
+}
+
+.late-player-panel p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 .pairing-dnd-board {
   display: grid;
   gap: 8px;
@@ -4749,6 +4770,15 @@ button:disabled {
   .round-history-tabs button {
     flex: 1 1 calc(50% - 3px);
     justify-content: center;
+  }
+
+  .late-player-panel {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .late-player-panel button {
+    white-space: normal;
   }
 
   .round-match-grid,

@@ -178,22 +178,8 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
           </div>
         )}
 
-        <div className="round-match-grid">
-          {visibleMatches.map(match => (
-            <MatchCard key={match.id} match={match} tournamentId={tournamentId} roundNumber={visibleRound} />
-          ))}
-        </div>
-      </section>
-
-      <aside className="round-side-column">
-        {isViewingCurrentRound && <Timer tournamentId={tournamentId} />}
-
-        {tournament && pendingResults.length > 0 && (
-          <PendingResultsPanel tournament={tournament} pendingResults={pendingResults} />
-        )}
-
         {canAddLatePlayer && (
-          <section className="pairing-tools-panel">
+          <section className="pairing-tools-panel late-player-panel">
             <header>
               <strong>Jugador tardio</strong>
               <span>Ronda 1 entra limpio. Ronda 2 entra con 1 derrota. Desde ronda 3 no se permite.</span>
@@ -228,6 +214,20 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
             </button>
             {pairingToolMessage && <p>{pairingToolMessage}</p>}
           </section>
+        )}
+
+        <div className="round-match-grid">
+          {visibleMatches.map(match => (
+            <MatchCard key={match.id} match={match} tournamentId={tournamentId} roundNumber={visibleRound} />
+          ))}
+        </div>
+      </section>
+
+      <aside className="round-side-column">
+        {isViewingCurrentRound && <Timer tournamentId={tournamentId} />}
+
+        {tournament && pendingResults.length > 0 && (
+          <PendingResultsPanel tournament={tournament} pendingResults={pendingResults} />
         )}
 
         {allResultsIn && (
