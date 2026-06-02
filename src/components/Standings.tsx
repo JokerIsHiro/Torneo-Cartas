@@ -60,8 +60,8 @@ export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
     <div>
       {showPodium && standings.length >= 3 && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '1rem' }}>
-          <PodiumCard player={standings[1].player} medal="2" position={2} hasDraws={hasDraws} />
           <PodiumCard player={standings[0].player} medal="1" position={1} hasDraws={hasDraws} />
+          <PodiumCard player={standings[1].player} medal="2" position={2} hasDraws={hasDraws} />
           <PodiumCard player={standings[2].player} medal="3" position={3} hasDraws={hasDraws} />
         </div>
       )}

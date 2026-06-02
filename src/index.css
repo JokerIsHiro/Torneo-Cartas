@@ -4265,6 +4265,27 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .results-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .results-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .results-decklist-row {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .results-decklist-row em,
+  .results-decklist-row button {
+    grid-column: 2;
+  }
+
+  .results-decklist-row button {
+    width: 100%;
+  }
+
   .deck-editor-controls,
   .deck-editor-row {
     grid-template-columns: 1fr;
@@ -4426,6 +4447,111 @@ button:disabled {
 
 .option-pill-stacked strong {
   font-size: 12px;
+}
+
+.results-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr) minmax(220px, 0.7fr);
+  gap: 10px;
+  margin-bottom: 1rem;
+  align-items: stretch;
+}
+
+.results-title-card,
+.results-summary-grid,
+.results-actions-panel {
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  background: var(--color-background-primary);
+}
+
+.results-title-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 16px;
+  border-color: var(--color-border-warning);
+}
+
+.results-title-card > i {
+  color: var(--color-podium-gold);
+  font-size: 30px;
+}
+
+.results-title-card span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.results-title-card h3 {
+  margin: 2px 0;
+  color: var(--color-text-primary);
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.results-title-card p {
+  color: var(--color-accent-secondary);
+  font-size: 13px;
+}
+
+.results-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+}
+
+.results-summary-grid > div {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-height: 76px;
+  padding: 10px;
+  background: var(--color-background-secondary);
+  text-align: center;
+}
+
+.results-summary-grid span {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.results-summary-grid strong {
+  color: var(--color-text-primary);
+  font-size: 20px;
+}
+
+.results-actions-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.results-actions-panel button,
+.results-delete-button {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.results-delete-button {
+  width: 100%;
+  margin-top: 1rem;
+  border-color: var(--color-border-tertiary);
+  background: var(--color-background-primary);
+  color: var(--color-text-secondary);
 }
 
 .results-decklist-panel {
