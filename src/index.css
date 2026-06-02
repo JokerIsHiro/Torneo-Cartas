@@ -5217,11 +5217,12 @@ button:disabled {
 .results-decklist-panel {
   display: grid;
   gap: 8px;
-  margin: 0 0 1rem;
+  margin: 0;
   padding: 12px;
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-lg);
   background: var(--color-background-primary);
+  align-content: start;
 }
 
 .results-decklist-panel header,
@@ -5743,18 +5744,35 @@ button:disabled {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.85fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .results-left-column,
 .results-right-column {
   display: grid;
   gap: 16px;
-  align-content: start;
+  align-content: stretch;
+}
+
+.results-left-column > div,
+.results-layout .standings-card,
+.results-layout .results-decklist-panel {
+  height: 100%;
+}
+
+.results-layout .standings-card {
+  margin-bottom: 0 !important;
 }
 
 @media (max-width: 1100px) {
   .results-layout {
     grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .results-left-column > div,
+  .results-layout .standings-card,
+  .results-layout .results-decklist-panel {
+    height: auto;
   }
 }
