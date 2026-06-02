@@ -5260,6 +5260,31 @@ button:disabled {
   gap: 6px;
 }
 
+.results-layout .standings-card > div:first-child > div:first-child {
+  font-size: 15px !important;
+}
+
+.results-layout .standings-card > div:first-child > div:first-child > div {
+  font-size: 12px !important;
+}
+
+.results-layout .standings-card > div:nth-child(2) {
+  font-size: 12px !important;
+}
+
+.results-layout .standings-card > div:nth-child(n + 3) {
+  min-height: 40px;
+}
+
+.results-layout .standings-card > div:nth-child(n + 3) span {
+  font-size: 14px !important;
+}
+
+.results-layout .standings-card > div:nth-child(n + 3) span:nth-child(2) {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+
 .option-pill-stacked span {
   color: var(--color-text-secondary);
   font-size: 10px;
