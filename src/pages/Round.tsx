@@ -50,6 +50,7 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
   const previousPendingCount = useRef(pendingResults.length)
   const [selectedRound, setSelectedRound] = useState<number | null>(null)
   const [firstSwapSlot, setFirstSwapSlot] = useState('')
+  const [secondSwapSlot, setSecondSwapSlot] = useState('')
   const [latePlayerName, setLatePlayerName] = useState('')
   const [pairingToolMessage, setPairingToolMessage] = useState('')
   const visibleRound = selectedRound && selectedRound <= currentRound ? selectedRound : currentRound
@@ -80,6 +81,7 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
     if (!first || !second || !canSwapSlots(firstValue, secondValue)) return
     swapCurrentRoundPlayers(tournamentId, first.matchId, first.playerId, second.matchId, second.playerId)
     setFirstSwapSlot('')
+    setSecondSwapSlot('')
   }
 
   useEffect(() => {
@@ -102,9 +104,15 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
         currentMatches={currentMatches}
         editablePairings={editablePairings}
         firstSwapSlot={firstSwapSlot}
+        secondSwapSlot={secondSwapSlot}
         playerSlots={playerSlots}
         getPlayerName={getPlayerName}
         onSelectSlot={setFirstSwapSlot}
+        onSelectTargetSlot={setSecondSwapSlot}
+        onClearSelection={() => {
+          setFirstSwapSlot('')
+          setSecondSwapSlot('')
+        }}
         onSwapPlayers={handleSwapPlayers}
       />
     )
@@ -252,9 +260,12 @@ interface PairingOrganizerProps {
   currentMatches: Match[]
   editablePairings: boolean
   firstSwapSlot: string
+  secondSwapSlot: string
   playerSlots: Array<{ value: string; label: string }>
   getPlayerName: (id: string) => string
   onSelectSlot: (slot: string) => void
+  onSelectTargetSlot: (slot: string) => void
+  onClearSelection: () => void
   onSwapPlayers: (firstSlot: string, secondSlot: string) => void
 }
 
@@ -263,14 +274,19 @@ function PairingOrganizer({
   currentMatches,
   editablePairings,
   firstSwapSlot,
+  secondSwapSlot,
   playerSlots,
   getPlayerName,
   onSelectSlot,
+  onSelectTargetSlot,
+  onClearSelection,
   onSwapPlayers,
 }: PairingOrganizerProps) {
   // Vista dedicada para revisar mesas antes de publicar resultados.
   const slotLabels = new Map(playerSlots.map(slot => [slot.value, slot.label]))
   const selectedSlotLabel = firstSwapSlot ? slotLabels.get(firstSwapSlot) : ''
+  const targetSlotLabel = secondSwapSlot ? slotLabels.get(secondSwapSlot) : ''
+  const canConfirmSwap = Boolean(firstSwapSlot && secondSwapSlot && canSwapSlots(firstSwapSlot, secondSwapSlot))
 
   function handleSlotClick(slot: string) {
     if (!editablePairings) return
@@ -278,7 +294,12 @@ function PairingOrganizer({
       onSelectSlot(slot)
       return
     }
-    onSwapPlayers(firstSwapSlot, slot)
+    if (slot === firstSwapSlot) {
+      onClearSelection()
+      return
+    }
+    if (!canSwapSlots(firstSwapSlot, slot)) return
+    onSelectTargetSlot(slot)
   }
 
   function handleDrop(event: React.DragEvent, targetSlot: string) {
@@ -306,16 +327,30 @@ function PairingOrganizer({
       )}
 
       {editablePairings && (
-        <div className={firstSwapSlot ? 'pairing-organizer-help selecting' : 'pairing-organizer-help'}>
-          <i className={firstSwapSlot ? 'ti ti-target-arrow' : 'ti ti-hand-click'} aria-hidden="true" />
-          <div>
-            <strong>{firstSwapSlot ? 'Ahora elige el jugador destino' : 'Toca un jugador para moverlo'}</strong>
-            <span>
-              {firstSwapSlot
-                ? `${selectedSlotLabel ?? 'Jugador seleccionado'} se intercambiara con el siguiente jugador que toques.`
-                : 'Despues toca otro jugador de otra mesa para intercambiarlos. Tambien puedes arrastrar en escritorio.'}
-            </span>
+        <div className={firstSwapSlot ? 'pairing-swap-bar active' : 'pairing-swap-bar'}>
+          <div className="pairing-swap-step">
+            <span>1</span>
+            <div>
+              <strong>Origen</strong>
+              <em>{selectedSlotLabel ?? 'Elige jugador'}</em>
+            </div>
           </div>
+          <i className="ti ti-arrows-exchange" aria-hidden="true" />
+          <div className="pairing-swap-step">
+            <span>2</span>
+            <div>
+              <strong>Destino</strong>
+              <em>{targetSlotLabel ?? 'Elige otro jugador'}</em>
+            </div>
+          </div>
+          <button type="button" disabled={!canConfirmSwap} onClick={() => onSwapPlayers(firstSwapSlot, secondSwapSlot)}>
+            <i className="ti ti-check" aria-hidden="true" />
+            Intercambiar
+          </button>
+          <button type="button" disabled={!firstSwapSlot && !secondSwapSlot} onClick={onClearSelection}>
+            <i className="ti ti-x" aria-hidden="true" />
+            Limpiar
+          </button>
         </div>
       )}
 
@@ -335,6 +370,7 @@ function PairingOrganizer({
                 slot={`${match.id}:${match.p1Id}`}
                 playerName={getPlayerName(match.p1Id)}
                 selected={firstSwapSlot === `${match.id}:${match.p1Id}`}
+                target={secondSwapSlot === `${match.id}:${match.p1Id}`}
                 disabled={!editablePairings || match.p2Id === 'BYE'}
                 label={slotLabels.get(`${match.id}:${match.p1Id}`)}
                 onClick={handleSlotClick}
@@ -347,6 +383,7 @@ function PairingOrganizer({
                 slot={`${match.id}:${match.p2Id}`}
                 playerName={getPlayerName(match.p2Id)}
                 selected={firstSwapSlot === `${match.id}:${match.p2Id}`}
+                target={secondSwapSlot === `${match.id}:${match.p2Id}`}
                 disabled={!editablePairings || match.p2Id === 'BYE'}
                 label={slotLabels.get(`${match.id}:${match.p2Id}`)}
                 onClick={handleSlotClick}
@@ -364,6 +401,7 @@ interface PairingPlayerSlotProps {
   slot: string
   playerName: string
   selected: boolean
+  target: boolean
   disabled: boolean
   label?: string
   onClick: (slot: string) => void
@@ -374,6 +412,7 @@ function PairingPlayerSlot({
   slot,
   playerName,
   selected,
+  target,
   disabled,
   label,
   onClick,
@@ -381,7 +420,7 @@ function PairingPlayerSlot({
 }: PairingPlayerSlotProps) {
   return (
     <button
-      className={selected ? 'pairing-player-slot selected' : 'pairing-player-slot'}
+      className={`pairing-player-slot${selected ? ' selected' : ''}${target ? ' target' : ''}`}
       draggable={!disabled}
       disabled={disabled}
       title={label}
@@ -395,6 +434,8 @@ function PairingPlayerSlot({
       onClick={() => onClick(slot)}
     >
       <i className="ti ti-grip-vertical" aria-hidden="true" />
+      {selected && <em>Origen</em>}
+      {target && <em>Destino</em>}
       <span>{playerName}</span>
     </button>
   )
