@@ -381,6 +381,11 @@ button:disabled {
   font-weight: 500;
 }
 
+.top-tab .status-badge {
+  padding: 2px 7px;
+  font-size: 10px;
+}
+
 .top-tab button {
   width: 16px;
   height: 16px;
@@ -400,6 +405,23 @@ button:disabled {
 
 .top-tab.active button {
   opacity: 1;
+}
+
+.top-tab:hover button {
+  opacity: 1;
+}
+
+.top-tabs-empty {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0.5px dashed var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  flex-shrink: 0;
 }
 
 .status-dot {

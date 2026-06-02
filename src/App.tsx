@@ -192,10 +192,13 @@ export default function App() {
 
         {route === 'admin' && !adminLocked && (
           <>
-            <div className="admin-current-context">
-              <span>{rankingSelected ? 'Ranking local' : activeTournament?.name ?? 'Sin torneo seleccionado'}</span>
-              {activeTournament?.status && <StatusBadge status={activeTournament.status} />}
-            </div>
+            <TournamentTopTabs
+              tournaments={tournaments}
+              selectedTab={selectedTab}
+              rankingSelected={rankingSelected}
+              onSelectTournament={selectAdminTab}
+              onDeleteTournament={handleDeleteTournament}
+            />
 
             <button
               className="admin-drawer-open"
@@ -230,14 +233,11 @@ export default function App() {
         <AdminDrawer
           open={adminDrawerOpen}
           tournaments={tournaments}
-          selectedTab={selectedTab}
           rankingSelected={rankingSelected}
           syncEnabled={syncEnabled}
           syncLoaded={syncLoaded}
           onClose={() => setAdminDrawerOpen(false)}
-          onSelectTournament={selectAdminTab}
           onSelectRanking={() => selectAdminTab(RANKING_TAB_ID)}
-          onDeleteTournament={handleDeleteTournament}
           onCreateTournament={handleCreateTournament}
           onOpenPublicTab={openPublicTab}
           onLogout={handleAdminLogout}
@@ -290,14 +290,11 @@ export default function App() {
 interface AdminDrawerProps {
   open: boolean
   tournaments: Tournament[]
-  selectedTab: string
   rankingSelected: boolean
   syncEnabled: boolean
   syncLoaded: boolean
   onClose: () => void
-  onSelectTournament: (id: string) => void
   onSelectRanking: () => void
-  onDeleteTournament: (tournament: Tournament) => void
   onCreateTournament: () => void
   onOpenPublicTab: (target: 'proyeccion' | 'temporizadores' | 'organizar') => void
   onLogout: () => void
@@ -306,14 +303,11 @@ interface AdminDrawerProps {
 function AdminDrawer({
   open,
   tournaments,
-  selectedTab,
   rankingSelected,
   syncEnabled,
   syncLoaded,
   onClose,
-  onSelectTournament,
   onSelectRanking,
-  onDeleteTournament,
   onCreateTournament,
   onOpenPublicTab,
   onLogout,
@@ -334,20 +328,12 @@ function AdminDrawer({
         </header>
 
         <section>
-          <div className="admin-drawer-section-title">Torneos</div>
+          <div className="admin-drawer-section-title">Gestion</div>
           <div className="admin-drawer-list">
-            {tournaments.map(tournament => (
-              <div key={tournament.id} className={selectedTab === tournament.id ? 'admin-drawer-row active' : 'admin-drawer-row'}>
-                <button onClick={() => onSelectTournament(tournament.id)}>
-                  <span>{tournament.name}</span>
-                  <StatusBadge status={tournament.status} />
-                </button>
-                <button onClick={() => onDeleteTournament(tournament)} aria-label={`Eliminar ${tournament.name}`}>
-                  <i className="ti ti-x" aria-hidden="true" />
-                </button>
-              </div>
-            ))}
-
+            <button className="admin-drawer-link" onClick={onCreateTournament} disabled={syncEnabled && !syncLoaded}>
+              <i className="ti ti-plus" aria-hidden="true" />
+              Crear torneo
+            </button>
             <button className={rankingSelected ? 'admin-drawer-link active' : 'admin-drawer-link'} onClick={onSelectRanking}>
               <i className="ti ti-chart-bar" aria-hidden="true" />
               Ranking local
@@ -374,10 +360,6 @@ function AdminDrawer({
         </section>
 
         <footer>
-          <button onClick={onCreateTournament} disabled={syncEnabled && !syncLoaded}>
-            <i className="ti ti-plus" aria-hidden="true" />
-            Crear torneo
-          </button>
           <button onClick={onLogout}>
             <i className="ti ti-logout" aria-hidden="true" />
             Cerrar sesion
@@ -437,6 +419,62 @@ function LoadingScreen() {
     <div className="loading-screen">
       <i className="ti ti-loader-2" aria-hidden="true" />
       <span>Cargando...</span>
+    </div>
+  )
+}
+
+function TournamentTopTabs({
+  tournaments,
+  selectedTab,
+  rankingSelected,
+  onSelectTournament,
+  onDeleteTournament,
+}: {
+  tournaments: Tournament[]
+  selectedTab: string
+  rankingSelected: boolean
+  onSelectTournament: (id: string) => void
+  onDeleteTournament: (tournament: Tournament) => void
+}) {
+  return (
+    <div className="top-tabs-scroll" aria-label="Torneos">
+      {tournaments.length === 0 && (
+        <div className="top-tabs-empty">
+          <i className="ti ti-trophy-off" aria-hidden="true" />
+          Sin torneos
+        </div>
+      )}
+
+      {tournaments.map(tournament => (
+        <div
+          key={tournament.id}
+          className={!rankingSelected && selectedTab === tournament.id ? 'top-tab active' : 'top-tab'}
+          role="button"
+          tabIndex={0}
+          title={tournament.name}
+          onClick={() => onSelectTournament(tournament.id)}
+          onKeyDown={event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              onSelectTournament(tournament.id)
+            }
+          }}
+        >
+          <span className="status-dot" style={{ background: getStatusDotColor(tournament.status) }} />
+          <span>{tournament.name}</span>
+          <StatusBadge status={tournament.status} />
+          <button
+            onClick={event => {
+              event.stopPropagation()
+              onDeleteTournament(tournament)
+            }}
+            aria-label={`Eliminar ${tournament.name}`}
+            title="Eliminar torneo"
+          >
+            <i className="ti ti-x" aria-hidden="true" />
+          </button>
+        </div>
+      ))}
     </div>
   )
 }
@@ -778,4 +816,10 @@ function StatusBadge({ status }: { status: Tournament['status'] }) {
       {c.label}
     </span>
   )
+}
+
+function getStatusDotColor(status: Tournament['status']) {
+  if (status === 'active') return 'var(--color-accent-secondary)'
+  if (status === 'finished') return 'var(--color-text-warning)'
+  return 'var(--color-accent-primary)'
 }
