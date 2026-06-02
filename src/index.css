@@ -5388,7 +5388,8 @@ button:disabled {
 .setup-workspace {
   grid-template-columns: minmax(0, 1fr) clamp(360px, 28vw, 430px);
   gap: clamp(8px, 1vw, 12px);
-  height: auto;
+  align-items: stretch;
+  height: 100%;
   min-height: 0;
   max-height: none;
   overflow: hidden;
@@ -5397,12 +5398,14 @@ button:disabled {
 .setup-main-column,
 .setup-side-column {
   min-height: 0;
+  max-height: 100%;
 }
 
 .setup-main-column {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: 8px;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -5584,6 +5587,7 @@ button:disabled {
   box-sizing: border-box;
   min-height: 0;
   height: 100%;
+  max-height: 100%;
   padding-bottom: 10px;
   overflow: hidden;
 }
@@ -5594,7 +5598,7 @@ button:disabled {
   grid-template-rows: auto minmax(0, 1fr);
   align-self: stretch;
   min-height: 0;
-  height: auto;
+  height: 100%;
   max-height: 100%;
   overflow: hidden;
   border-color: rgba(31, 122, 255, 0.38) !important;
