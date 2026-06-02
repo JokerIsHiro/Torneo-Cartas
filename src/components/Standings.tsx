@@ -1,9 +1,10 @@
 // Clasificacion visual del torneo actual. Cambia aqui columnas, podium o resumen
 // de rondas; los calculos de desempate salen de useSwissPairings.
+import { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
-import type { MatchResult, Player, TournamentTiebreakerSystem } from '../types/tournament'
+import type { MatchResult, Player, Round, TournamentTiebreakerSystem } from '../types/tournament'
 import {
   formatTiebreakerValue,
   getTiebreakerMetricLabel,
@@ -19,6 +20,7 @@ interface StandingsProps {
 }
 
 export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
+  const [historyOpen, setHistoryOpen] = useState(false)
   const { status, rounds, tcg, exists } = useTournamentsStore(
     useShallow(s => {
       const t = s.tournaments.find(t => t.id === tournamentId)
@@ -154,58 +156,29 @@ export function Standings({ tournamentId, showPodium = true }: StandingsProps) {
         ))}
       </div>
 
-      <div style={{
-        background: 'var(--color-background-primary)',
-        border: '0.5px solid var(--color-border-tertiary)',
-        borderRadius: 'var(--border-radius-lg)',
-        padding: '1rem 1.25rem',
-      }}>
-        <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '.75rem' }}>
-          <i className="ti ti-history" aria-hidden="true" /> Historial de rondas
+      <section className="history-compact-panel">
+        <div>
+          <i className="ti ti-history" aria-hidden="true" />
+          <div>
+            <strong>Historial de rondas</strong>
+            <span>{roundSummaries.length} rondas jugadas</span>
+          </div>
         </div>
+        <button onClick={() => setHistoryOpen(true)}>
+          <i className="ti ti-list-details" aria-hidden="true" />
+          Ver historial
+        </button>
+      </section>
 
-        {roundSummaries.map(summary => {
-          const round = rounds[summary.number - 1]
-          return (
-            <div key={summary.number} style={{ marginBottom: '.75rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)' }}>
-                  Ronda {summary.number}
-                  {summary.number === totalRounds && (
-                    <span style={{
-                      marginLeft: '6px',
-                      fontSize: '10px',
-                      padding: '1px 6px',
-                      borderRadius: 'var(--border-radius-md)',
-                      background: 'var(--color-draw-bg)',
-                      color: 'var(--color-accent-secondary)',
-                      border: '0.5px solid var(--color-border-primary)',
-                    }}>final</span>
-                  )}
-                </span>
-                <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-                  {summary.matchesDone}/{summary.matchesTotal} resultados
-                  {summary.isComplete && (
-                    <i className="ti ti-circle-check" aria-hidden="true" style={{ marginLeft: '6px', color: 'var(--color-accent-secondary)' }} />
-                  )}
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {round.matches.map(match => (
-                  <RoundResultRow
-                    key={match.id}
-                    tableNumber={match.tableNumber}
-                    p1Name={getPlayerName(match.p1Id)}
-                    p2Name={match.p2Id === 'BYE' ? 'BYE' : getPlayerName(match.p2Id)}
-                    result={match.result}
-                  />
-                ))}
-              </div>
-            </div>
-          )
-        })}
-      </div>
+      {historyOpen && (
+        <RoundHistoryDialog
+          rounds={rounds}
+          roundSummaries={roundSummaries}
+          totalRounds={totalRounds}
+          getPlayerName={getPlayerName}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
     </div>
   )
 }
@@ -219,6 +192,70 @@ const selectStyle: React.CSSProperties = {
   background: 'var(--color-background-secondary)',
   color: 'var(--color-text-primary)',
   outline: 'none',
+}
+
+function RoundHistoryDialog({
+  rounds,
+  roundSummaries,
+  totalRounds,
+  getPlayerName,
+  onClose,
+}: {
+  rounds: Round[]
+  roundSummaries: Array<{ number: number; matchesTotal: number; matchesDone: number; isComplete: boolean }>
+  totalRounds: number
+  getPlayerName: (id: string) => string
+  onClose: () => void
+}) {
+  return (
+    <div className="history-dialog-backdrop" role="presentation" onMouseDown={onClose}>
+      <div className="history-dialog" role="dialog" aria-modal="true" aria-label="Historial de rondas" onMouseDown={event => event.stopPropagation()}>
+        <header>
+          <div>
+            <strong>Historial de rondas</strong>
+            <span>Resultados registrados durante el torneo.</span>
+          </div>
+          <button onClick={onClose} aria-label="Cerrar historial de rondas">
+            <i className="ti ti-x" aria-hidden="true" />
+          </button>
+        </header>
+
+        <div className="history-dialog-body">
+          {roundSummaries.map(summary => {
+            const round = rounds[summary.number - 1]
+            const matches = round?.matches ?? []
+            return (
+              <section key={summary.number} className="history-round-card">
+                <header>
+                  <div>
+                    <strong>Ronda {summary.number}</strong>
+                    {summary.number === totalRounds && <em>final</em>}
+                  </div>
+                  <span>
+                    {summary.matchesDone}/{summary.matchesTotal} resultados
+                    {summary.isComplete && <i className="ti ti-circle-check" aria-hidden="true" />}
+                  </span>
+                </header>
+
+                <div>
+                  {matches.map(match => (
+                    <RoundResultRow
+                      key={match.id}
+                      tableNumber={match.tableNumber}
+                      p1Name={getPlayerName(match.p1Id)}
+                      p2Name={match.p2Id === 'BYE' ? 'BYE' : getPlayerName(match.p2Id)}
+                      result={match.result}
+                    />
+                  ))}
+                  {!matches.length && <p>No hay emparejamientos guardados para esta ronda.</p>}
+                </div>
+              </section>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function RoundResultRow({

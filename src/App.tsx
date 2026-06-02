@@ -67,6 +67,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<AdminTab>('')
   const [innerTab, setInnerTab] = useState<Record<string, TournamentInnerTab>>({})
   const [adminUnlocked, setAdminUnlocked] = useState(() => localStorage.getItem(ADMIN_SESSION_KEY) === ADMIN_SESSION_VALUE)
+  const [adminDrawerOpen, setAdminDrawerOpen] = useState(false)
   const isMobileDevice = useIsMobileDevice()
   useFirebaseSync()
 
@@ -131,6 +132,7 @@ export default function App() {
     initTimer(id, 50 * 60)
     setActiveTab(id)
     setRoute('admin')
+    setAdminDrawerOpen(false)
   }
 
   function handleDeleteTournament(t: Tournament) {
@@ -160,8 +162,15 @@ export default function App() {
   function handleAdminLogout() {
     localStorage.removeItem(ADMIN_SESSION_KEY)
     setAdminUnlocked(false)
+    setAdminDrawerOpen(false)
     void signOutAdmin()
     setRoute('admin')
+  }
+
+  function selectAdminTab(tab: AdminTab) {
+    setActiveTab(tab)
+    setRoute('admin')
+    setAdminDrawerOpen(false)
   }
 
   const selectedTab = activeTab || tournaments[0]?.id || ''
@@ -182,71 +191,18 @@ export default function App() {
 
         {route === 'admin' && !adminLocked && (
           <>
-            {tournaments.map(t => (
-              <TopTab
-                key={t.id}
-                label={t.name}
-                active={selectedTab === t.id}
-                status={t.status}
-                onClick={() => setActiveTab(t.id)}
-                onClose={() => handleDeleteTournament(t)}
-              />
-            ))}
-
-            <TopTab
-              label="Ranking local"
-              active={rankingSelected}
-              onClick={() => setActiveTab(RANKING_TAB_ID)}
-            />
-
-            {tournaments.length > 0 && (
-              <div className="admin-public-actions">
-                <button
-                  onClick={() => openPublicTab('proyeccion')}
-                  className="projector-open-button"
-                  title="Abre la pantalla publica de mesas y rivales"
-                >
-                  <i className="ti ti-external-link" aria-hidden="true" />
-                  Pantalla de emparejamientos
-                </button>
-
-                <button
-                  onClick={() => openPublicTab('temporizadores')}
-                  className="projector-open-button"
-                  title="Abre los relojes de ronda en otra pestana"
-                >
-                  <i className="ti ti-clock" aria-hidden="true" />
-                  Pantalla de temporizadores
-                </button>
-
-                <button
-                  onClick={() => openPublicTab('organizar')}
-                  className="projector-open-button"
-                  title="Abre el organizador de mesas en una vista usable en tablet o movil"
-                >
-                  <i className="ti ti-arrows-shuffle" aria-hidden="true" />
-                  Organizar mesas
-                </button>
-              </div>
-            )}
+            <div className="admin-current-context">
+              <span>{rankingSelected ? 'Ranking local' : activeTournament?.name ?? 'Sin torneo seleccionado'}</span>
+              {activeTournament?.status && <StatusBadge status={activeTournament.status} />}
+            </div>
 
             <button
-              onClick={handleCreateTournament}
-              disabled={syncEnabled && !syncLoaded}
-              className="new-tournament-button"
-              title="Crea un torneo vacio para configurar"
+              className="admin-drawer-open"
+              onClick={() => setAdminDrawerOpen(true)}
+              aria-label="Abrir menu de administracion"
             >
-              <i className="ti ti-plus" aria-hidden="true" />
-              Crear nuevo torneo
-            </button>
-
-            <button
-              onClick={handleAdminLogout}
-              className="projector-open-button"
-              title="Cierra la sesion de administracion de la tienda"
-            >
-              <i className="ti ti-logout" aria-hidden="true" />
-              Cerrar sesion
+              <i className="ti ti-menu-2" aria-hidden="true" />
+              Menu
             </button>
           </>
         )}
@@ -268,6 +224,24 @@ export default function App() {
           </div>
         )}
       </div>}
+
+      {route === 'admin' && !adminLocked && (
+        <AdminDrawer
+          open={adminDrawerOpen}
+          tournaments={tournaments}
+          selectedTab={selectedTab}
+          rankingSelected={rankingSelected}
+          syncEnabled={syncEnabled}
+          syncLoaded={syncLoaded}
+          onClose={() => setAdminDrawerOpen(false)}
+          onSelectTournament={selectAdminTab}
+          onSelectRanking={() => selectAdminTab(RANKING_TAB_ID)}
+          onDeleteTournament={handleDeleteTournament}
+          onCreateTournament={handleCreateTournament}
+          onOpenPublicTab={openPublicTab}
+          onLogout={handleAdminLogout}
+        />
+      )}
 
       <main className={route !== 'admin' ? 'main-content projector-content' : 'main-content'}>
         {mobileBlocked && <MobilePlayerOnly />}
@@ -308,6 +282,107 @@ export default function App() {
           </div>
         )}
       </main>
+    </div>
+  )
+}
+
+interface AdminDrawerProps {
+  open: boolean
+  tournaments: Tournament[]
+  selectedTab: string
+  rankingSelected: boolean
+  syncEnabled: boolean
+  syncLoaded: boolean
+  onClose: () => void
+  onSelectTournament: (id: string) => void
+  onSelectRanking: () => void
+  onDeleteTournament: (tournament: Tournament) => void
+  onCreateTournament: () => void
+  onOpenPublicTab: (target: 'proyeccion' | 'temporizadores' | 'organizar') => void
+  onLogout: () => void
+}
+
+function AdminDrawer({
+  open,
+  tournaments,
+  selectedTab,
+  rankingSelected,
+  syncEnabled,
+  syncLoaded,
+  onClose,
+  onSelectTournament,
+  onSelectRanking,
+  onDeleteTournament,
+  onCreateTournament,
+  onOpenPublicTab,
+  onLogout,
+}: AdminDrawerProps) {
+  if (!open) return null
+
+  return (
+    <div className="admin-drawer-backdrop" role="presentation" onMouseDown={onClose}>
+      <aside className="admin-drawer" role="dialog" aria-modal="true" aria-label="Menu de administracion" onMouseDown={event => event.stopPropagation()}>
+        <header>
+          <div>
+            <strong>Administracion</strong>
+            <span>Torneos y pantallas de tienda</span>
+          </div>
+          <button onClick={onClose} aria-label="Cerrar menu">
+            <i className="ti ti-x" aria-hidden="true" />
+          </button>
+        </header>
+
+        <section>
+          <div className="admin-drawer-section-title">Torneos</div>
+          <div className="admin-drawer-list">
+            {tournaments.map(tournament => (
+              <div key={tournament.id} className={selectedTab === tournament.id ? 'admin-drawer-row active' : 'admin-drawer-row'}>
+                <button onClick={() => onSelectTournament(tournament.id)}>
+                  <span>{tournament.name}</span>
+                  <StatusBadge status={tournament.status} />
+                </button>
+                <button onClick={() => onDeleteTournament(tournament)} aria-label={`Eliminar ${tournament.name}`}>
+                  <i className="ti ti-x" aria-hidden="true" />
+                </button>
+              </div>
+            ))}
+
+            <button className={rankingSelected ? 'admin-drawer-link active' : 'admin-drawer-link'} onClick={onSelectRanking}>
+              <i className="ti ti-chart-bar" aria-hidden="true" />
+              Ranking local
+            </button>
+          </div>
+        </section>
+
+        <section>
+          <div className="admin-drawer-section-title">Pantallas</div>
+          <div className="admin-drawer-actions">
+            <button disabled={!tournaments.length} onClick={() => onOpenPublicTab('proyeccion')}>
+              <i className="ti ti-external-link" aria-hidden="true" />
+              Emparejamientos
+            </button>
+            <button disabled={!tournaments.length} onClick={() => onOpenPublicTab('temporizadores')}>
+              <i className="ti ti-clock" aria-hidden="true" />
+              Temporizadores
+            </button>
+            <button disabled={!tournaments.length} onClick={() => onOpenPublicTab('organizar')}>
+              <i className="ti ti-arrows-shuffle" aria-hidden="true" />
+              Organizar mesas
+            </button>
+          </div>
+        </section>
+
+        <footer>
+          <button onClick={onCreateTournament} disabled={syncEnabled && !syncLoaded}>
+            <i className="ti ti-plus" aria-hidden="true" />
+            Crear torneo
+          </button>
+          <button onClick={onLogout}>
+            <i className="ti ti-logout" aria-hidden="true" />
+            Cerrar sesion
+          </button>
+        </footer>
+      </aside>
     </div>
   )
 }
@@ -549,41 +624,6 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
       {status === 'active' && innerTab === 'organizar' && <Round tournamentId={id} mode="organize" />}
       {status === 'active' && innerTab === 'clasificacion' && <Standings tournamentId={id} />}
       {status === 'finished' && <Results tournamentId={id} />}
-    </div>
-  )
-}
-
-interface TopTabProps {
-  label: string
-  active: boolean
-  status?: Tournament['status']
-  onClick: () => void
-  onClose?: () => void
-}
-
-function TopTab({ label, active, status, onClick, onClose }: TopTabProps) {
-  const dotColor = (() => {
-    if (status === 'active') return 'var(--color-accent-secondary)'
-    if (status === 'finished') return 'var(--color-text-warning)'
-    return 'transparent'
-  })()
-
-  return (
-    <div
-      onClick={onClick}
-      className={active ? 'top-tab active' : 'top-tab'}
-    >
-      {status && <span className="status-dot" style={{ background: dotColor }} />}
-      <span>{label}</span>
-
-      {onClose && (
-        <button
-          onClick={e => { e.stopPropagation(); onClose() }}
-          aria-label="Cerrar torneo"
-        >
-          <i className="ti ti-x" aria-hidden="true" />
-        </button>
-      )}
     </div>
   )
 }
