@@ -1335,6 +1335,15 @@ button:disabled {
   font-size: 12px;
 }
 
+.player-portal {
+  display: grid;
+  gap: 12px;
+}
+
+.player-portal > p {
+  margin-bottom: 0;
+}
+
 .player-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

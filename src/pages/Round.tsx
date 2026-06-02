@@ -18,6 +18,7 @@ interface RoundProps {
 export function Round({ tournamentId, mode = 'results' }: RoundProps) {
   const nextRound = useTournamentsStore(s => s.nextRound)
   const finishTournament = useTournamentsStore(s => s.finishTournament)
+  const approvePendingResult = useTournamentsStore(s => s.approvePendingResult)
   const swapCurrentRoundPlayers = useTournamentsStore(s => s.swapCurrentRoundPlayers)
   const addLatePlayerToCurrentRound = useTournamentsStore(s => s.addLatePlayerToCurrentRound)
   const { currentRound, pendingResults, tournament } = useTournamentsStore(
@@ -87,6 +88,12 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
     }
     previousPendingCount.current = pendingResults.length
   }, [pendingResults.length])
+
+  useEffect(() => {
+    const consensusResult = findConsensusPendingResult(pendingResults)
+    if (!consensusResult) return
+    approvePendingResult(tournamentId, consensusResult.id)
+  }, [approvePendingResult, pendingResults, tournamentId])
 
   if (mode === 'organize') {
     return (
@@ -457,6 +464,19 @@ function canSwapSlots(firstValue: string, secondValue: string) {
   if (first.matchId === second.matchId) return false
   if (first.playerId === second.playerId) return false
   return true
+}
+
+function findConsensusPendingResult(pendingResults: PendingMatchResult[]) {
+  for (const pendingResult of pendingResults) {
+    const matchingOpponentReport = pendingResults.find(candidate =>
+      candidate.id !== pendingResult.id
+      && candidate.matchId === pendingResult.matchId
+      && candidate.playerId !== pendingResult.playerId
+      && candidate.result === pendingResult.result
+    )
+    if (matchingOpponentReport) return pendingResult
+  }
+  return null
 }
 
 async function notifyOrganizer(title: string, body: string) {

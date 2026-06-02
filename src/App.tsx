@@ -17,7 +17,7 @@ import { ADMIN_AUTH_EMAIL } from './config/appConfig'
 
 // Componente raiz. Decide que vista se muestra segun la ruta de la URL
 // y conecta la sincronizacion entre pestanas.
-type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion' | 'qr' | 'deckbuilder'
+type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion' | 'jugador' | 'qr' | 'deckbuilder'
 type AdminTab = string
 type TournamentInnerTab = 'ronda' | 'organizar' | 'clasificacion'
 
@@ -37,6 +37,7 @@ const routePaths: Record<AppRoute, string> = {
   proyeccion: '/proyeccion',
   temporizadores: '/temporizadores',
   inscripcion: '/inscripcion',
+  jugador: '/jugador',
   qr: '/qr',
   deckbuilder: '/deckbuilder',
 }
@@ -45,6 +46,7 @@ function getRouteFromPath(): AppRoute {
   if (window.location.pathname.startsWith('/proyeccion')) return 'proyeccion'
   if (window.location.pathname.startsWith('/temporizadores')) return 'temporizadores'
   if (window.location.pathname.startsWith('/inscripcion')) return 'inscripcion'
+  if (window.location.pathname.startsWith('/jugador')) return 'jugador'
   if (window.location.pathname.startsWith('/qr')) return 'qr'
   if (window.location.pathname.startsWith('/deckbuilder')) return 'deckbuilder'
   return 'admin'
@@ -163,7 +165,7 @@ export default function App() {
   const selectedTab = activeTab || tournaments[0]?.id || ''
   const activeTournament = tournaments.find(t => t.id === selectedTab)
   const rankingSelected = selectedTab === RANKING_TAB_ID
-  const mobileBlocked = isMobileDevice && route !== 'inscripcion'
+  const mobileBlocked = isMobileDevice && route !== 'inscripcion' && route !== 'jugador'
   const adminLocked = (route === 'admin' || route === 'deckbuilder') && !adminUnlocked
 
   return (
@@ -238,7 +240,7 @@ export default function App() {
           </>
         )}
 
-        {route !== 'admin' && route !== 'inscripcion' && (
+        {route !== 'admin' && route !== 'inscripcion' && route !== 'jugador' && (
           <div className="public-nav">
             {route === 'proyeccion' && (
               <button onClick={() => setRoute('temporizadores')} title="Ver relojes de ronda">
@@ -262,6 +264,7 @@ export default function App() {
         {!mobileBlocked && route === 'proyeccion' && <LazyView><ProjectorView /></LazyView>}
         {!mobileBlocked && route === 'temporizadores' && <LazyView><TimersView /></LazyView>}
         {route === 'inscripcion' && <LazyView><RegistrationView /></LazyView>}
+        {route === 'jugador' && <LazyView><RegistrationView /></LazyView>}
         {!mobileBlocked && route === 'qr' && <QrView />}
         {!mobileBlocked && route === 'deckbuilder' && !adminLocked && <LazyView><DeckBuilderView /></LazyView>}
 
@@ -429,7 +432,7 @@ function MobilePlayerOnly() {
     <div className="mobile-player-only">
       <img src="/subterra-logo.jpg" alt="Subterra TCG" />
       <h1>Acceso de jugadores</h1>
-      <p>En movil solo esta disponible la inscripcion y el emparejamiento personal desde el enlace o QR del torneo.</p>
+      <p>En movil solo esta disponible la inscripcion y el panel personal desde el enlace o QR del torneo.</p>
     </div>
   )
 }

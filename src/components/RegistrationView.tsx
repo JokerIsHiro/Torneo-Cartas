@@ -1,6 +1,6 @@
 // Pantalla publica de inscripcion de jugadores. Cambia aqui el formulario visible
 // desde QR/enlace, no la gestion interna de participantes.
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
@@ -14,6 +14,7 @@ interface PlayerSession {
 // Pantalla publica de inscripcion y panel persistente del jugador.
 export function RegistrationView() {
   const tournamentId = getTargetTournamentId()
+  const playerIdFromLink = getTargetPlayerId()
   const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
   const { syncEnabled, syncLoaded } = useTournamentsStore(
     useShallow(s => ({
@@ -28,14 +29,24 @@ export function RegistrationView() {
   const [createdSession, setCreatedSession] = useState<PlayerSession | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const session = createdSession?.tournamentId === tournamentId
-    ? createdSession
-    : loadPlayerSession(tournamentId)
+  const linkSession = useMemo(
+    () => tournamentId && playerIdFromLink
+      ? { tournamentId, playerId: playerIdFromLink }
+      : null,
+    [playerIdFromLink, tournamentId]
+  )
+  const session = linkSession
+    ?? (createdSession?.tournamentId === tournamentId ? createdSession : loadPlayerSession(tournamentId))
 
   const registeredPlayer = useMemo(() => {
     if (!tournament || !session || session.tournamentId !== tournament.id) return null
     return tournament.players.find(p => p.id === session.playerId) ?? null
   }, [session, tournament])
+
+  useEffect(() => {
+    if (!linkSession || !registeredPlayer) return
+    savePlayerSession(linkSession)
+  }, [linkSession, registeredPlayer])
 
   if (!tournamentId) {
     return (
@@ -84,6 +95,7 @@ export function RegistrationView() {
           setMessage('Lista de mazo guardada.')
           setError('')
         }}
+        playerLink={getPlayerPortalLink(tournament.id, registeredPlayer.id)}
       />
     )
   }
@@ -165,6 +177,7 @@ function PlayerPortal({
   onSubmitDeck,
   message,
   error,
+  playerLink,
 }: {
   player: Player
   tournament: Tournament
@@ -172,6 +185,7 @@ function PlayerPortal({
   onSubmitDeck: (deck: { name: string; archetype?: string; list: string; notes: string }) => void
   message: string
   error: string
+  playerLink: string
 }) {
   const { standings } = useSwissPairings(tournament.id)
   const existingDeck = [...(tournament.decklists ?? [])].reverse().find(deck => deck.playerId === player.id)
@@ -220,6 +234,20 @@ function PlayerPortal({
       <i className="ti ti-user-check" aria-hidden="true" />
       <h1>{player.name}</h1>
       <p>{tournament.name}</p>
+
+      <div className="player-panel">
+        <strong>Tu enlace personal</strong>
+        <span>Guardalo para consultar mesa, rival y resultados desde este u otro dispositivo.</span>
+        <input value={playerLink} readOnly onFocus={event => event.currentTarget.select()} />
+        <button
+          type="button"
+          onClick={() => void navigator.clipboard?.writeText(playerLink)}
+          title="Copia tu enlace personal"
+        >
+          <i className="ti ti-copy" aria-hidden="true" />
+          Copiar enlace
+        </button>
+      </div>
 
       <div className="player-summary-grid">
         <div>
@@ -392,6 +420,25 @@ function getTargetTournamentId() {
   if (queryStart === -1) return ''
   const hashParams = new URLSearchParams(window.location.hash.slice(queryStart + 1))
   return hashParams.get('torneo') ?? ''
+}
+
+function getTargetPlayerId() {
+  const searchParams = new URLSearchParams(window.location.search)
+  const searchPlayer = searchParams.get('jugador')
+  if (searchPlayer) return searchPlayer
+
+  const queryStart = window.location.hash.indexOf('?')
+  if (queryStart === -1) return ''
+  const hashParams = new URLSearchParams(window.location.hash.slice(queryStart + 1))
+  return hashParams.get('jugador') ?? ''
+}
+
+function getPlayerPortalLink(tournamentId: string, playerId: string) {
+  const publicUrl = import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin
+  const url = new URL('/jugador', publicUrl)
+  url.searchParams.set('torneo', tournamentId)
+  url.searchParams.set('jugador', playerId)
+  return url.toString()
 }
 
 function getPlayerSessionKey(tournamentId: string) {
