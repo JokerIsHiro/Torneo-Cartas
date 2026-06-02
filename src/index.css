@@ -313,6 +313,13 @@ button:disabled {
   margin: 2px 0 0;
 }
 
+.tournament-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .status-badge {
   font-size: 11px;
   padding: 3px 10px;
@@ -1637,7 +1644,7 @@ button:disabled {
 
 .pairing-swap-step {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -1646,18 +1653,6 @@ button:disabled {
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-md);
   background: var(--color-background-secondary);
-}
-
-.pairing-swap-step > span {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border: 0.5px solid var(--color-border-secondary);
-  border-radius: 50%;
-  color: var(--color-accent-secondary);
-  font-size: 12px;
-  font-weight: 800;
 }
 
 .pairing-swap-step div {
@@ -1813,20 +1808,11 @@ button:disabled {
   border-radius: var(--border-radius-md);
   background: var(--color-background-secondary);
   color: var(--color-text-primary);
-  cursor: grab;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
   text-align: left;
-}
-
-.pairing-player-slot i {
-  color: var(--color-text-secondary);
-  font-size: 16px;
-}
-
-.pairing-player-slot:active {
-  cursor: grabbing;
 }
 
 .pairing-player-slot.selected {
@@ -1843,10 +1829,6 @@ button:disabled {
   box-shadow: 0 0 0 1px rgba(255, 209, 102, 0.14);
 }
 
-.pairing-player-slot.selected i {
-  color: var(--color-accent-secondary);
-}
-
 .pairing-player-slot:disabled {
   cursor: not-allowed;
 }
@@ -1858,17 +1840,6 @@ button:disabled {
   white-space: nowrap;
   font-weight: 600;
   font-size: 14px;
-}
-
-.pairing-player-slot em {
-  flex: 0 0 auto;
-  padding: 2px 6px;
-  border: 0.5px solid currentColor;
-  border-radius: var(--border-radius-md);
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 800;
-  text-transform: uppercase;
 }
 
 .pairing-table-versus {
@@ -1889,42 +1860,7 @@ button:disabled {
 }
 
 .snapshot-compact-panel {
-  margin-top: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 0.5px solid var(--color-border-tertiary);
-  border-radius: var(--border-radius-lg);
-  background: var(--color-background-primary);
-}
-
-.snapshot-compact-panel > div {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.snapshot-compact-panel > div > i {
-  color: var(--color-accent-secondary);
-  font-size: 18px;
-}
-
-.snapshot-compact-panel strong,
-.snapshot-compact-panel span {
-  display: block;
-}
-
-.snapshot-compact-panel strong {
-  color: var(--color-text-primary);
-  font-size: 14px;
-}
-
-.snapshot-compact-panel span {
-  color: var(--color-text-secondary);
-  font-size: 12px;
+  display: inline-flex;
 }
 
 .snapshot-compact-panel button,
@@ -1941,6 +1877,25 @@ button:disabled {
   justify-content: center;
   gap: 7px;
   font-weight: 700;
+}
+
+.snapshot-compact-panel button {
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.snapshot-compact-panel button span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-draw-bg);
+  color: var(--color-accent-secondary);
+  font-size: 11px;
 }
 
 .snapshot-dialog-backdrop {
@@ -4086,6 +4041,12 @@ button:disabled {
     width: fit-content;
   }
 
+  .tournament-header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
   .segmented-tabs {
     overflow-x: auto;
     scrollbar-width: none;
@@ -4281,13 +4242,8 @@ button:disabled {
     font-size: 14px;
   }
 
-  .snapshot-compact-panel {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
   .snapshot-compact-panel button {
-    width: 100%;
+    min-height: 34px;
   }
 
   .snapshot-dialog {

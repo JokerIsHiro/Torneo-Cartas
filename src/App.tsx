@@ -519,7 +519,10 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
             {status === 'finished' && 'Torneo finalizado'}
           </p>
         </div>
-        <StatusBadge status={status} />
+        <div className="tournament-header-actions">
+          <SnapshotPanel tournamentId={id} />
+          <StatusBadge status={status} />
+        </div>
       </div>
 
       {status === 'active' && (
@@ -546,7 +549,6 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
       {status === 'active' && innerTab === 'organizar' && <Round tournamentId={id} mode="organize" />}
       {status === 'active' && innerTab === 'clasificacion' && <Standings tournamentId={id} />}
       {status === 'finished' && <Results tournamentId={id} />}
-      <SnapshotPanel tournamentId={id} />
     </div>
   )
 }

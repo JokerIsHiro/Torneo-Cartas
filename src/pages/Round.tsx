@@ -302,12 +302,6 @@ function PairingOrganizer({
     onSelectTargetSlot(slot)
   }
 
-  function handleDrop(event: React.DragEvent, targetSlot: string) {
-    event.preventDefault()
-    if (!editablePairings) return
-    onSwapPlayers(event.dataTransfer.getData('text/plain') || firstSwapSlot, targetSlot)
-  }
-
   return (
     <section className="pairing-organizer-page">
       <div className="round-section-header">
@@ -329,17 +323,15 @@ function PairingOrganizer({
       {editablePairings && (
         <div className={firstSwapSlot ? 'pairing-swap-bar active' : 'pairing-swap-bar'}>
           <div className="pairing-swap-step">
-            <span>1</span>
             <div>
-              <strong>Origen</strong>
+              <strong>Jugador seleccionado</strong>
               <em>{selectedSlotLabel ?? 'Elige jugador'}</em>
             </div>
           </div>
           <i className="ti ti-arrows-exchange" aria-hidden="true" />
           <div className="pairing-swap-step">
-            <span>2</span>
             <div>
-              <strong>Destino</strong>
+              <strong>Intercambiar con</strong>
               <em>{targetSlotLabel ?? 'Elige otro jugador'}</em>
             </div>
           </div>
@@ -374,7 +366,6 @@ function PairingOrganizer({
                 disabled={!editablePairings || match.p2Id === 'BYE'}
                 label={slotLabels.get(`${match.id}:${match.p1Id}`)}
                 onClick={handleSlotClick}
-                onDrop={handleDrop}
               />
 
               <div className="pairing-table-versus">vs</div>
@@ -387,7 +378,6 @@ function PairingOrganizer({
                 disabled={!editablePairings || match.p2Id === 'BYE'}
                 label={slotLabels.get(`${match.id}:${match.p2Id}`)}
                 onClick={handleSlotClick}
-                onDrop={handleDrop}
               />
             </div>
           </article>
@@ -405,7 +395,6 @@ interface PairingPlayerSlotProps {
   disabled: boolean
   label?: string
   onClick: (slot: string) => void
-  onDrop: (event: React.DragEvent, slot: string) => void
 }
 
 function PairingPlayerSlot({
@@ -416,26 +405,14 @@ function PairingPlayerSlot({
   disabled,
   label,
   onClick,
-  onDrop,
 }: PairingPlayerSlotProps) {
   return (
     <button
       className={`pairing-player-slot${selected ? ' selected' : ''}${target ? ' target' : ''}`}
-      draggable={!disabled}
       disabled={disabled}
       title={label}
-      onDragStart={event => {
-        event.dataTransfer.setData('text/plain', slot)
-      }}
-      onDragOver={event => {
-        if (!disabled) event.preventDefault()
-      }}
-      onDrop={event => onDrop(event, slot)}
       onClick={() => onClick(slot)}
     >
-      <i className="ti ti-grip-vertical" aria-hidden="true" />
-      {selected && <em>Origen</em>}
-      {target && <em>Destino</em>}
       <span>{playerName}</span>
     </button>
   )

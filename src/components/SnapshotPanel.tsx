@@ -26,16 +26,10 @@ export function SnapshotPanel({ tournamentId }: SnapshotPanelProps) {
   return (
     <>
       <section className="snapshot-compact-panel">
-        <div>
-          <i className="ti ti-history" aria-hidden="true" />
-          <div>
-            <strong>Restaurar torneo</strong>
-            <span>{snapshots.length} copias automaticas disponibles</span>
-          </div>
-        </div>
         <button onClick={() => setIsOpen(true)} title="Abre el historial de estados guardados">
-          <i className="ti ti-list-details" aria-hidden="true" />
-          Ver copias
+          <i className="ti ti-history" aria-hidden="true" />
+          Restaurar
+          <span>{snapshots.length}</span>
         </button>
       </section>
 
