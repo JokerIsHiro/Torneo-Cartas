@@ -1,68 +1,61 @@
-# Subterra Torneos
+# SUBTERRA Torneos
 
-Aplicacion web para gestionar torneos presenciales de TCG en tienda: altas por QR, rondas Swiss, resultados, temporizadores sincronizados, clasificacion, proyeccion publica y constructor visual de decklists exportables como imagen.
+SUBTERRA Torneos es la plataforma interna de SUBTERRA para organizar, operar y promocionar eventos presenciales de TCG y juegos competitivos. Centraliza la preparacion del torneo, la inscripcion por QR, las rondas, los resultados, las pantallas publicas, el ranking local y el flujo de decklists para que la tienda pueda llevar eventos con una experiencia clara tanto para organizadores como para jugadores.
 
-## Funcionalidades
+El proyecto esta pensado para el dia a dia de SUBTERRA: administracion en pantalla grande, jugadores desde movil mediante enlace o QR, y material visual listo para apoyar la actividad de la tienda.
 
-- Creacion de torneos para Magic, Riftbound, Pokemon, YuGiOh, Lorcana y One Piece.
-- Inscripcion publica por enlace o QR.
-- Gestion de rondas Swiss con BYE automatico y evitando repetir rivales cuando es posible.
-- Sistemas de desempate configurables por torneo: resistencia TCG, Magic calculable, Pokemon, Buchholz, Buchholz cortado, Sonneborn-Berger, progresivo, frente a frente y criterios simples.
-- Envio de resultados desde jugador y aprobacion desde administracion.
-- Temporizadores sincronizados entre pantallas.
-- Pantalla de proyeccion para emparejamientos.
-- Snapshots automaticos antes de cambios importantes.
-- Deckbuilder visual solo al finalizar torneo.
-- Importacion flexible de listas por juego.
-- Importacion tolerante de exportaciones externas con cabeceras por seccion y conteos.
-- Exportacion de decklists como imagen para redes.
-- Persistencia en Firebase Firestore con Auth anonima para jugadores y Auth email/password para administracion.
+## Funcionalidades principales
 
-## Stack
+- Creacion y configuracion de torneos para Magic, Riftbound, Pokemon, YuGiOh, Lorcana, One Piece y Ajedrez.
+- Inscripcion publica mediante QR o enlace compartible.
+- Registro de jugadores nuevos y habituales por juego.
+- Rondas Swiss con BYE automatico y reduccion de rivales repetidos cuando es posible.
+- Modalidades individuales, 2vs2 y 3vs3.
+- Estructura Swiss o Swiss + Top.
+- Resultados administrados desde tienda y reportes enviados por jugadores.
+- Temporizadores sincronizados entre vistas.
+- Pantallas publicas de emparejamientos y temporizadores.
+- Clasificacion con sistemas de desempate configurables.
+- Ranking local por temporada para seguimiento competitivo de SUBTERRA.
+- Panel de snapshots para recuperar estados importantes.
+- Portal de jugador con mesa, rival, historial y envio de decklist.
+- Deckbuilder con importacion flexible, validacion basica y exportacion visual.
+- Exportacion de standings, rondas y decklists como imagen.
+- Persistencia en Firebase Firestore.
+- Despliegue en Firebase Hosting.
+
+## Stack tecnico
 
 - React 19
 - TypeScript
 - Vite
 - Zustand
-- Firebase Auth + Firestore
-- html2canvas
+- Firebase Auth
+- Firebase Firestore
+- Firebase Hosting
 - qrcode.react
+- html2canvas
 - Capacitor Android
 
-## Estructura Principal
+## Requisitos
 
-```txt
-src/
-  App.tsx                         Rutas, login admin y shell principal
-  components/
-    DeckBuilderView.tsx           Constructor visual de mazos
-    CircularTimer.tsx             Reloj circular reutilizable
-    RegistrationView.tsx          Vista publica para jugadores
-    ProjectorView.tsx             Pantalla publica de emparejamientos
-    SnapshotPanel.tsx             Restauracion de copias automaticas
-  hooks/
-    useFirebaseSync.ts            Suscripcion a Firestore
-    useSwissPairings.ts           Datos derivados de rondas/clasificacion
-    useExportImage.ts             Exportacion PNG desde DOM
-  services/
-    firebase.ts                   Auth, Firestore y normalizacion remota
-    cardSearch.ts                 APIs de cartas por juego
-  store/
-    tournamentsStore.ts           Estado y mutaciones de torneos
-    timerStore.ts                 Estado y sync de temporizadores
-  utils/
-    deckImport.ts                 Parser flexible de decklists
-    deckRules.ts                  Reglas y secciones por juego
-    timerSound.ts                 Audio del temporizador
-  types/
-    tournament.ts                 Tipos centrales del dominio
-```
+- Node.js 22 recomendado.
+- npm.
+- Proyecto Firebase configurado.
+- Usuario administrador en Firebase Auth.
+- Acceso al repositorio de GitHub para despliegues automaticos.
 
-## Instalacion
+## Instalacion local
 
 ```bash
 npm install
 npm run dev
+```
+
+La aplicacion suele levantarse en:
+
+```txt
+http://localhost:5173
 ```
 
 En Windows, si PowerShell bloquea scripts, usa:
@@ -71,24 +64,19 @@ En Windows, si PowerShell bloquea scripts, usa:
 npm.cmd run dev
 ```
 
-La app de desarrollo suele quedar en:
-
-```txt
-http://localhost:5173
-```
-
-## Scripts
+## Scripts disponibles
 
 ```bash
-npm run dev       # servidor local de Vite
-npm run build     # TypeScript + build de produccion
-npm run preview   # previsualizar dist/
-npm run lint      # ESLint
+npm run dev           # servidor local de Vite
+npm run build         # comprobacion TypeScript y build de produccion
+npm run lint          # ESLint
+npm run preview       # previsualizar dist/
+npm run publish:main  # fusiona dev en main y sube main a origin
 ```
 
-## Variables De Entorno
+## Variables de entorno
 
-Crea `.env.local` en la raiz:
+Crea un archivo `.env.local` en la raiz:
 
 ```env
 VITE_FIREBASE_API_KEY=...
@@ -102,213 +90,194 @@ VITE_ADMIN_AUTH_EMAIL=admin@subterra-torneos.local
 VITE_PUBLIC_APP_URL=https://subterratorneo.es
 ```
 
-`VITE_ADMIN_AUTH_EMAIL` debe coincidir con el usuario creado en Firebase Auth y con las reglas de Firestore.
+`VITE_ADMIN_AUTH_EMAIL` debe coincidir con el usuario administrador creado en Firebase Auth.
 
-## Configuracion De Firebase
+## Firebase
 
-1. Crea un proyecto en Firebase.
-2. Activa Firestore Database.
-3. Activa Authentication.
-4. Habilita `Anonymous` para jugadores.
-5. Habilita `Email/Password` para administracion.
-6. Crea el usuario administrador con el email configurado en `VITE_ADMIN_AUTH_EMAIL`.
-7. Copia la configuracion web de Firebase a `.env.local`.
-8. Publica `firestore.rules`.
+El proyecto utiliza Firebase para autenticacion, persistencia y hosting.
 
-Reglas:
+Servicios necesarios:
+
+- Firestore Database.
+- Authentication.
+- Anonymous Auth para jugadores.
+- Email/Password Auth para administracion.
+- Firebase Hosting.
+
+Publicar reglas de Firestore:
 
 ```bash
-firebase deploy --only firestore:rules
+npx firebase-tools@latest deploy --only firestore:rules --project subterra-torneos
 ```
 
-Hosting:
+Despliegue manual de Hosting:
 
 ```bash
 npm run build
-firebase deploy --only hosting
+npx firebase-tools@latest deploy --only hosting --project subterra-torneos
 ```
 
-## Flujo De Uso
+## Despliegue automatico
 
-1. Entra como administrador.
-2. Crea un torneo y elige juego.
-3. Comparte el QR de inscripcion.
-4. Revisa jugadores y empieza el torneo.
-5. Gestiona rondas, resultados y temporizadores.
-6. Finaliza el torneo.
-7. Abre el constructor de decks.
-8. Importa o monta visualmente las listas.
-9. Guarda, publica y exporta imagenes para redes.
-
-## Importacion De Mazos
-
-El importador usa el juego del torneo. Esto evita importar accidentalmente un mazo de Lorcana en un torneo de Magic.
-
-Formatos aceptados:
-
-### YuGiOh
+El repositorio incluye un workflow de GitHub Actions en:
 
 ```txt
-Monster:
-3x Aluber the Jester of Despia
-
-Spell:
-1x Branded Fusion
-
-Extra:
-1x Mirrorjade the Iceblade Dragon
-
-Side:
-1x Nibiru, the Primal Being
+.github/workflows/firebase-hosting-main.yml
 ```
 
-Tambien acepta `.ydk`:
+El workflow se ejecuta al hacer push a `main`:
+
+1. Instala dependencias con `npm ci`.
+2. Ejecuta `npm run build`.
+3. Publica `dist/` en Firebase Hosting.
+
+Para que funcione, GitHub debe tener configurado este secret:
 
 ```txt
-#main
-68468459
-#extra
-44146295
-!side
-27204311
+FIREBASE_SERVICE_ACCOUNT_SUBTERRA_TORNEOS
 ```
 
-### Magic
+El valor debe ser el JSON completo de una cuenta de servicio con permisos para desplegar en Firebase Hosting.
+
+## Flujo de ramas
+
+La rama de trabajo es `dev`. La rama publica es `main`.
+
+Flujo recomendado:
+
+```bash
+git checkout dev
+# desarrollar, probar y commitear
+git push origin dev
+```
+
+Cuando la version este lista para publicar:
+
+```bash
+npm run publish:main
+```
+
+Ese comando:
+
+```bash
+git fetch origin
+git checkout main
+git pull --ff-only origin main
+git merge dev
+git push origin main
+```
+
+Al subir `main`, GitHub Actions despliega automaticamente en Firebase Hosting.
+
+## Flujo operativo en tienda
+
+1. El administrador inicia sesion.
+2. Se crea un torneo y se configura juego, estructura, modalidad, duracion y desempates.
+3. Se comparte el QR de participacion.
+4. Los jugadores se inscriben desde el movil.
+5. La tienda revisa participantes y comienza la ronda 1.
+6. Se gestionan emparejamientos, resultados y temporizadores.
+7. Los jugadores pueden reportar resultados desde su portal.
+8. La tienda valida los resultados y avanza rondas.
+9. Al finalizar, se publican clasificacion, ranking local y decklists.
+10. Se exportan imagenes para comunicacion y redes de SUBTERRA.
+
+## Estructura del proyecto
 
 ```txt
-Deck
-4 Lightning Bolt
-4 Monastery Swiftspear
-
-Sideboard
-2 Negate
+src/
+  App.tsx                         Shell, rutas, login admin y vistas principales
+  components/
+    DeckBuilderView.tsx           Constructor visual y exportador de decklists
+    LocalRanking.tsx              Ranking local por temporadas
+    MatchCard.tsx                 Tarjeta de mesa y resultado
+    ProjectorView.tsx             Pantalla publica de emparejamientos
+    RegistrationView.tsx          Inscripcion y portal del jugador
+    RoundExport.tsx               Plantillas ocultas para exportacion de imagen
+    SnapshotPanel.tsx             Panel de snapshots
+    Timer.tsx                     Temporizador de torneo
+    TimersView.tsx                Pantalla publica de temporizadores
+  hooks/
+    useExportImage.ts             Exportacion PNG desde DOM
+    useFirebaseSync.ts            Sincronizacion con Firestore
+    useSwissPairings.ts           Datos derivados de rondas y clasificacion
+  services/
+    cardSearch.ts                 Busqueda de cartas e imagenes
+    firebase.ts                   Firebase Auth, Firestore y normalizacion remota
+  store/
+    timerStore.ts                 Estado de temporizadores
+    tournamentsStore.ts           Estado y mutaciones de torneos
+  types/
+    tournament.ts                 Tipos centrales del dominio
+  utils/
+    deckImport.ts                 Parser de decklists
+    deckRules.ts                  Reglas por juego
+    tiebreakers.ts                Sistemas de desempate
+    timerSound.ts                 Audio del temporizador
 ```
 
-Tambien limpia set y numero:
+## Decklists y deckbuilder
 
-```txt
-4 Aurelia, Exemplar of Justice (GRN) 153
-```
+El deckbuilder esta integrado con los torneos de SUBTERRA y usa el juego seleccionado para interpretar listas y aplicar reglas basicas.
 
-### Pokemon
+Juegos soportados:
 
-```txt
-Pokemon - 15
-2 Chien-Pao ex PAL 61
+- Magic.
+- YuGiOh.
+- Pokemon.
+- Lorcana.
+- One Piece.
+- Riftbound.
 
-Trainer Cards - 36
-4 Ultra Ball SVI 196
+Capacidades:
 
-Energy - 9
-8 Water Energy NRG 28
-```
-
-### Lorcana
-
-```txt
-4 Elsa - Snow Queen
-4 Donald Duck - Perfect Gentleman
-4 Cursed Merfolk - Ursula's Handiwork
-```
-
-### One Piece
-
-```txt
-Leader:
-1 OP01-001 Monkey.D.Luffy
-
-Deck:
-4 OP01-016 Nami
-4 OP01-017 Nico Robin
-```
-
-El DON!! no se importa: la app lo asume como 10.
-
-### Riftbound
-
-```txt
-Legend:
-1 Jinx
-
-Champion:
-1 Jinx, Loose Cannon
-
-Main:
-3 Card Name
-
-Runes:
-6 Fury Rune
-6 Chaos Rune
-
-Battlefields:
-1 Battlefield Name
-```
-
-## Reglas De Deckbuilding
-
-Las reglas viven en `src/utils/deckRules.ts`.
-
-- Magic: Main 60+, Sideboard 15, maximo 4 copias salvo tierras basicas.
-- YuGiOh: Main 40-60, Extra 15, Side 15, maximo 3 copias.
-- Pokemon: 60 exactas, maximo 4 copias salvo energias basicas.
-- Lorcana: Main 60+, maximo 4 copias.
-- One Piece: Leader 1, Main 50, maximo 4 copias, DON!! asumido.
-- Riftbound: Legend, Champion, Main 40, Rune Deck, Battlefields y Sideboard separados.
-
-Las banlists dinamicas no estan integradas todavia. La validacion actual avisa por estructura y copias, pero no sustituye a una revision de juez.
+- Importacion de listas en formatos habituales.
+- Separacion por secciones del mazo.
+- Hidratacion de imagenes cuando hay API disponible.
+- Validacion basica de tamanos y copias.
+- Historial de mazos por jugador.
+- Exportacion de imagenes optimizadas para publicaciones.
 
 ## Desempates
 
-Cada torneo guarda su propio sistema de desempates. La clasificacion, el podio, la exportacion de standings y los perfiles de mazo usan siempre el mismo criterio.
+Cada torneo guarda su propio sistema de desempate. La clasificacion, el podio, las exportaciones y los perfiles de mazo usan el mismo criterio configurado.
 
-La app calcula todos los desempates posibles con los datos actuales de ronda: porcentaje de victoria de rivales, rivales de rivales, Buchholz, Buchholz Cut 1, Buchholz mediano, Sonneborn-Berger, progresivo, frente a frente, victorias, menos derrotas y menos derrotas por tiempo.
+Sistemas incluidos:
 
-Magic Game Win % y Opponents' Game Win % no se aplican todavia porque la app registra resultado de match, no parciales de juegos como 2-0 o 2-1.
-
-## APIs De Cartas
-
-- Magic: Scryfall.
-- Pokemon: Pokemon TCG API.
-- YuGiOh: YGOPRODeck.
-- Lorcana: Lorcast.
-- One Piece y Riftbound: por ahora se prioriza importacion manual/codigos y reglas locales.
-- One Piece y Riftbound: busqueda por fuentes especificas y fallback generico; las imagenes externas se pasan por proxy cuando hace falta para mejorar carga y exportacion.
-
-Las imagenes de YuGiOh se pasan por proxy para evitar problemas de CORS al exportar PNG.
+- Resistencia TCG.
+- Magic calculable.
+- Pokemon.
+- Buchholz.
+- Buchholz Cut 1.
+- Buchholz mediano.
+- Sonneborn-Berger.
+- Progresivo.
+- Frente a frente.
+- Criterios simples por victorias, derrotas y derrotas por tiempo.
 
 ## Seguridad
 
-- Los jugadores usan Auth anonima.
-- El administrador usa Firebase Auth email/password con email fijo.
-- Firestore Rules limitan escrituras sensibles al usuario administrador.
-- Las listas de mazo solo se editan al finalizar el torneo.
-- Los snapshots permiten revertir cambios importantes.
+- Los jugadores acceden mediante Auth anonima.
+- La administracion usa Firebase Auth con email/password.
+- Las reglas de Firestore limitan acciones sensibles al usuario administrador.
+- Las vistas publicas no exponen controles internos.
+- Los snapshots permiten revertir estados relevantes del torneo.
 
-## Desarrollo
+## Verificacion antes de publicar
 
-Antes de cerrar una tarea:
-
-```bash
-npm.cmd run build
-```
-
-Si se toca Firebase, revisar tambien:
+Antes de mandar `dev` a `main`:
 
 ```bash
-firestore.rules
-src/services/firebase.ts
-src/store/tournamentsStore.ts
+npm run lint
+npm run build
 ```
 
-## Roadmap Sugerido
+Si ambos comandos pasan y la version se ha revisado en local, se puede publicar con:
 
-- Resolver cartas importadas automaticamente tambien para One Piece por codigo.
-- Banlists configurables por juego/formato.
-- Tests unitarios para `deckImport.ts` y `deckRules.ts`.
-- Code splitting del deckbuilder para reducir el aviso de chunk grande.
-- Exportacion de decklists en formatos externos: `.ydk`, Arena text, PTCGL text.
-- Historial visual de snapshots con comparacion de cambios.
+```bash
+npm run publish:main
+```
 
-## Notas
+## Notas de producto
 
-El proyecto esta pensado para funcionar como herramienta de tienda: pantallas grandes para administracion/proyeccion y movil para jugadores mediante QR. Mantener esa separacion evita que las vistas publicas se llenen de controles de administracion.
+SUBTERRA Torneos no busca ser un CRM ni una herramienta generica de gestion comercial. Es una plataforma operativa para eventos de SUBTERRA: rapida de usar, clara para jugadores y preparada para convertir la actividad competitiva de la tienda en material visible, ordenado y reutilizable.
