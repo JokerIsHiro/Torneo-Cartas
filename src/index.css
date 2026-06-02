@@ -5636,3 +5636,22 @@ button:disabled {
     margin-bottom: 0;
   }
 }
+.results-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.85fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.results-left-column,
+.results-right-column {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+@media (max-width: 1100px) {
+  .results-layout {
+    grid-template-columns: 1fr;
+  }
+}
