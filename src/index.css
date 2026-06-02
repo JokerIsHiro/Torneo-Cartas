@@ -5383,7 +5383,7 @@ button:disabled {
 }
 
 .setup-workspace {
-  grid-template-columns: minmax(0, 1fr) clamp(280px, 21vw, 332px);
+  grid-template-columns: minmax(0, 1fr) clamp(360px, 28vw, 430px);
   gap: clamp(8px, 1vw, 12px);
   height: auto;
   min-height: 0;
@@ -5493,9 +5493,9 @@ button:disabled {
 }
 
 .invite-qr-wrap {
-  width: min(100%, 142px);
-  margin-bottom: 7px;
-  padding: 7px;
+  width: min(100%, 210px);
+  margin-bottom: 9px;
+  padding: 9px;
 }
 
 .invite-actions {
