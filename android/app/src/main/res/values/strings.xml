@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">torneo-cartas</string>
-    <string name="title_activity_main">torneo-cartas</string>
-    <string name="package_name">com.example.app</string>
-    <string name="custom_url_scheme">com.example.app</string>
+    <string name="app_name">AetherHub</string>
+    <string name="title_activity_main">AetherHub</string>
+    <string name="package_name">com.aetherhub.yugioh</string>
+    <string name="custom_url_scheme">com.aetherhub.yugioh</string>
 </resources>
