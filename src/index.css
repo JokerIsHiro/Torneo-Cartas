@@ -193,8 +193,8 @@ button:disabled {
 .admin-drawer {
   width: min(420px, 100%);
   height: 100%;
-  display: grid;
-  grid-template-rows: auto 1fr auto auto;
+  display: flex;
+  flex-direction: column;
   gap: 14px;
   padding: 16px;
   border-left: 0.5px solid var(--color-border-secondary);
@@ -238,6 +238,7 @@ button:disabled {
 
 .admin-drawer section {
   display: grid;
+  flex: 0 0 auto;
   gap: 8px;
 }
 
@@ -251,7 +252,9 @@ button:disabled {
 .admin-drawer-list,
 .admin-drawer-actions {
   display: grid;
+  align-content: start;
   gap: 7px;
+  grid-auto-rows: min-content;
 }
 
 .admin-drawer-row {
@@ -302,6 +305,7 @@ button:disabled {
 .admin-drawer > footer {
   align-items: stretch;
   flex-direction: column;
+  margin-top: auto;
   padding-top: 12px;
   border-top: 0.5px solid var(--color-border-tertiary);
 }
