@@ -1,3 +1,5 @@
+// Pantalla publica de emparejamientos. Esta vista debe ser clara para proyector
+// y no depender de acciones de administrador.
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'

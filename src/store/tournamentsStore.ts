@@ -1,3 +1,5 @@
+// Store principal de torneos. Aqui viven reglas de negocio: jugadores, rondas,
+// resultados, snapshots y escrituras remotas. Cambios aqui tienen alto impacto.
 import { create } from 'zustand'
 import type {
   Tournament,

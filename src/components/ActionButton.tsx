@@ -1,3 +1,5 @@
+// Boton reutilizable para acciones principales. Ajusta aqui la apariencia comun
+// si varios botones de la app deben cambiar a la vez.
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 interface ActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

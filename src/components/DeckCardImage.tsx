@@ -1,3 +1,5 @@
+// Renderiza una carta del mazo como imagen o fallback textual. Toca este archivo
+// para cambiar como se muestran cartas sin imagen o estados de carga.
 import { memo, useMemo } from 'react'
 import { displayImageUrl } from '../utils/imageExport'
 

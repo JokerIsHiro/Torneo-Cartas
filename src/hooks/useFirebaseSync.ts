@@ -1,3 +1,5 @@
+// Conecta Zustand con Firestore. Modifica aqui suscripciones globales y estados
+// de carga/remoto; evita meter logica de torneo en este hook.
 import { useEffect } from 'react'
 import {
   ensureFirebaseAuth,

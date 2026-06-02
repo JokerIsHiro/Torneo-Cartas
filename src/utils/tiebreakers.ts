@@ -1,3 +1,5 @@
+// Calculos de desempate y orden de clasificacion. Cambia aqui metricas,
+// prioridad por juego o etiquetas visibles en rankings.
 import type { Match, Player, Round, TournamentTCG, TournamentTiebreakerSystem } from '../types/tournament'
 
 export type TiebreakerMetricKey =

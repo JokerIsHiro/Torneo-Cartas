@@ -1,3 +1,5 @@
+// Buscador unificado de cartas para el deck builder. Anade aqui nuevos juegos,
+// normalizacion de resultados o fallback entre APIs.
 import type { TournamentTCG } from "../types/tournament";
 import { displayImageUrl } from "../utils/imageExport";
 import { extractOnePieceCardCode } from "../utils/onePieceCardCode";

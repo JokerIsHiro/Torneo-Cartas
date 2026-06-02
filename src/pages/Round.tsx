@@ -1,3 +1,5 @@
+// Mesa de trabajo de la ronda activa. Aqui se introducen resultados, se organizan
+// emparejamientos y se exportan imagenes de ronda/clasificacion.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
@@ -16,6 +18,7 @@ interface RoundProps {
 export function Round({ tournamentId, mode = 'results' }: RoundProps) {
   const nextRound = useTournamentsStore(s => s.nextRound)
   const finishTournament = useTournamentsStore(s => s.finishTournament)
+  const approvePendingResult = useTournamentsStore(s => s.approvePendingResult)
   const swapCurrentRoundPlayers = useTournamentsStore(s => s.swapCurrentRoundPlayers)
   const addLatePlayerToCurrentRound = useTournamentsStore(s => s.addLatePlayerToCurrentRound)
   const { currentRound, pendingResults, tournament } = useTournamentsStore(
@@ -47,6 +50,7 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
   const previousPendingCount = useRef(pendingResults.length)
   const [selectedRound, setSelectedRound] = useState<number | null>(null)
   const [firstSwapSlot, setFirstSwapSlot] = useState('')
+  const [secondSwapSlot, setSecondSwapSlot] = useState('')
   const [latePlayerName, setLatePlayerName] = useState('')
   const [pairingToolMessage, setPairingToolMessage] = useState('')
   const visibleRound = selectedRound && selectedRound <= currentRound ? selectedRound : currentRound
@@ -77,6 +81,7 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
     if (!first || !second || !canSwapSlots(firstValue, secondValue)) return
     swapCurrentRoundPlayers(tournamentId, first.matchId, first.playerId, second.matchId, second.playerId)
     setFirstSwapSlot('')
+    setSecondSwapSlot('')
   }
 
   useEffect(() => {
@@ -86,6 +91,12 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
     previousPendingCount.current = pendingResults.length
   }, [pendingResults.length])
 
+  useEffect(() => {
+    const consensusResult = findConsensusPendingResult(pendingResults)
+    if (!consensusResult) return
+    approvePendingResult(tournamentId, consensusResult.id)
+  }, [approvePendingResult, pendingResults, tournamentId])
+
   if (mode === 'organize') {
     return (
       <PairingOrganizer
@@ -93,9 +104,15 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
         currentMatches={currentMatches}
         editablePairings={editablePairings}
         firstSwapSlot={firstSwapSlot}
+        secondSwapSlot={secondSwapSlot}
         playerSlots={playerSlots}
         getPlayerName={getPlayerName}
         onSelectSlot={setFirstSwapSlot}
+        onSelectTargetSlot={setSecondSwapSlot}
+        onClearSelection={() => {
+          setFirstSwapSlot('')
+          setSecondSwapSlot('')
+        }}
         onSwapPlayers={handleSwapPlayers}
       />
     )
@@ -243,9 +260,12 @@ interface PairingOrganizerProps {
   currentMatches: Match[]
   editablePairings: boolean
   firstSwapSlot: string
+  secondSwapSlot: string
   playerSlots: Array<{ value: string; label: string }>
   getPlayerName: (id: string) => string
   onSelectSlot: (slot: string) => void
+  onSelectTargetSlot: (slot: string) => void
+  onClearSelection: () => void
   onSwapPlayers: (firstSlot: string, secondSlot: string) => void
 }
 
@@ -254,13 +274,19 @@ function PairingOrganizer({
   currentMatches,
   editablePairings,
   firstSwapSlot,
+  secondSwapSlot,
   playerSlots,
   getPlayerName,
   onSelectSlot,
+  onSelectTargetSlot,
+  onClearSelection,
   onSwapPlayers,
 }: PairingOrganizerProps) {
   // Vista dedicada para revisar mesas antes de publicar resultados.
   const slotLabels = new Map(playerSlots.map(slot => [slot.value, slot.label]))
+  const selectedSlotLabel = firstSwapSlot ? slotLabels.get(firstSwapSlot) : ''
+  const targetSlotLabel = secondSwapSlot ? slotLabels.get(secondSwapSlot) : ''
+  const canConfirmSwap = Boolean(firstSwapSlot && secondSwapSlot && canSwapSlots(firstSwapSlot, secondSwapSlot))
 
   function handleSlotClick(slot: string) {
     if (!editablePairings) return
@@ -268,13 +294,12 @@ function PairingOrganizer({
       onSelectSlot(slot)
       return
     }
-    onSwapPlayers(firstSwapSlot, slot)
-  }
-
-  function handleDrop(event: React.DragEvent, targetSlot: string) {
-    event.preventDefault()
-    if (!editablePairings) return
-    onSwapPlayers(event.dataTransfer.getData('text/plain') || firstSwapSlot, targetSlot)
+    if (slot === firstSwapSlot) {
+      onClearSelection()
+      return
+    }
+    if (!canSwapSlots(firstSwapSlot, slot)) return
+    onSelectTargetSlot(slot)
   }
 
   return (
@@ -296,41 +321,65 @@ function PairingOrganizer({
       )}
 
       {editablePairings && (
-        <div className="pairing-organizer-help">
-          <i className="ti ti-hand-move" aria-hidden="true" />
-          Arrastra un jugador sobre otro para intercambiarlos. En movil, toca un jugador y despues el otro.
+        <div className={firstSwapSlot ? 'pairing-swap-bar active' : 'pairing-swap-bar'}>
+          <div className="pairing-swap-step">
+            <div>
+              <strong>Jugador seleccionado</strong>
+              <em>{selectedSlotLabel ?? 'Elige jugador'}</em>
+            </div>
+          </div>
+          <i className="ti ti-arrows-exchange" aria-hidden="true" />
+          <div className="pairing-swap-step">
+            <div>
+              <strong>Intercambiar con</strong>
+              <em>{targetSlotLabel ?? 'Elige otro jugador'}</em>
+            </div>
+          </div>
+          <button type="button" disabled={!canConfirmSwap} onClick={() => onSwapPlayers(firstSwapSlot, secondSwapSlot)}>
+            <i className="ti ti-check" aria-hidden="true" />
+            Intercambiar
+          </button>
+          <button type="button" disabled={!firstSwapSlot && !secondSwapSlot} onClick={onClearSelection}>
+            <i className="ti ti-x" aria-hidden="true" />
+            Limpiar
+          </button>
         </div>
       )}
 
       <div className="pairing-table-grid">
         {currentMatches.map(match => (
-          <article key={match.id} className="pairing-table-card">
-            <header>
-              <strong>Mesa {match.tableNumber}</strong>
+          <article key={match.id} className="pairing-table-row-card">
+            <header className="pairing-table-row-header">
+              <div className="pairing-table-number">
+                <span>Mesa</span>
+                <strong>{match.tableNumber}</strong>
+              </div>
               {match.p2Id === 'BYE' && <span>BYE</span>}
             </header>
 
-            <PairingPlayerSlot
-              slot={`${match.id}:${match.p1Id}`}
-              playerName={getPlayerName(match.p1Id)}
-              selected={firstSwapSlot === `${match.id}:${match.p1Id}`}
-              disabled={!editablePairings || match.p2Id === 'BYE'}
-              label={slotLabels.get(`${match.id}:${match.p1Id}`)}
-              onClick={handleSlotClick}
-              onDrop={handleDrop}
-            />
+            <div className="pairing-table-row-players">
+              <PairingPlayerSlot
+                slot={`${match.id}:${match.p1Id}`}
+                playerName={getPlayerName(match.p1Id)}
+                selected={firstSwapSlot === `${match.id}:${match.p1Id}`}
+                target={secondSwapSlot === `${match.id}:${match.p1Id}`}
+                disabled={!editablePairings || match.p2Id === 'BYE'}
+                label={slotLabels.get(`${match.id}:${match.p1Id}`)}
+                onClick={handleSlotClick}
+              />
 
-            <div className="pairing-table-versus">vs</div>
+              <div className="pairing-table-versus">vs</div>
 
-            <PairingPlayerSlot
-              slot={`${match.id}:${match.p2Id}`}
-              playerName={getPlayerName(match.p2Id)}
-              selected={firstSwapSlot === `${match.id}:${match.p2Id}`}
-              disabled={!editablePairings || match.p2Id === 'BYE'}
-              label={slotLabels.get(`${match.id}:${match.p2Id}`)}
-              onClick={handleSlotClick}
-              onDrop={handleDrop}
-            />
+              <PairingPlayerSlot
+                slot={`${match.id}:${match.p2Id}`}
+                playerName={getPlayerName(match.p2Id)}
+                selected={firstSwapSlot === `${match.id}:${match.p2Id}`}
+                target={secondSwapSlot === `${match.id}:${match.p2Id}`}
+                disabled={!editablePairings || match.p2Id === 'BYE'}
+                label={slotLabels.get(`${match.id}:${match.p2Id}`)}
+                onClick={handleSlotClick}
+              />
+            </div>
           </article>
         ))}
       </div>
@@ -342,37 +391,28 @@ interface PairingPlayerSlotProps {
   slot: string
   playerName: string
   selected: boolean
+  target: boolean
   disabled: boolean
   label?: string
   onClick: (slot: string) => void
-  onDrop: (event: React.DragEvent, slot: string) => void
 }
 
 function PairingPlayerSlot({
   slot,
   playerName,
   selected,
+  target,
   disabled,
   label,
   onClick,
-  onDrop,
 }: PairingPlayerSlotProps) {
   return (
     <button
-      className={selected ? 'pairing-player-slot selected' : 'pairing-player-slot'}
-      draggable={!disabled}
+      className={`pairing-player-slot${selected ? ' selected' : ''}${target ? ' target' : ''}`}
       disabled={disabled}
       title={label}
-      onDragStart={event => {
-        event.dataTransfer.setData('text/plain', slot)
-      }}
-      onDragOver={event => {
-        if (!disabled) event.preventDefault()
-      }}
-      onDrop={event => onDrop(event, slot)}
       onClick={() => onClick(slot)}
     >
-      <i className="ti ti-grip-vertical" aria-hidden="true" />
       <span>{playerName}</span>
     </button>
   )
@@ -455,6 +495,19 @@ function canSwapSlots(firstValue: string, secondValue: string) {
   if (first.matchId === second.matchId) return false
   if (first.playerId === second.playerId) return false
   return true
+}
+
+function findConsensusPendingResult(pendingResults: PendingMatchResult[]) {
+  for (const pendingResult of pendingResults) {
+    const matchingOpponentReport = pendingResults.find(candidate =>
+      candidate.id !== pendingResult.id
+      && candidate.matchId === pendingResult.matchId
+      && candidate.playerId !== pendingResult.playerId
+      && candidate.result === pendingResult.result
+    )
+    if (matchingOpponentReport) return pendingResult
+  }
+  return null
 }
 
 async function notifyOrganizer(title: string, body: string) {

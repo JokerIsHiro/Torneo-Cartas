@@ -1,3 +1,5 @@
+// Timer compacto del panel de ronda. La UI esta aqui; la fuente de verdad del reloj
+// y su sincronizacion viven en timerStore.
 import { useEffect, useRef } from 'react'
 import { useTimerStore, useTimerData } from '../store/timerStore'
 import { useTournamentsStore } from '../store/tournamentsStore'

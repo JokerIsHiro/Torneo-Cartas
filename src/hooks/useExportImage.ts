@@ -1,10 +1,11 @@
-import { useRef, useCallback } from 'react'
-import html2canvas from 'html2canvas'
+// Hook de exportacion PNG. Si la descarga falla, revisa aqui la preparacion de
+// imagenes y la carga diferida de html2canvas.
+import { useRef, useCallback, type RefObject } from 'react'
 import { prepareImagesInElement, waitForImages } from '../utils/imageExport'
 
 // Convierte un nodo oculto del DOM en una imagen PNG descargable.
 interface UseExportImageReturn {
-  ref: React.RefObject<HTMLDivElement | null>
+  ref: RefObject<HTMLDivElement | null>
   exportImage: (filename?: string) => Promise<void>
 }
 
@@ -21,6 +22,7 @@ export function useExportImage(options: UseExportImageOptions = {}): UseExportIm
     await prepareImagesInElement(ref.current)
     await waitForImages(ref.current)
 
+    const { default: html2canvas } = await import('html2canvas')
     const canvas = await html2canvas(ref.current, {
       backgroundColor: '#000000',
       scale,

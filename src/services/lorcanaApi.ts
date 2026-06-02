@@ -1,3 +1,5 @@
+// Cliente de busqueda para cartas de Lorcana. Ajusta endpoints, mapeo de campos
+// y limites de resultados sin tocar el deck builder.
 const LORCAST_API = "https://api.lorcast.com/v0";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const LORCAST_MIN_REQUEST_INTERVAL_MS = 75;

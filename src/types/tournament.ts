@@ -61,6 +61,8 @@ export interface Round {
   endedAt: number | null
 }
 
+// Tipos centrales del dominio. Si anades campos a torneos, jugadores o rondas,
+// actualiza tambien normalizadores de Firebase y migraciones implicitas.
 export type TournamentStatus = 'setup' | 'active' | 'finished'
 export type TournamentTCG = 'magic' | 'riftbound' | 'pokemon' | 'yugioh' | 'lorcana' | 'one-piece' | 'chess'
 export type MagicFormat = 'standard' | 'pioneer' | 'modern' | 'pauper' | 'commander' | 'legacy' | 'vintage'

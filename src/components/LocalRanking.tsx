@@ -1,3 +1,5 @@
+// Ranking local acumulado por temporadas. Cambia aqui filtros, exportacion CSV/PNG
+// o reglas de puntuacion historica entre torneos finalizados.
 import { useEffect, useMemo, useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { saveRemoteLocalRanking, subscribeToRemoteLocalRanking } from '../services/firebase'
@@ -101,12 +103,6 @@ export function LocalRanking() {
   const leaderboardGameLabel = gameLabels[selectedGame]
   const leaderboardLogo = getLeaderboardLogo(selectedGame)
   const exportedRanking = ranking.slice(0, 16)
-
-  useEffect(() => {
-    if (availableGames.length > 0 && !availableGames.includes(gameFilter)) {
-      setGameFilter(availableGames[0])
-    }
-  }, [availableGames, gameFilter])
 
   return (
     <section>

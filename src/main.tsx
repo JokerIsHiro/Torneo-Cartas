@@ -1,3 +1,5 @@
+// Entrada del frontend. Mantiene redirecciones de dominio y monta React en #root.
+// Cambia aqui solo configuracion global previa al arranque de la app.
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";

@@ -1,3 +1,5 @@
+// Pantalla completa del constructor de mazos. Aqui vive la experiencia de busqueda,
+// edicion, importacion y exportacion; separa subcomponentes si crece mas.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useTournamentsStore } from '../store/tournamentsStore'

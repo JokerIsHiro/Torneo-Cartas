@@ -1,3 +1,5 @@
+// Tarjeta de una mesa/rivalidad. Ajusta aqui botones de resultado, lectura publica
+// y presentacion de jugadores dentro de cada emparejamiento.
 import type { Match, MatchResult } from '../types/tournament'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
@@ -49,9 +51,9 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
     const c = colors[variant]
     return {
       flex: 1,
-      padding: '8px 10px',
-      minHeight: '42px',
-      fontSize: '12px',
+      padding: '6px 9px',
+      minHeight: '34px',
+      fontSize: '11px',
       border: active ? `0.5px solid ${c.border}` : '0.5px solid var(--color-border-tertiary)',
       borderRadius: 'var(--border-radius-md)',
       background: active ? c.bg : 'var(--color-background-secondary)',
@@ -65,67 +67,45 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
   }
 
   return (
-    <div className={readOnly ? 'match-card projector-match-card' : 'match-card'} style={{
-      background: 'var(--color-background-primary)',
-      border: '0.5px solid var(--color-border-tertiary)',
-      borderRadius: 'var(--border-radius-lg)',
-      padding: '.875rem 1rem',
-      marginBottom: '.625rem',
-      opacity: isDone && !isTimeout ? 0.75 : 1,
-      transition: 'opacity .2s, border-color .2s',
-    }}>
+    <div className={`${readOnly ? 'match-card projector-match-card' : 'match-card'} ${isDone && !isTimeout ? 'done' : ''} ${isBye || readOnly ? 'no-actions' : ''}`}>
+      <div className="match-main">
+        {/* Cabecera */}
+        <div className="match-card-header">
+          <div className="match-table-badge" aria-label={`Mesa ${match.tableNumber}`}>
+            <span>Mesa</span>
+            <strong>{match.tableNumber}</strong>
+          </div>
+          <ResultBadge result={match.result} />
+        </div>
 
-      {/* Cabecera */}
-      <div className="match-card-header" style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '.625rem',
-      }}>
-        <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
-          Mesa {match.tableNumber}
-        </span>
-        <ResultBadge result={match.result} />
-      </div>
-
-      {/* Jugadores */}
-      <div className="match-players" style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr auto 1fr',
-        alignItems: 'center',
-        gap: '8px',
-        marginBottom: '.75rem',
-      }}>
-        <PlayerCell
-          name={getPlayerName(match.p1Id)}
-          points={p1?.points ?? 0}
-          losses={p1?.losses ?? 0}
-          align="left"
-          isWinner={match.result === 'p1'}
-          isLoser={match.result === 'p2' || match.result === 'timeout'}
-        />
-        <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-          vs
-        </span>
-        <PlayerCell
-          name={p2Name}
-          points={p2?.points ?? 0}
-          losses={p2?.losses ?? 0}
-          align="right"
-          isWinner={match.result === 'p2'}
-          isLoser={match.result === 'p1' || match.result === 'timeout'}
-          isBye={isBye}
-        />
+        {/* Jugadores */}
+        <div className="match-players">
+          <PlayerCell
+            name={getPlayerName(match.p1Id)}
+            points={p1?.points ?? 0}
+            losses={p1?.losses ?? 0}
+            align="left"
+            isWinner={match.result === 'p1'}
+            isLoser={match.result === 'p2' || match.result === 'timeout'}
+          />
+          <span className="match-versus">
+            vs
+          </span>
+          <PlayerCell
+            name={p2Name}
+            points={p2?.points ?? 0}
+            losses={p2?.losses ?? 0}
+            align="right"
+            isWinner={match.result === 'p2'}
+            isLoser={match.result === 'p1' || match.result === 'timeout'}
+            isBye={isBye}
+          />
+        </div>
       </div>
 
       {/* Botones de resultado */}
       {!isBye && !readOnly && (
-        <div className="match-actions" style={{
-          display: 'flex',
-          gap: '6px',
-          paddingTop: '.625rem',
-          borderTop: '0.5px solid var(--color-border-tertiary)',
-        }}>
+        <div className="match-actions">
           <button
             className="result-button result-button-win"
             style={{...resultBtnStyle(match.result === 'p1', 'win'), borderRadius: 'var(--border-radius-md)'}}
@@ -182,14 +162,14 @@ function PlayerCell({ name, points, losses, align, isWinner, isLoser, isBye }: P
 
   return (
     <div className="player-cell" style={{ textAlign: align }}>
-      <div className="player-name" style={{ fontSize: '13px', fontWeight: 500, color, transition: 'color .2s' }}>
+      <div className="player-name" style={{ color }}>
         {isWinner && (
           <i className="ti ti-crown" aria-hidden="true" style={{ fontSize: '12px', marginRight: '4px' }} />
         )}
         {name}
       </div>
       {!isBye && (
-        <div className="player-meta" style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+        <div className="player-meta">
           {points} pts · {losses} {losses === 1 ? 'derrota' : 'derrotas'}
         </div>
       )}

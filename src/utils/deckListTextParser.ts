@@ -1,3 +1,5 @@
+// Parser de listas de mazo en texto plano. Ajusta aqui formatos aceptados,
+// secciones y cantidades antes de buscar cartas en APIs.
 import type { TournamentTCG } from '../types/tournament'
 import { extractOnePieceCardCode, ONE_PIECE_CARD_CODE_PATTERN } from './onePieceCardCode'
 

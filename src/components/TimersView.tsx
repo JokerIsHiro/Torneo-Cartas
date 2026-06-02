@@ -1,3 +1,5 @@
+// Pantalla publica de todos los temporizadores activos. Ajusta aqui disposicion,
+// pantalla completa y controles visibles para tienda/proyector.
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'

@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+// Orquestador principal de la app: decide la vista segun la URL, controla el acceso admin
+// y conecta sincronizacion global. Si anades una pantalla nueva, registra aqui su ruta.
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useTournamentsStore } from './store/tournamentsStore'
 import { syncTimersFromStorage, TIMER_SYNC_KEY, useTimerStore } from './store/timerStore'
@@ -6,12 +8,7 @@ import { Setup } from './pages/Setup'
 import { Round } from './pages/Round'
 import { Results } from './pages/Results'
 import { Standings } from './components/Standings'
-import { ProjectorView } from './components/ProjectorView'
-import { TimersView } from './components/TimersView'
-import { RegistrationView } from './components/RegistrationView'
 import { SnapshotPanel } from './components/SnapshotPanel'
-import { DeckBuilderView } from './components/DeckBuilderView'
-import { LocalRanking } from './components/LocalRanking'
 import type { Tournament } from './types/tournament'
 import { unlockTimerSound } from './utils/timerSound'
 import { useFirebaseSync } from './hooks/useFirebaseSync'
@@ -20,7 +17,7 @@ import { ADMIN_AUTH_EMAIL } from './config/appConfig'
 
 // Componente raiz. Decide que vista se muestra segun la ruta de la URL
 // y conecta la sincronizacion entre pestanas.
-type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion' | 'qr' | 'deckbuilder'
+type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion' | 'jugador' | 'organizar' | 'qr' | 'deckbuilder'
 type AdminTab = string
 type TournamentInnerTab = 'ronda' | 'organizar' | 'clasificacion'
 
@@ -29,11 +26,19 @@ const ADMIN_SESSION_VALUE = 'firebase-admin-v1'
 const MIN_ADMIN_CODE_LENGTH = 8
 const RANKING_TAB_ID = '__ranking__'
 
+const ProjectorView = lazy(() => import('./components/ProjectorView').then(module => ({ default: module.ProjectorView })))
+const TimersView = lazy(() => import('./components/TimersView').then(module => ({ default: module.TimersView })))
+const RegistrationView = lazy(() => import('./components/RegistrationView').then(module => ({ default: module.RegistrationView })))
+const DeckBuilderView = lazy(() => import('./components/DeckBuilderView').then(module => ({ default: module.DeckBuilderView })))
+const LocalRanking = lazy(() => import('./components/LocalRanking').then(module => ({ default: module.LocalRanking })))
+
 const routePaths: Record<AppRoute, string> = {
   admin: '/',
   proyeccion: '/proyeccion',
   temporizadores: '/temporizadores',
   inscripcion: '/inscripcion',
+  jugador: '/jugador',
+  organizar: '/organizar',
   qr: '/qr',
   deckbuilder: '/deckbuilder',
 }
@@ -42,6 +47,8 @@ function getRouteFromPath(): AppRoute {
   if (window.location.pathname.startsWith('/proyeccion')) return 'proyeccion'
   if (window.location.pathname.startsWith('/temporizadores')) return 'temporizadores'
   if (window.location.pathname.startsWith('/inscripcion')) return 'inscripcion'
+  if (window.location.pathname.startsWith('/jugador')) return 'jugador'
+  if (window.location.pathname.startsWith('/organizar')) return 'organizar'
   if (window.location.pathname.startsWith('/qr')) return 'qr'
   if (window.location.pathname.startsWith('/deckbuilder')) return 'deckbuilder'
   return 'admin'
@@ -60,6 +67,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<AdminTab>('')
   const [innerTab, setInnerTab] = useState<Record<string, TournamentInnerTab>>({})
   const [adminUnlocked, setAdminUnlocked] = useState(() => localStorage.getItem(ADMIN_SESSION_KEY) === ADMIN_SESSION_VALUE)
+  const [adminDrawerOpen, setAdminDrawerOpen] = useState(false)
   const isMobileDevice = useIsMobileDevice()
   useFirebaseSync()
 
@@ -124,6 +132,7 @@ export default function App() {
     initTimer(id, 50 * 60)
     setActiveTab(id)
     setRoute('admin')
+    setAdminDrawerOpen(false)
   }
 
   function handleDeleteTournament(t: Tournament) {
@@ -136,9 +145,9 @@ export default function App() {
     }
   }
 
-  function openPublicTab(target: 'proyeccion' | 'temporizadores') {
+  function openPublicTab(target: 'proyeccion' | 'temporizadores' | 'organizar') {
     const url = new URL(routePaths[target], window.location.origin)
-    if (target === 'proyeccion' && selectedTab) url.searchParams.set('torneo', selectedTab)
+    if ((target === 'proyeccion' || target === 'organizar') && selectedTab) url.searchParams.set('torneo', selectedTab)
     window.open(url.toString(), '_blank', 'noopener,noreferrer')
   }
 
@@ -153,15 +162,22 @@ export default function App() {
   function handleAdminLogout() {
     localStorage.removeItem(ADMIN_SESSION_KEY)
     setAdminUnlocked(false)
+    setAdminDrawerOpen(false)
     void signOutAdmin()
     setRoute('admin')
+  }
+
+  function selectAdminTab(tab: AdminTab) {
+    setActiveTab(tab)
+    setRoute('admin')
+    setAdminDrawerOpen(false)
   }
 
   const selectedTab = activeTab || tournaments[0]?.id || ''
   const activeTournament = tournaments.find(t => t.id === selectedTab)
   const rankingSelected = selectedTab === RANKING_TAB_ID
-  const mobileBlocked = isMobileDevice && route !== 'inscripcion'
-  const adminLocked = (route === 'admin' || route === 'deckbuilder') && !adminUnlocked
+  const mobileBlocked = isMobileDevice && route !== 'inscripcion' && route !== 'jugador' && route !== 'organizar'
+  const adminLocked = (route === 'admin' || route === 'deckbuilder' || route === 'organizar') && !adminUnlocked
 
   return (
     <div className="app-shell">
@@ -175,71 +191,23 @@ export default function App() {
 
         {route === 'admin' && !adminLocked && (
           <>
-            <div className="top-tabs-scroll" aria-label="Torneos abiertos">
-              {tournaments.map(t => (
-                <TopTab
-                  key={t.id}
-                  label={t.name}
-                  active={selectedTab === t.id}
-                  status={t.status}
-                  onClick={() => setActiveTab(t.id)}
-                  onClose={() => handleDeleteTournament(t)}
-                />
-              ))}
-
-              <TopTab
-                label="Ranking local"
-                active={rankingSelected}
-                onClick={() => setActiveTab(RANKING_TAB_ID)}
-              />
+            <div className="admin-current-context">
+              <span>{rankingSelected ? 'Ranking local' : activeTournament?.name ?? 'Sin torneo seleccionado'}</span>
+              {activeTournament?.status && <StatusBadge status={activeTournament.status} />}
             </div>
 
-            <div className="admin-public-actions">
-              {tournaments.length > 0 && (
-                <>
-                  <button
-                    onClick={() => openPublicTab('proyeccion')}
-                    className="projector-open-button"
-                    title="Abre la pantalla publica de mesas y rivales"
-                  >
-                    <i className="ti ti-external-link" aria-hidden="true" />
-                    Pantalla de emparejamientos
-                  </button>
-
-                  <button
-                    onClick={() => openPublicTab('temporizadores')}
-                    className="projector-open-button"
-                    title="Abre los relojes de ronda en otra pestana"
-                  >
-                    <i className="ti ti-clock" aria-hidden="true" />
-                    Pantalla de temporizadores
-                  </button>
-                </>
-              )}
-
-              <button
-                onClick={handleCreateTournament}
-                disabled={syncEnabled && !syncLoaded}
-                className="new-tournament-button"
-                title="Crea un torneo vacio para configurar"
-              >
-                <i className="ti ti-plus" aria-hidden="true" />
-                Crear nuevo torneo
-              </button>
-
-              <button
-                onClick={handleAdminLogout}
-                className="projector-open-button"
-                title="Cierra la sesion de administracion de la tienda"
-              >
-                <i className="ti ti-logout" aria-hidden="true" />
-                Cerrar sesion
-              </button>
-            </div>
+            <button
+              className="admin-drawer-open"
+              onClick={() => setAdminDrawerOpen(true)}
+              aria-label="Abrir menu de administracion"
+            >
+              <i className="ti ti-menu-2" aria-hidden="true" />
+              Menu
+            </button>
           </>
         )}
 
-        {route !== 'admin' && route !== 'inscripcion' && (
+        {route !== 'admin' && route !== 'inscripcion' && route !== 'jugador' && route !== 'organizar' && (
           <div className="public-nav">
             {route === 'proyeccion' && (
               <button onClick={() => setRoute('temporizadores')} title="Ver relojes de ronda">
@@ -257,16 +225,36 @@ export default function App() {
         )}
       </div>}
 
+      {route === 'admin' && !adminLocked && (
+        <AdminDrawer
+          open={adminDrawerOpen}
+          tournaments={tournaments}
+          selectedTab={selectedTab}
+          rankingSelected={rankingSelected}
+          syncEnabled={syncEnabled}
+          syncLoaded={syncLoaded}
+          onClose={() => setAdminDrawerOpen(false)}
+          onSelectTournament={selectAdminTab}
+          onSelectRanking={() => selectAdminTab(RANKING_TAB_ID)}
+          onDeleteTournament={handleDeleteTournament}
+          onCreateTournament={handleCreateTournament}
+          onOpenPublicTab={openPublicTab}
+          onLogout={handleAdminLogout}
+        />
+      )}
+
       <main className={route !== 'admin' ? 'main-content projector-content' : 'main-content'}>
         {mobileBlocked && <MobilePlayerOnly />}
         {!mobileBlocked && adminLocked && <AdminLogin onSubmit={handleAdminLogin} configured={Boolean(ADMIN_AUTH_EMAIL)} />}
-        {!mobileBlocked && route === 'proyeccion' && <ProjectorView />}
-        {!mobileBlocked && route === 'temporizadores' && <TimersView />}
-        {route === 'inscripcion' && <RegistrationView />}
+        {!mobileBlocked && route === 'proyeccion' && <LazyView><ProjectorView /></LazyView>}
+        {!mobileBlocked && route === 'temporizadores' && <LazyView><TimersView /></LazyView>}
+        {route === 'inscripcion' && <LazyView><RegistrationView /></LazyView>}
+        {route === 'jugador' && <LazyView><RegistrationView /></LazyView>}
+        {!mobileBlocked && route === 'organizar' && !adminLocked && <OrganizerRoute />}
         {!mobileBlocked && route === 'qr' && <QrView />}
-        {!mobileBlocked && route === 'deckbuilder' && !adminLocked && <DeckBuilderView />}
+        {!mobileBlocked && route === 'deckbuilder' && !adminLocked && <LazyView><DeckBuilderView /></LazyView>}
 
-        {!mobileBlocked && route === 'admin' && !adminLocked && rankingSelected && <LocalRanking />}
+        {!mobileBlocked && route === 'admin' && !adminLocked && rankingSelected && <LazyView><LocalRanking /></LazyView>}
 
         {!mobileBlocked && route === 'admin' && !adminLocked && activeTournament && !rankingSelected && (
           <TournamentView
@@ -294,6 +282,160 @@ export default function App() {
           </div>
         )}
       </main>
+    </div>
+  )
+}
+
+interface AdminDrawerProps {
+  open: boolean
+  tournaments: Tournament[]
+  selectedTab: string
+  rankingSelected: boolean
+  syncEnabled: boolean
+  syncLoaded: boolean
+  onClose: () => void
+  onSelectTournament: (id: string) => void
+  onSelectRanking: () => void
+  onDeleteTournament: (tournament: Tournament) => void
+  onCreateTournament: () => void
+  onOpenPublicTab: (target: 'proyeccion' | 'temporizadores' | 'organizar') => void
+  onLogout: () => void
+}
+
+function AdminDrawer({
+  open,
+  tournaments,
+  selectedTab,
+  rankingSelected,
+  syncEnabled,
+  syncLoaded,
+  onClose,
+  onSelectTournament,
+  onSelectRanking,
+  onDeleteTournament,
+  onCreateTournament,
+  onOpenPublicTab,
+  onLogout,
+}: AdminDrawerProps) {
+  if (!open) return null
+
+  return (
+    <div className="admin-drawer-backdrop" role="presentation" onMouseDown={onClose}>
+      <aside className="admin-drawer" role="dialog" aria-modal="true" aria-label="Menu de administracion" onMouseDown={event => event.stopPropagation()}>
+        <header>
+          <div>
+            <strong>Administracion</strong>
+            <span>Torneos y pantallas de tienda</span>
+          </div>
+          <button onClick={onClose} aria-label="Cerrar menu">
+            <i className="ti ti-x" aria-hidden="true" />
+          </button>
+        </header>
+
+        <section>
+          <div className="admin-drawer-section-title">Torneos</div>
+          <div className="admin-drawer-list">
+            {tournaments.map(tournament => (
+              <div key={tournament.id} className={selectedTab === tournament.id ? 'admin-drawer-row active' : 'admin-drawer-row'}>
+                <button onClick={() => onSelectTournament(tournament.id)}>
+                  <span>{tournament.name}</span>
+                  <StatusBadge status={tournament.status} />
+                </button>
+                <button onClick={() => onDeleteTournament(tournament)} aria-label={`Eliminar ${tournament.name}`}>
+                  <i className="ti ti-x" aria-hidden="true" />
+                </button>
+              </div>
+            ))}
+
+            <button className={rankingSelected ? 'admin-drawer-link active' : 'admin-drawer-link'} onClick={onSelectRanking}>
+              <i className="ti ti-chart-bar" aria-hidden="true" />
+              Ranking local
+            </button>
+          </div>
+        </section>
+
+        <section>
+          <div className="admin-drawer-section-title">Pantallas</div>
+          <div className="admin-drawer-actions">
+            <button disabled={!tournaments.length} onClick={() => onOpenPublicTab('proyeccion')}>
+              <i className="ti ti-external-link" aria-hidden="true" />
+              Emparejamientos
+            </button>
+            <button disabled={!tournaments.length} onClick={() => onOpenPublicTab('temporizadores')}>
+              <i className="ti ti-clock" aria-hidden="true" />
+              Temporizadores
+            </button>
+            <button disabled={!tournaments.length} onClick={() => onOpenPublicTab('organizar')}>
+              <i className="ti ti-arrows-shuffle" aria-hidden="true" />
+              Organizar mesas
+            </button>
+          </div>
+        </section>
+
+        <footer>
+          <button onClick={onCreateTournament} disabled={syncEnabled && !syncLoaded}>
+            <i className="ti ti-plus" aria-hidden="true" />
+            Crear torneo
+          </button>
+          <button onClick={onLogout}>
+            <i className="ti ti-logout" aria-hidden="true" />
+            Cerrar sesion
+          </button>
+        </footer>
+      </aside>
+    </div>
+  )
+}
+
+function OrganizerRoute() {
+  const tournamentId = new URLSearchParams(window.location.search).get('torneo') ?? ''
+  const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
+
+  if (!tournamentId || !tournament) {
+    return (
+      <div className="empty-state">
+        <i className="ti ti-arrows-shuffle" aria-hidden="true" />
+        <div>No se ha encontrado el torneo para organizar.</div>
+      </div>
+    )
+  }
+
+  if (tournament.status !== 'active') {
+    return (
+      <div className="empty-state">
+        <i className="ti ti-lock" aria-hidden="true" />
+        <div>Solo se pueden organizar emparejamientos con el torneo activo.</div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="tournament-header">
+        <div>
+          <h2>{tournament.name}</h2>
+          <p>Organizar emparejamientos de la ronda {tournament.currentRound}</p>
+        </div>
+        <StatusBadge status={tournament.status} />
+      </div>
+      <Round tournamentId={tournament.id} mode="organize" />
+    </div>
+  )
+}
+
+function LazyView({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      {children}
+    </Suspense>
+  )
+}
+
+function LoadingScreen() {
+  return (
+    <div className="loading-screen">
+      <i className="ti ti-loader-2" aria-hidden="true" />
+      <span>Cargando...</span>
     </div>
   )
 }
@@ -413,7 +555,7 @@ function MobilePlayerOnly() {
     <div className="mobile-player-only">
       <img src="/subterra-logo.jpg" alt="Subterra TCG" />
       <h1>Acceso de jugadores</h1>
-      <p>En movil solo esta disponible la inscripcion y el emparejamiento personal desde el enlace o QR del torneo.</p>
+      <p>En movil solo esta disponible la inscripcion y el panel personal desde el enlace o QR del torneo.</p>
     </div>
   )
 }
@@ -452,7 +594,10 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
             {status === 'finished' && 'Torneo finalizado'}
           </p>
         </div>
-        <StatusBadge status={status} />
+        <div className="tournament-header-actions">
+          <SnapshotPanel tournamentId={id} />
+          <StatusBadge status={status} />
+        </div>
       </div>
 
       {status === 'active' && (
@@ -479,42 +624,6 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
       {status === 'active' && innerTab === 'organizar' && <Round tournamentId={id} mode="organize" />}
       {status === 'active' && innerTab === 'clasificacion' && <Standings tournamentId={id} />}
       {status === 'finished' && <Results tournamentId={id} />}
-      <SnapshotPanel tournamentId={id} />
-    </div>
-  )
-}
-
-interface TopTabProps {
-  label: string
-  active: boolean
-  status?: Tournament['status']
-  onClick: () => void
-  onClose?: () => void
-}
-
-function TopTab({ label, active, status, onClick, onClose }: TopTabProps) {
-  const dotColor = (() => {
-    if (status === 'active') return 'var(--color-accent-secondary)'
-    if (status === 'finished') return 'var(--color-text-warning)'
-    return 'transparent'
-  })()
-
-  return (
-    <div
-      onClick={onClick}
-      className={active ? 'top-tab active' : 'top-tab'}
-    >
-      {status && <span className="status-dot" style={{ background: dotColor }} />}
-      <span>{label}</span>
-
-      {onClose && (
-        <button
-          onClick={e => { e.stopPropagation(); onClose() }}
-          aria-label="Cerrar torneo"
-        >
-          <i className="ti ti-x" aria-hidden="true" />
-        </button>
-      )}
     </div>
   )
 }
