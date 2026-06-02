@@ -92,6 +92,7 @@ export function LocalRanking() {
     return [...new Set(activeRankingRecords.map(tournament => tournament.tcg))]
       .sort((a, b) => gameLabels[a].localeCompare(gameLabels[b]))
   }, [activeRankingRecords])
+  const hasAvailableGames = availableGames.length > 0
   const selectedGame = availableGames.includes(gameFilter) ? gameFilter : availableGames[0] ?? gameFilter
   const ranking = useMemo(
     () => buildLocalRanking(activeRankingRecords, selectedGame),
@@ -130,20 +131,23 @@ export function LocalRanking() {
             onChange={event => setGameFilter(event.target.value as RankingFilter)}
             style={filterStyle}
             aria-label="Filtrar ranking por juego"
+            disabled={!hasAvailableGames}
           >
-            {availableGames.map(game => (
-              <option key={game} value={game}>{gameLabels[game]}</option>
-            ))}
+            {hasAvailableGames
+              ? availableGames.map(game => (
+                <option key={game} value={game}>{gameLabels[game]}</option>
+              ))
+              : <option value={selectedGame}>Sin juegos</option>}
           </select>
           <button type="button" style={resetButtonStyle} onClick={() => createRankingSeason(rankingState)}>
             <i className="ti ti-calendar-plus" aria-hidden="true" />
             Nueva temporada
           </button>
-          <button type="button" style={resetButtonStyle} onClick={() => exportRankingCsv(ranking, activeSeason, selectedGame)}>
+          <button type="button" style={resetButtonStyle} disabled={!hasAvailableGames || ranking.length === 0} onClick={() => exportRankingCsv(ranking, activeSeason, selectedGame)}>
             <i className="ti ti-file-spreadsheet" aria-hidden="true" />
             CSV
           </button>
-          <button type="button" style={resetButtonStyle} onClick={() => void exportImage(`ranking-${activeSeason.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}>
+          <button type="button" style={resetButtonStyle} disabled={!hasAvailableGames || ranking.length === 0} onClick={() => void exportImage(formatRankingExportName(activeSeason.name, selectedGame))}>
             <i className="ti ti-photo-down" aria-hidden="true" />
             PNG
           </button>
@@ -356,6 +360,13 @@ function exportRankingCsv(ranking: RankingEntry[], season: LocalRankingSeason, f
   link.download = `ranking-${season.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.csv'
   link.click()
   URL.revokeObjectURL(link.href)
+}
+
+function formatRankingExportName(seasonName: string, game: RankingFilter) {
+  return `ranking-${seasonName}-${gameLabels[game]}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
 }
 
 function escapeCsvCell(value: string | undefined) {

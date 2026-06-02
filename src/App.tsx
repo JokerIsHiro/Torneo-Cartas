@@ -175,63 +175,67 @@ export default function App() {
 
         {route === 'admin' && !adminLocked && (
           <>
-            {tournaments.map(t => (
+            <div className="top-tabs-scroll" aria-label="Torneos abiertos">
+              {tournaments.map(t => (
+                <TopTab
+                  key={t.id}
+                  label={t.name}
+                  active={selectedTab === t.id}
+                  status={t.status}
+                  onClick={() => setActiveTab(t.id)}
+                  onClose={() => handleDeleteTournament(t)}
+                />
+              ))}
+
               <TopTab
-                key={t.id}
-                label={t.name}
-                active={selectedTab === t.id}
-                status={t.status}
-                onClick={() => setActiveTab(t.id)}
-                onClose={() => handleDeleteTournament(t)}
+                label="Ranking local"
+                active={rankingSelected}
+                onClick={() => setActiveTab(RANKING_TAB_ID)}
               />
-            ))}
+            </div>
 
-            <TopTab
-              label="Ranking local"
-              active={rankingSelected}
-              onClick={() => setActiveTab(RANKING_TAB_ID)}
-            />
+            <div className="admin-public-actions">
+              {tournaments.length > 0 && (
+                <>
+                  <button
+                    onClick={() => openPublicTab('proyeccion')}
+                    className="projector-open-button"
+                    title="Abre la pantalla publica de mesas y rivales"
+                  >
+                    <i className="ti ti-external-link" aria-hidden="true" />
+                    Pantalla de emparejamientos
+                  </button>
 
-            {tournaments.length > 0 && (
-              <div className="admin-public-actions">
-                <button
-                  onClick={() => openPublicTab('proyeccion')}
-                  className="projector-open-button"
-                  title="Abre la pantalla publica de mesas y rivales"
-                >
-                  <i className="ti ti-external-link" aria-hidden="true" />
-                  Pantalla de emparejamientos
-                </button>
+                  <button
+                    onClick={() => openPublicTab('temporizadores')}
+                    className="projector-open-button"
+                    title="Abre los relojes de ronda en otra pestana"
+                  >
+                    <i className="ti ti-clock" aria-hidden="true" />
+                    Pantalla de temporizadores
+                  </button>
+                </>
+              )}
 
-                <button
-                  onClick={() => openPublicTab('temporizadores')}
-                  className="projector-open-button"
-                  title="Abre los relojes de ronda en otra pestana"
-                >
-                  <i className="ti ti-clock" aria-hidden="true" />
-                  Pantalla de temporizadores
-                </button>
-              </div>
-            )}
+              <button
+                onClick={handleCreateTournament}
+                disabled={syncEnabled && !syncLoaded}
+                className="new-tournament-button"
+                title="Crea un torneo vacio para configurar"
+              >
+                <i className="ti ti-plus" aria-hidden="true" />
+                Crear nuevo torneo
+              </button>
 
-            <button
-              onClick={handleCreateTournament}
-              disabled={syncEnabled && !syncLoaded}
-              className="new-tournament-button"
-              title="Crea un torneo vacio para configurar"
-            >
-              <i className="ti ti-plus" aria-hidden="true" />
-              Crear nuevo torneo
-            </button>
-
-            <button
-              onClick={handleAdminLogout}
-              className="projector-open-button"
-              title="Cierra la sesion de administracion de la tienda"
-            >
-              <i className="ti ti-logout" aria-hidden="true" />
-              Cerrar sesion
-            </button>
+              <button
+                onClick={handleAdminLogout}
+                className="projector-open-button"
+                title="Cierra la sesion de administracion de la tienda"
+              >
+                <i className="ti ti-logout" aria-hidden="true" />
+                Cerrar sesion
+              </button>
+            </div>
           </>
         )}
 

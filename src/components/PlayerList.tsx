@@ -200,7 +200,14 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
                     />
                     <span>{player.name}</span>
                     {isRegistered && <em>inscrito</em>}
-                    <button type="button" onClick={() => forgetKnownPlayer(player.id)} title={`Quitar ${player.name} de habituales`}>
+                    <button
+                      type="button"
+                      onClick={event => {
+                        event.stopPropagation()
+                        forgetKnownPlayer(player.id)
+                      }}
+                      title={`Quitar ${player.name} de habituales`}
+                    >
                       <i className="ti ti-x" aria-hidden="true" />
                     </button>
                   </label>
