@@ -404,10 +404,13 @@ button:disabled {
   margin-bottom: 0.875rem !important;
 }
 
-.projector-match-card .match-card-header > span:first-child {
-  font-size: 13px !important;
-  color: var(--color-accent-secondary) !important;
-  font-weight: 600;
+.projector-match-card .match-table-badge {
+  min-width: 132px;
+  padding: 9px 13px;
+}
+
+.projector-match-card .match-table-badge strong {
+  font-size: clamp(30px, 2.6vw, 42px);
 }
 
 .projector-match-card .match-players {
@@ -415,7 +418,7 @@ button:disabled {
   margin-bottom: 0 !important;
 }
 
-.projector-match-card .match-players > span {
+.projector-match-card .match-versus {
   font-size: 13px !important;
   color: var(--color-text-muted) !important;
 }
@@ -1152,6 +1155,104 @@ button:disabled {
   margin-bottom: 0 !important;
 }
 
+.match-card {
+  padding: 1rem;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  background:
+    linear-gradient(180deg, rgba(31, 122, 255, 0.045), transparent 42%),
+    var(--color-background-primary);
+  transition: opacity .2s, border-color .2s, transform .15s;
+}
+
+.match-card.done {
+  opacity: 0.78;
+}
+
+.match-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 1rem;
+}
+
+.match-table-badge {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 116px;
+  padding: 8px 12px;
+  border: 0.5px solid var(--color-border-primary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-draw-bg);
+  color: var(--color-accent-secondary);
+}
+
+.match-table-badge span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.match-table-badge strong {
+  color: var(--color-text-primary);
+  font-size: 28px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.match-players {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 74px;
+  margin-bottom: .875rem;
+}
+
+.match-versus {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 50%;
+  background: var(--color-background-secondary);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.player-cell {
+  min-width: 0;
+}
+
+.player-name {
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  transition: color .2s;
+}
+
+.player-meta {
+  margin-top: 4px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.match-actions {
+  display: flex;
+  gap: 7px;
+  padding-top: .75rem;
+  border-top: 0.5px solid var(--color-border-tertiary);
+}
+
 .round-export-actions {
   display: flex;
   align-items: center;
@@ -1492,31 +1593,61 @@ button:disabled {
 }
 
 .pairing-organizer-help {
-  padding: 10px 12px;
+  padding: 12px 14px;
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-md);
   background: var(--color-background-primary);
   color: var(--color-text-secondary);
   font-size: 14px;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.pairing-organizer-help.selecting {
+  border-color: var(--color-border-primary);
+  background: var(--color-success-bg);
+  color: var(--color-accent-secondary);
+}
+
+.pairing-organizer-help i {
+  margin-top: 2px;
+  color: var(--color-accent-secondary);
+  font-size: 18px;
+}
+
+.pairing-organizer-help div {
+  display: grid;
+  gap: 3px;
+}
+
+.pairing-organizer-help strong {
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.pairing-organizer-help span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .pairing-table-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: 12px;
 }
 
 .pairing-table-card {
   min-width: 0;
-  padding: 12px;
+  padding: 14px;
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-lg);
-  background: var(--color-background-primary);
+  background:
+    linear-gradient(180deg, rgba(88, 215, 255, 0.035), transparent 46%),
+    var(--color-background-primary);
   display: grid;
-  gap: 9px;
+  gap: 10px;
 }
 
 .pairing-table-card header {
@@ -1528,9 +1659,26 @@ button:disabled {
   border-bottom: 0.5px solid var(--color-border-tertiary);
 }
 
-.pairing-table-card header strong {
+.pairing-table-number {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 7px;
   color: var(--color-accent-secondary);
-  font-size: 13px;
+}
+
+.pairing-table-number span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pairing-table-number strong {
+  color: var(--color-accent-secondary);
+  font-size: 26px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .pairing-table-card header span {
@@ -1544,8 +1692,8 @@ button:disabled {
 
 .pairing-player-slot {
   width: 100%;
-  min-height: 48px;
-  padding: 10px 12px;
+  min-height: 58px;
+  padding: 12px 13px;
   border: 0.5px solid var(--color-border-secondary);
   border-radius: var(--border-radius-md);
   background: var(--color-background-secondary);
@@ -1555,6 +1703,11 @@ button:disabled {
   align-items: center;
   gap: 8px;
   text-align: left;
+}
+
+.pairing-player-slot i {
+  color: var(--color-text-secondary);
+  font-size: 18px;
 }
 
 .pairing-player-slot:active {
@@ -1568,6 +1721,10 @@ button:disabled {
   box-shadow: 0 0 0 1px rgba(31, 122, 255, 0.18);
 }
 
+.pairing-player-slot.selected i {
+  color: var(--color-accent-secondary);
+}
+
 .pairing-player-slot:disabled {
   cursor: not-allowed;
 }
@@ -1578,12 +1735,14 @@ button:disabled {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+  font-size: 15px;
 }
 
 .pairing-table-versus {
   text-align: center;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0;
 }

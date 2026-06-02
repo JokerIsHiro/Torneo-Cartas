@@ -17,7 +17,7 @@ import { ADMIN_AUTH_EMAIL } from './config/appConfig'
 
 // Componente raiz. Decide que vista se muestra segun la ruta de la URL
 // y conecta la sincronizacion entre pestanas.
-type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion' | 'jugador' | 'qr' | 'deckbuilder'
+type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion' | 'jugador' | 'organizar' | 'qr' | 'deckbuilder'
 type AdminTab = string
 type TournamentInnerTab = 'ronda' | 'organizar' | 'clasificacion'
 
@@ -38,6 +38,7 @@ const routePaths: Record<AppRoute, string> = {
   temporizadores: '/temporizadores',
   inscripcion: '/inscripcion',
   jugador: '/jugador',
+  organizar: '/organizar',
   qr: '/qr',
   deckbuilder: '/deckbuilder',
 }
@@ -47,6 +48,7 @@ function getRouteFromPath(): AppRoute {
   if (window.location.pathname.startsWith('/temporizadores')) return 'temporizadores'
   if (window.location.pathname.startsWith('/inscripcion')) return 'inscripcion'
   if (window.location.pathname.startsWith('/jugador')) return 'jugador'
+  if (window.location.pathname.startsWith('/organizar')) return 'organizar'
   if (window.location.pathname.startsWith('/qr')) return 'qr'
   if (window.location.pathname.startsWith('/deckbuilder')) return 'deckbuilder'
   return 'admin'
@@ -141,9 +143,9 @@ export default function App() {
     }
   }
 
-  function openPublicTab(target: 'proyeccion' | 'temporizadores') {
+  function openPublicTab(target: 'proyeccion' | 'temporizadores' | 'organizar') {
     const url = new URL(routePaths[target], window.location.origin)
-    if (target === 'proyeccion' && selectedTab) url.searchParams.set('torneo', selectedTab)
+    if ((target === 'proyeccion' || target === 'organizar') && selectedTab) url.searchParams.set('torneo', selectedTab)
     window.open(url.toString(), '_blank', 'noopener,noreferrer')
   }
 
@@ -165,8 +167,8 @@ export default function App() {
   const selectedTab = activeTab || tournaments[0]?.id || ''
   const activeTournament = tournaments.find(t => t.id === selectedTab)
   const rankingSelected = selectedTab === RANKING_TAB_ID
-  const mobileBlocked = isMobileDevice && route !== 'inscripcion' && route !== 'jugador'
-  const adminLocked = (route === 'admin' || route === 'deckbuilder') && !adminUnlocked
+  const mobileBlocked = isMobileDevice && route !== 'inscripcion' && route !== 'jugador' && route !== 'organizar'
+  const adminLocked = (route === 'admin' || route === 'deckbuilder' || route === 'organizar') && !adminUnlocked
 
   return (
     <div className="app-shell">
@@ -216,6 +218,15 @@ export default function App() {
                   <i className="ti ti-clock" aria-hidden="true" />
                   Pantalla de temporizadores
                 </button>
+
+                <button
+                  onClick={() => openPublicTab('organizar')}
+                  className="projector-open-button"
+                  title="Abre el organizador de mesas en una vista usable en tablet o movil"
+                >
+                  <i className="ti ti-arrows-shuffle" aria-hidden="true" />
+                  Organizar mesas
+                </button>
               </div>
             )}
 
@@ -240,7 +251,7 @@ export default function App() {
           </>
         )}
 
-        {route !== 'admin' && route !== 'inscripcion' && route !== 'jugador' && (
+        {route !== 'admin' && route !== 'inscripcion' && route !== 'jugador' && route !== 'organizar' && (
           <div className="public-nav">
             {route === 'proyeccion' && (
               <button onClick={() => setRoute('temporizadores')} title="Ver relojes de ronda">
@@ -265,6 +276,7 @@ export default function App() {
         {!mobileBlocked && route === 'temporizadores' && <LazyView><TimersView /></LazyView>}
         {route === 'inscripcion' && <LazyView><RegistrationView /></LazyView>}
         {route === 'jugador' && <LazyView><RegistrationView /></LazyView>}
+        {!mobileBlocked && route === 'organizar' && !adminLocked && <OrganizerRoute />}
         {!mobileBlocked && route === 'qr' && <QrView />}
         {!mobileBlocked && route === 'deckbuilder' && !adminLocked && <LazyView><DeckBuilderView /></LazyView>}
 
@@ -296,6 +308,42 @@ export default function App() {
           </div>
         )}
       </main>
+    </div>
+  )
+}
+
+function OrganizerRoute() {
+  const tournamentId = new URLSearchParams(window.location.search).get('torneo') ?? ''
+  const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
+
+  if (!tournamentId || !tournament) {
+    return (
+      <div className="empty-state">
+        <i className="ti ti-arrows-shuffle" aria-hidden="true" />
+        <div>No se ha encontrado el torneo para organizar.</div>
+      </div>
+    )
+  }
+
+  if (tournament.status !== 'active') {
+    return (
+      <div className="empty-state">
+        <i className="ti ti-lock" aria-hidden="true" />
+        <div>Solo se pueden organizar emparejamientos con el torneo activo.</div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="tournament-header">
+        <div>
+          <h2>{tournament.name}</h2>
+          <p>Organizar emparejamientos de la ronda {tournament.currentRound}</p>
+        </div>
+        <StatusBadge status={tournament.status} />
+      </div>
+      <Round tournamentId={tournament.id} mode="organize" />
     </div>
   )
 }

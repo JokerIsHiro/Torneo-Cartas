@@ -270,6 +270,7 @@ function PairingOrganizer({
 }: PairingOrganizerProps) {
   // Vista dedicada para revisar mesas antes de publicar resultados.
   const slotLabels = new Map(playerSlots.map(slot => [slot.value, slot.label]))
+  const selectedSlotLabel = firstSwapSlot ? slotLabels.get(firstSwapSlot) : ''
 
   function handleSlotClick(slot: string) {
     if (!editablePairings) return
@@ -305,9 +306,16 @@ function PairingOrganizer({
       )}
 
       {editablePairings && (
-        <div className="pairing-organizer-help">
-          <i className="ti ti-hand-move" aria-hidden="true" />
-          Arrastra un jugador sobre otro para intercambiarlos. En movil, toca un jugador y despues el otro.
+        <div className={firstSwapSlot ? 'pairing-organizer-help selecting' : 'pairing-organizer-help'}>
+          <i className={firstSwapSlot ? 'ti ti-target-arrow' : 'ti ti-hand-click'} aria-hidden="true" />
+          <div>
+            <strong>{firstSwapSlot ? 'Ahora elige el jugador destino' : 'Toca un jugador para moverlo'}</strong>
+            <span>
+              {firstSwapSlot
+                ? `${selectedSlotLabel ?? 'Jugador seleccionado'} se intercambiara con el siguiente jugador que toques.`
+                : 'Despues toca otro jugador de otra mesa para intercambiarlos. Tambien puedes arrastrar en escritorio.'}
+            </span>
+          </div>
         </div>
       )}
 
@@ -315,7 +323,10 @@ function PairingOrganizer({
         {currentMatches.map(match => (
           <article key={match.id} className="pairing-table-card">
             <header>
-              <strong>Mesa {match.tableNumber}</strong>
+              <div className="pairing-table-number">
+                <span>Mesa</span>
+                <strong>{match.tableNumber}</strong>
+              </div>
               {match.p2Id === 'BYE' && <span>BYE</span>}
             </header>
 

@@ -67,37 +67,19 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
   }
 
   return (
-    <div className={readOnly ? 'match-card projector-match-card' : 'match-card'} style={{
-      background: 'var(--color-background-primary)',
-      border: '0.5px solid var(--color-border-tertiary)',
-      borderRadius: 'var(--border-radius-lg)',
-      padding: '.875rem 1rem',
-      marginBottom: '.625rem',
-      opacity: isDone && !isTimeout ? 0.75 : 1,
-      transition: 'opacity .2s, border-color .2s',
-    }}>
+    <div className={`${readOnly ? 'match-card projector-match-card' : 'match-card'} ${isDone && !isTimeout ? 'done' : ''}`}>
 
       {/* Cabecera */}
-      <div className="match-card-header" style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '.625rem',
-      }}>
-        <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>
-          Mesa {match.tableNumber}
-        </span>
+      <div className="match-card-header">
+        <div className="match-table-badge" aria-label={`Mesa ${match.tableNumber}`}>
+          <span>Mesa</span>
+          <strong>{match.tableNumber}</strong>
+        </div>
         <ResultBadge result={match.result} />
       </div>
 
       {/* Jugadores */}
-      <div className="match-players" style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr auto 1fr',
-        alignItems: 'center',
-        gap: '8px',
-        marginBottom: '.75rem',
-      }}>
+      <div className="match-players">
         <PlayerCell
           name={getPlayerName(match.p1Id)}
           points={p1?.points ?? 0}
@@ -106,7 +88,7 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
           isWinner={match.result === 'p1'}
           isLoser={match.result === 'p2' || match.result === 'timeout'}
         />
-        <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+        <span className="match-versus">
           vs
         </span>
         <PlayerCell
@@ -122,12 +104,7 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
 
       {/* Botones de resultado */}
       {!isBye && !readOnly && (
-        <div className="match-actions" style={{
-          display: 'flex',
-          gap: '6px',
-          paddingTop: '.625rem',
-          borderTop: '0.5px solid var(--color-border-tertiary)',
-        }}>
+        <div className="match-actions">
           <button
             className="result-button result-button-win"
             style={{...resultBtnStyle(match.result === 'p1', 'win'), borderRadius: 'var(--border-radius-md)'}}
@@ -184,14 +161,14 @@ function PlayerCell({ name, points, losses, align, isWinner, isLoser, isBye }: P
 
   return (
     <div className="player-cell" style={{ textAlign: align }}>
-      <div className="player-name" style={{ fontSize: '13px', fontWeight: 500, color, transition: 'color .2s' }}>
+      <div className="player-name" style={{ color }}>
         {isWinner && (
           <i className="ti ti-crown" aria-hidden="true" style={{ fontSize: '12px', marginRight: '4px' }} />
         )}
         {name}
       </div>
       {!isBye && (
-        <div className="player-meta" style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+        <div className="player-meta">
           {points} pts · {losses} {losses === 1 ? 'derrota' : 'derrotas'}
         </div>
       )}
