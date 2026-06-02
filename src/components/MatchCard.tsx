@@ -67,39 +67,40 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
   }
 
   return (
-    <div className={`${readOnly ? 'match-card projector-match-card' : 'match-card'} ${isDone && !isTimeout ? 'done' : ''}`}>
-
-      {/* Cabecera */}
-      <div className="match-card-header">
-        <div className="match-table-badge" aria-label={`Mesa ${match.tableNumber}`}>
-          <span>Mesa</span>
-          <strong>{match.tableNumber}</strong>
+    <div className={`${readOnly ? 'match-card projector-match-card' : 'match-card'} ${isDone && !isTimeout ? 'done' : ''} ${isBye || readOnly ? 'no-actions' : ''}`}>
+      <div className="match-main">
+        {/* Cabecera */}
+        <div className="match-card-header">
+          <div className="match-table-badge" aria-label={`Mesa ${match.tableNumber}`}>
+            <span>Mesa</span>
+            <strong>{match.tableNumber}</strong>
+          </div>
+          <ResultBadge result={match.result} />
         </div>
-        <ResultBadge result={match.result} />
-      </div>
 
-      {/* Jugadores */}
-      <div className="match-players">
-        <PlayerCell
-          name={getPlayerName(match.p1Id)}
-          points={p1?.points ?? 0}
-          losses={p1?.losses ?? 0}
-          align="left"
-          isWinner={match.result === 'p1'}
-          isLoser={match.result === 'p2' || match.result === 'timeout'}
-        />
-        <span className="match-versus">
-          vs
-        </span>
-        <PlayerCell
-          name={p2Name}
-          points={p2?.points ?? 0}
-          losses={p2?.losses ?? 0}
-          align="right"
-          isWinner={match.result === 'p2'}
-          isLoser={match.result === 'p1' || match.result === 'timeout'}
-          isBye={isBye}
-        />
+        {/* Jugadores */}
+        <div className="match-players">
+          <PlayerCell
+            name={getPlayerName(match.p1Id)}
+            points={p1?.points ?? 0}
+            losses={p1?.losses ?? 0}
+            align="left"
+            isWinner={match.result === 'p1'}
+            isLoser={match.result === 'p2' || match.result === 'timeout'}
+          />
+          <span className="match-versus">
+            vs
+          </span>
+          <PlayerCell
+            name={p2Name}
+            points={p2?.points ?? 0}
+            losses={p2?.losses ?? 0}
+            align="right"
+            isWinner={match.result === 'p2'}
+            isLoser={match.result === 'p1' || match.result === 'timeout'}
+            isBye={isBye}
+          />
+        </div>
       </div>
 
       {/* Botones de resultado */}

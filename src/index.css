@@ -1156,6 +1156,10 @@ button:disabled {
 }
 
 .match-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 168px;
+  align-items: stretch;
+  gap: .85rem;
   padding: .85rem;
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-lg);
@@ -1163,6 +1167,16 @@ button:disabled {
     linear-gradient(180deg, rgba(31, 122, 255, 0.045), transparent 42%),
     var(--color-background-primary);
   transition: opacity .2s, border-color .2s, transform .15s;
+}
+
+.match-card.no-actions {
+  grid-template-columns: 1fr;
+}
+
+.match-main {
+  min-width: 0;
+  display: grid;
+  gap: .65rem;
 }
 
 .match-card.done {
@@ -1174,7 +1188,7 @@ button:disabled {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  margin-bottom: .7rem;
+  margin-bottom: 0;
   min-height: 38px;
   position: relative;
 }
@@ -1182,11 +1196,12 @@ button:disabled {
 .match-table-badge {
   display: inline-grid;
   grid-template-columns: auto auto;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
   gap: 7px;
   min-width: 86px;
-  padding: 5px 10px;
+  min-height: 38px;
+  padding: 4px 10px;
   border: 0.5px solid var(--color-border-primary);
   border-radius: var(--border-radius-md);
   background: var(--color-draw-bg);
@@ -1197,13 +1212,14 @@ button:disabled {
   color: var(--color-text-secondary);
   font-size: 10px;
   font-weight: 700;
+  line-height: 1;
   text-transform: uppercase;
 }
 
 .match-table-badge strong {
   color: var(--color-text-primary);
   font-size: 22px;
-  line-height: 1;
+  line-height: .95;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1213,7 +1229,7 @@ button:disabled {
   align-items: center;
   gap: 8px;
   min-height: 48px;
-  margin-bottom: .7rem;
+  margin-bottom: 0;
 }
 
 .match-versus {
@@ -1250,10 +1266,11 @@ button:disabled {
 }
 
 .match-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 6px;
-  padding-top: .6rem;
-  border-top: 0.5px solid var(--color-border-tertiary);
+  padding-left: .85rem;
+  border-left: 0.5px solid var(--color-border-tertiary);
 }
 
 .round-export-actions {
@@ -3722,6 +3739,11 @@ button:disabled {
     text-align: left;
   }
 
+  .match-card {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
   .match-players > span {
     display: none;
   }
@@ -3737,6 +3759,10 @@ button:disabled {
   .match-actions {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
+    padding-left: 0;
+    padding-top: .65rem;
+    border-left: 0;
+    border-top: 0.5px solid var(--color-border-tertiary);
   }
 
   .match-actions button {
