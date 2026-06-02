@@ -101,12 +101,6 @@ export function LocalRanking() {
   const leaderboardLogo = getLeaderboardLogo(selectedGame)
   const exportedRanking = ranking.slice(0, 16)
 
-  useEffect(() => {
-    if (availableGames.length > 0 && !availableGames.includes(gameFilter)) {
-      setGameFilter(availableGames[0])
-    }
-  }, [availableGames, gameFilter])
-
   return (
     <section>
       <div className="tournament-header">

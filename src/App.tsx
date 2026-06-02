@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useTournamentsStore } from './store/tournamentsStore'
 import { syncTimersFromStorage, TIMER_SYNC_KEY, useTimerStore } from './store/timerStore'
@@ -6,12 +6,7 @@ import { Setup } from './pages/Setup'
 import { Round } from './pages/Round'
 import { Results } from './pages/Results'
 import { Standings } from './components/Standings'
-import { ProjectorView } from './components/ProjectorView'
-import { TimersView } from './components/TimersView'
-import { RegistrationView } from './components/RegistrationView'
 import { SnapshotPanel } from './components/SnapshotPanel'
-import { DeckBuilderView } from './components/DeckBuilderView'
-import { LocalRanking } from './components/LocalRanking'
 import type { Tournament } from './types/tournament'
 import { unlockTimerSound } from './utils/timerSound'
 import { useFirebaseSync } from './hooks/useFirebaseSync'
@@ -28,6 +23,12 @@ const ADMIN_SESSION_KEY = 'torneo-admin-session'
 const ADMIN_SESSION_VALUE = 'firebase-admin-v1'
 const MIN_ADMIN_CODE_LENGTH = 8
 const RANKING_TAB_ID = '__ranking__'
+
+const ProjectorView = lazy(() => import('./components/ProjectorView').then(module => ({ default: module.ProjectorView })))
+const TimersView = lazy(() => import('./components/TimersView').then(module => ({ default: module.TimersView })))
+const RegistrationView = lazy(() => import('./components/RegistrationView').then(module => ({ default: module.RegistrationView })))
+const DeckBuilderView = lazy(() => import('./components/DeckBuilderView').then(module => ({ default: module.DeckBuilderView })))
+const LocalRanking = lazy(() => import('./components/LocalRanking').then(module => ({ default: module.LocalRanking })))
 
 const routePaths: Record<AppRoute, string> = {
   admin: '/',
@@ -256,13 +257,13 @@ export default function App() {
       <main className={route !== 'admin' ? 'main-content projector-content' : 'main-content'}>
         {mobileBlocked && <MobilePlayerOnly />}
         {!mobileBlocked && adminLocked && <AdminLogin onSubmit={handleAdminLogin} configured={Boolean(ADMIN_AUTH_EMAIL)} />}
-        {!mobileBlocked && route === 'proyeccion' && <ProjectorView />}
-        {!mobileBlocked && route === 'temporizadores' && <TimersView />}
-        {route === 'inscripcion' && <RegistrationView />}
+        {!mobileBlocked && route === 'proyeccion' && <LazyView><ProjectorView /></LazyView>}
+        {!mobileBlocked && route === 'temporizadores' && <LazyView><TimersView /></LazyView>}
+        {route === 'inscripcion' && <LazyView><RegistrationView /></LazyView>}
         {!mobileBlocked && route === 'qr' && <QrView />}
-        {!mobileBlocked && route === 'deckbuilder' && !adminLocked && <DeckBuilderView />}
+        {!mobileBlocked && route === 'deckbuilder' && !adminLocked && <LazyView><DeckBuilderView /></LazyView>}
 
-        {!mobileBlocked && route === 'admin' && !adminLocked && rankingSelected && <LocalRanking />}
+        {!mobileBlocked && route === 'admin' && !adminLocked && rankingSelected && <LazyView><LocalRanking /></LazyView>}
 
         {!mobileBlocked && route === 'admin' && !adminLocked && activeTournament && !rankingSelected && (
           <TournamentView
@@ -290,6 +291,23 @@ export default function App() {
           </div>
         )}
       </main>
+    </div>
+  )
+}
+
+function LazyView({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      {children}
+    </Suspense>
+  )
+}
+
+function LoadingScreen() {
+  return (
+    <div className="loading-screen">
+      <i className="ti ti-loader-2" aria-hidden="true" />
+      <span>Cargando...</span>
     </div>
   )
 }

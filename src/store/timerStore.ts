@@ -30,6 +30,7 @@ interface TimerStore {
 export type SyncedTimerState = Omit<TimerState, 'intervalId'>
 
 export const TIMER_SYNC_KEY = 'torneos-timers-sync'
+const TIMER_TICK_MS = 1000
 
 const defaultTimer = (durationSeconds: number, updatedAt = Date.now()): TimerState => ({
   secondsLeft: durationSeconds,
@@ -91,7 +92,7 @@ function commitTimer(tournamentId: string, timer: TimerState, publishRemote = tr
 function ensureTicker(tournamentId: string, timer: TimerState) {
   if (timer.status !== 'running') return null
   if (timer.intervalId) return timer.intervalId
-  return setInterval(() => tickTimer(tournamentId), 250)
+  return setInterval(() => tickTimer(tournamentId), TIMER_TICK_MS)
 }
 
 function tickTimer(tournamentId: string) {
