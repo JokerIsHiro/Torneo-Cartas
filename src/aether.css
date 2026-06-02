@@ -1,0 +1,432 @@
+:root {
+  --aether-bg: #06070d;
+  --aether-panel: #0d111c;
+  --aether-panel-strong: #121827;
+  --aether-line: #26324a;
+  --aether-line-hot: #7c5cff;
+  --aether-text: #f6f3ff;
+  --aether-muted: #9aa3b8;
+  --aether-blue: #5ee7ff;
+  --aether-violet: #9b7cff;
+  --aether-danger: #ff5f7a;
+  --aether-gold: #ffd166;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background: var(--aether-bg);
+}
+
+body {
+  background:
+    radial-gradient(circle at 18% -8%, rgba(155, 124, 255, 0.28), transparent 19rem),
+    radial-gradient(circle at 105% 10%, rgba(94, 231, 255, 0.18), transparent 18rem),
+    var(--aether-bg);
+}
+
+button,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.aether-app {
+  min-height: 100dvh;
+  padding: max(14px, env(safe-area-inset-top)) 14px calc(92px + env(safe-area-inset-bottom));
+  color: var(--aether-text);
+}
+
+.aether-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.aether-hero span,
+.aether-tournament-card span,
+.aether-section-title span,
+.aether-field span {
+  color: var(--aether-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.aether-hero h1 {
+  margin: 2px 0 0;
+  color: var(--aether-text);
+  font-size: clamp(26px, 8vw, 36px);
+  line-height: 1;
+}
+
+.aether-hero button,
+.aether-tournament-card button,
+.aether-section-title button {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  border: 1px solid rgba(155, 124, 255, 0.5);
+  border-radius: 14px;
+  background: rgba(18, 24, 39, 0.85);
+  color: var(--aether-text);
+  display: grid;
+  place-items: center;
+}
+
+.aether-tournament-strip {
+  display: flex;
+  gap: 8px;
+  margin: 0 -14px 12px;
+  padding: 0 14px 4px;
+  overflow-x: auto;
+}
+
+.aether-tournament-strip button {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--aether-line);
+  border-radius: 999px;
+  background: rgba(13, 17, 28, 0.72);
+  color: var(--aether-muted);
+  white-space: nowrap;
+}
+
+.aether-tournament-strip button.active {
+  border-color: var(--aether-line-hot);
+  color: var(--aether-text);
+}
+
+.aether-tournament-card,
+.aether-panel-shell,
+.aether-empty {
+  border: 1px solid rgba(124, 92, 255, 0.32);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(155, 124, 255, 0.09), rgba(94, 231, 255, 0.025)),
+    rgba(13, 17, 28, 0.9);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.32);
+}
+
+.aether-tournament-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 14px;
+}
+
+.aether-tournament-card h2 {
+  margin: 3px 0;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.aether-tournament-card p {
+  color: var(--aether-muted);
+  font-size: 13px;
+}
+
+.aether-panel-shell {
+  min-height: calc(100dvh - 245px);
+  padding: 14px;
+}
+
+.aether-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.aether-field {
+  display: grid;
+  gap: 8px;
+}
+
+.aether-field input,
+.aether-add-player input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--aether-line);
+  border-radius: 14px;
+  background: rgba(6, 7, 13, 0.82);
+  color: var(--aether-text);
+  font-size: 16px;
+  outline: none;
+}
+
+.aether-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.aether-kpi {
+  display: grid;
+  gap: 4px;
+  min-height: 68px;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.22);
+  border-radius: 16px;
+  background: rgba(6, 7, 13, 0.62);
+  text-align: center;
+}
+
+.aether-kpi strong {
+  font-size: 20px;
+  color: var(--aether-blue);
+}
+
+.aether-kpi span {
+  color: var(--aether-muted);
+  font-size: 12px;
+}
+
+.aether-add-player {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px;
+  gap: 8px;
+}
+
+.aether-add-player button,
+.aether-primary,
+.aether-empty button {
+  min-height: 48px;
+  border: 1px solid rgba(94, 231, 255, 0.44);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(124, 92, 255, 0.9), rgba(94, 231, 255, 0.72));
+  color: #05070c;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.aether-primary:disabled,
+.aether-add-player button:disabled {
+  opacity: 0.38;
+}
+
+.aether-list,
+.aether-match-list,
+.aether-standing-list {
+  display: grid;
+  gap: 8px;
+}
+
+.aether-player-row,
+.aether-standing-row,
+.aether-standing-header {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 8px 10px;
+  border: 1px solid rgba(38, 50, 74, 0.9);
+  border-radius: 14px;
+  background: rgba(6, 7, 13, 0.68);
+}
+
+.aether-player-row span,
+.aether-standing-row span,
+.aether-standing-header span {
+  color: var(--aether-muted);
+  font-size: 13px;
+}
+
+.aether-player-row strong,
+.aether-standing-row strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--aether-text);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aether-player-row button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--aether-line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--aether-muted);
+}
+
+.aether-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.aether-section-title h2 {
+  margin-top: 2px;
+  font-size: 24px;
+}
+
+.aether-match-card {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(38, 50, 74, 0.94);
+  border-radius: 18px;
+  background: rgba(6, 7, 13, 0.72);
+}
+
+.aether-match-card header,
+.aether-versus {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.aether-match-card header span {
+  color: var(--aether-blue);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.aether-match-card header strong {
+  color: var(--aether-gold);
+  font-size: 12px;
+}
+
+.aether-versus strong {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aether-versus strong:last-child {
+  text-align: right;
+}
+
+.aether-versus span {
+  color: var(--aether-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.aether-result-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.aether-result-buttons button {
+  min-height: 40px;
+  border: 1px solid var(--aether-line);
+  border-radius: 12px;
+  background: rgba(18, 24, 39, 0.86);
+  color: var(--aether-text);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.aether-result-buttons button.active {
+  border-color: var(--aether-blue);
+  color: var(--aether-blue);
+}
+
+.aether-result-buttons button.danger {
+  border-color: var(--aether-danger);
+  color: var(--aether-danger);
+}
+
+.aether-standing-header,
+.aether-standing-row {
+  grid-template-columns: 28px minmax(0, 1fr) 44px 54px 54px;
+}
+
+.aether-standing-header {
+  min-height: 32px;
+  background: transparent;
+  border-color: transparent;
+  font-weight: 800;
+}
+
+.aether-empty {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: calc(100dvh - 120px);
+  padding: 24px;
+  text-align: center;
+}
+
+.aether-empty.compact {
+  min-height: 280px;
+}
+
+.aether-empty i {
+  color: var(--aether-blue);
+  font-size: 34px;
+}
+
+.aether-empty h2 {
+  font-size: 24px;
+}
+
+.aether-empty p,
+.aether-note,
+.aether-list-empty {
+  color: var(--aether-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.aether-error {
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 95, 122, 0.42);
+  border-radius: 14px;
+  background: rgba(255, 95, 122, 0.12);
+  color: var(--aether-danger);
+  font-size: 14px;
+}
+
+.aether-bottom-nav {
+  position: fixed;
+  z-index: 20;
+  left: 12px;
+  right: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(124, 92, 255, 0.36);
+  border-radius: 22px;
+  background: rgba(10, 13, 22, 0.94);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.5);
+}
+
+.aether-bottom-nav button {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--aether-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.aether-bottom-nav button i {
+  font-size: 19px;
+}
+
+.aether-bottom-nav button.active {
+  background: linear-gradient(135deg, rgba(124, 92, 255, 0.32), rgba(94, 231, 255, 0.16));
+  color: var(--aether-text);
+}

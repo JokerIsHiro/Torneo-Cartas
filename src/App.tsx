@@ -1,825 +1,414 @@
-// Orquestador principal de la app: decide la vista segun la URL, controla el acceso admin
-// y conecta sincronizacion global. Si anades una pantalla nueva, registra aqui su ruta.
-import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
-import { QRCodeSVG } from 'qrcode.react'
+import { useState } from 'react'
 import { useTournamentsStore } from './store/tournamentsStore'
-import { syncTimersFromStorage, TIMER_SYNC_KEY, useTimerData, useTimerStore } from './store/timerStore'
-import { Setup } from './pages/Setup'
-import { Round } from './pages/Round'
-import { Results } from './pages/Results'
-import { Standings } from './components/Standings'
-import { SnapshotPanel } from './components/SnapshotPanel'
-import type { Tournament } from './types/tournament'
-import { unlockTimerSound } from './utils/timerSound'
-import { useFirebaseSync } from './hooks/useFirebaseSync'
 import { useSwissPairings } from './hooks/useSwissPairings'
-import { signInAdmin, signOutAdmin } from './services/firebase'
-import { ADMIN_AUTH_EMAIL } from './config/appConfig'
+import type { Match, MatchResult, Tournament } from './types/tournament'
 
-// Componente raiz. Decide que vista se muestra segun la ruta de la URL
-// y conecta la sincronizacion entre pestanas.
-type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion' | 'jugador' | 'organizar' | 'qr' | 'deckbuilder'
-type AdminTab = string
-type TournamentInnerTab = 'ronda' | 'organizar' | 'clasificacion'
-
-const ADMIN_SESSION_KEY = 'torneo-admin-session'
-const ADMIN_SESSION_VALUE = 'firebase-admin-v1'
-const MIN_ADMIN_CODE_LENGTH = 8
-const RANKING_TAB_ID = '__ranking__'
-
-const ProjectorView = lazy(() => import('./components/ProjectorView').then(module => ({ default: module.ProjectorView })))
-const TimersView = lazy(() => import('./components/TimersView').then(module => ({ default: module.TimersView })))
-const RegistrationView = lazy(() => import('./components/RegistrationView').then(module => ({ default: module.RegistrationView })))
-const DeckBuilderView = lazy(() => import('./components/DeckBuilderView').then(module => ({ default: module.DeckBuilderView })))
-const LocalRanking = lazy(() => import('./components/LocalRanking').then(module => ({ default: module.LocalRanking })))
-
-const routePaths: Record<AppRoute, string> = {
-  admin: '/',
-  proyeccion: '/proyeccion',
-  temporizadores: '/temporizadores',
-  inscripcion: '/inscripcion',
-  jugador: '/jugador',
-  organizar: '/organizar',
-  qr: '/qr',
-  deckbuilder: '/deckbuilder',
-}
-
-function getRouteFromPath(): AppRoute {
-  if (window.location.pathname.startsWith('/proyeccion')) return 'proyeccion'
-  if (window.location.pathname.startsWith('/temporizadores')) return 'temporizadores'
-  if (window.location.pathname.startsWith('/inscripcion')) return 'inscripcion'
-  if (window.location.pathname.startsWith('/jugador')) return 'jugador'
-  if (window.location.pathname.startsWith('/organizar')) return 'organizar'
-  if (window.location.pathname.startsWith('/qr')) return 'qr'
-  if (window.location.pathname.startsWith('/deckbuilder')) return 'deckbuilder'
-  return 'admin'
-}
-
-function setRoute(route: AppRoute) {
-  const targetPath = routePaths[route]
-  if (window.location.pathname !== targetPath) {
-    window.history.pushState(null, '', targetPath)
-  }
-  window.dispatchEvent(new PopStateEvent('popstate'))
-}
+type AppTab = 'setup' | 'round' | 'standings'
 
 export default function App() {
-  const [route, setRouteState] = useState<AppRoute>(getRouteFromPath)
-  const [activeTab, setActiveTab] = useState<AdminTab>('')
-  const [innerTab, setInnerTab] = useState<Record<string, TournamentInnerTab>>({})
-  const [adminUnlocked, setAdminUnlocked] = useState(() => localStorage.getItem(ADMIN_SESSION_KEY) === ADMIN_SESSION_VALUE)
-  const [adminDrawerOpen, setAdminDrawerOpen] = useState(false)
-  const isMobileDevice = useIsMobileDevice()
-  useFirebaseSync()
+  const tournaments = useTournamentsStore(state => state.tournaments)
+  const createTournament = useTournamentsStore(state => state.createTournament)
+  const deleteTournament = useTournamentsStore(state => state.deleteTournament)
+  const [selectedTournamentId, setSelectedTournamentId] = useState(() => tournaments.at(-1)?.id ?? '')
+  const [tab, setTab] = useState<AppTab>('setup')
 
-  const tournaments = useTournamentsStore(s => s.tournaments)
-  const syncEnabled = useTournamentsStore(s => s.syncEnabled)
-  const syncLoaded = useTournamentsStore(s => s.syncLoaded)
-  const createTournament = useTournamentsStore(s => s.createTournament)
-  const deleteTournament = useTournamentsStore(s => s.deleteTournament)
-  const initTimer = useTimerStore(s => s.initTimer)
-
-  useEffect(() => {
-    if (window.location.hash.startsWith('#/')) {
-      const legacyPath = window.location.hash.slice(1)
-      window.history.replaceState(null, '', legacyPath)
-    }
-
-    function handleRouteChange() {
-      setRouteState(getRouteFromPath())
-    }
-
-    handleRouteChange()
-    window.addEventListener('popstate', handleRouteChange)
-    return () => window.removeEventListener('popstate', handleRouteChange)
-  }, [])
-
-  useEffect(() => {
-    function handleStorageSync(event: StorageEvent) {
-      if (event.key === TIMER_SYNC_KEY) {
-        syncTimersFromStorage(event.newValue)
-      }
-    }
-
-    window.addEventListener('storage', handleStorageSync)
-    return () => window.removeEventListener('storage', handleStorageSync)
-  }, [])
-
-  useEffect(() => {
-    function handleFirstInteraction() {
-      void unlockTimerSound()
-    }
-
-    window.addEventListener('pointerdown', handleFirstInteraction, { once: true })
-    window.addEventListener('keydown', handleFirstInteraction, { once: true })
-
-    return () => {
-      window.removeEventListener('pointerdown', handleFirstInteraction)
-      window.removeEventListener('keydown', handleFirstInteraction)
-    }
-  }, [])
-
-  function getInnerTab(id: string): TournamentInnerTab {
-    return innerTab[id] ?? 'ronda'
-  }
-
-  function setInnerTabFor(id: string, tab: TournamentInnerTab) {
-    setInnerTab(prev => ({ ...prev, [id]: tab }))
-  }
+  const selectedTournament = tournaments.find(tournament => tournament.id === selectedTournamentId) ?? tournaments.at(-1) ?? null
 
   function handleCreateTournament() {
-    if (syncEnabled && !syncLoaded) return
     const id = createTournament()
-    initTimer(id, 50 * 60)
-    setActiveTab(id)
-    setRoute('admin')
-    setAdminDrawerOpen(false)
-  }
-
-  function handleDeleteTournament(t: Tournament) {
-    if (confirm(`Eliminar "${t.name}"?`)) {
-      deleteTournament(t.id)
-      if (selectedTab === t.id) {
-        const next = tournaments.find(candidate => candidate.id !== t.id)
-        setActiveTab(next?.id ?? '')
-      }
-    }
-  }
-
-  function openPublicTab(target: 'proyeccion' | 'temporizadores' | 'organizar') {
-    const url = new URL(routePaths[target], window.location.origin)
-    if ((target === 'proyeccion' || target === 'organizar') && selectedTab) url.searchParams.set('torneo', selectedTab)
-    window.open(url.toString(), '_blank', 'noopener,noreferrer')
-  }
-
-  async function handleAdminLogin(code: string) {
-    if (!ADMIN_AUTH_EMAIL) return false
-    await signInAdmin(code.trim())
-    localStorage.setItem(ADMIN_SESSION_KEY, ADMIN_SESSION_VALUE)
-    setAdminUnlocked(true)
-    return true
-  }
-
-  function handleAdminLogout() {
-    localStorage.removeItem(ADMIN_SESSION_KEY)
-    setAdminUnlocked(false)
-    setAdminDrawerOpen(false)
-    void signOutAdmin()
-    setRoute('admin')
-  }
-
-  function selectAdminTab(tab: AdminTab) {
-    setActiveTab(tab)
-    setRoute('admin')
-    setAdminDrawerOpen(false)
-  }
-
-  const selectedTab = activeTab || tournaments[0]?.id || ''
-  const activeTournament = tournaments.find(t => t.id === selectedTab)
-  const rankingSelected = selectedTab === RANKING_TAB_ID
-  const mobileBlocked = isMobileDevice && route !== 'inscripcion' && route !== 'jugador' && route !== 'organizar'
-  const adminLocked = (route === 'admin' || route === 'deckbuilder' || route === 'organizar') && !adminUnlocked
-
-  return (
-    <div className="app-shell">
-      {!mobileBlocked && <div className="top-bar">
-        <div className="brand-block">
-          <img
-            src="/subterra-logo.jpg"
-            alt="Subterra TCG - Juegos de mesa"
-          />
-        </div>
-
-        {route === 'admin' && !adminLocked && (
-          <>
-            <TournamentTopTabs
-              tournaments={tournaments}
-              selectedTab={selectedTab}
-              rankingSelected={rankingSelected}
-              onSelectTournament={selectAdminTab}
-              onDeleteTournament={handleDeleteTournament}
-            />
-
-            <button
-              className="admin-drawer-open"
-              onClick={() => setAdminDrawerOpen(true)}
-              aria-label="Abrir menu de administracion"
-            >
-              <i className="ti ti-menu-2" aria-hidden="true" />
-              Menu
-            </button>
-          </>
-        )}
-
-        {route !== 'admin' && route !== 'inscripcion' && route !== 'jugador' && route !== 'organizar' && (
-          <div className="public-nav">
-            {route === 'proyeccion' && (
-              <button onClick={() => setRoute('temporizadores')} title="Ver relojes de ronda">
-                <i className="ti ti-clock" aria-hidden="true" />
-                Ir a temporizadores
-              </button>
-            )}
-            {route === 'temporizadores' && (
-              <button onClick={() => setRoute('proyeccion')} title="Ver mesas y rivales">
-                <i className="ti ti-swords" aria-hidden="true" />
-                Ir a emparejamientos
-              </button>
-            )}
-          </div>
-        )}
-      </div>}
-
-      {route === 'admin' && !adminLocked && (
-        <AdminDrawer
-          open={adminDrawerOpen}
-          tournaments={tournaments}
-          rankingSelected={rankingSelected}
-          syncEnabled={syncEnabled}
-          syncLoaded={syncLoaded}
-          onClose={() => setAdminDrawerOpen(false)}
-          onSelectRanking={() => selectAdminTab(RANKING_TAB_ID)}
-          onCreateTournament={handleCreateTournament}
-          onOpenPublicTab={openPublicTab}
-          onLogout={handleAdminLogout}
-        />
-      )}
-
-      <main className={route !== 'admin' ? 'main-content projector-content' : 'main-content'}>
-        {mobileBlocked && <MobilePlayerOnly />}
-        {!mobileBlocked && adminLocked && <AdminLogin onSubmit={handleAdminLogin} configured={Boolean(ADMIN_AUTH_EMAIL)} />}
-        {!mobileBlocked && route === 'proyeccion' && <LazyView><ProjectorView /></LazyView>}
-        {!mobileBlocked && route === 'temporizadores' && <LazyView><TimersView /></LazyView>}
-        {route === 'inscripcion' && <LazyView><RegistrationView /></LazyView>}
-        {route === 'jugador' && <LazyView><RegistrationView /></LazyView>}
-        {!mobileBlocked && route === 'organizar' && !adminLocked && <OrganizerRoute />}
-        {!mobileBlocked && route === 'qr' && <QrView />}
-        {!mobileBlocked && route === 'deckbuilder' && !adminLocked && <LazyView><DeckBuilderView /></LazyView>}
-
-        {!mobileBlocked && route === 'admin' && !adminLocked && rankingSelected && <LazyView><LocalRanking /></LazyView>}
-
-        {!mobileBlocked && route === 'admin' && !adminLocked && activeTournament && !rankingSelected && (
-          <TournamentView
-            tournament={activeTournament}
-            innerTab={getInnerTab(activeTournament.id)}
-            onInnerTabChange={tab => setInnerTabFor(activeTournament.id, tab)}
-          />
-        )}
-
-        {!mobileBlocked && route === 'admin' && !adminLocked && syncEnabled && !syncLoaded && (
-          <div className="empty-state">
-            <i className="ti ti-loader-2" aria-hidden="true" />
-            <div>Cargando torneos...</div>
-          </div>
-        )}
-
-        {!mobileBlocked && route === 'admin' && !adminLocked && syncLoaded && !activeTournament && !rankingSelected && (
-          <div className="empty-state">
-            <i className="ti ti-trophy-off" aria-hidden="true" />
-            <div>No hay torneos creados</div>
-            <button onClick={handleCreateTournament} className="empty-action-button" title="Empieza configurando un torneo nuevo">
-              <i className="ti ti-plus" aria-hidden="true" />
-              Crear primer torneo
-            </button>
-          </div>
-        )}
-      </main>
-    </div>
-  )
-}
-
-interface AdminDrawerProps {
-  open: boolean
-  tournaments: Tournament[]
-  rankingSelected: boolean
-  syncEnabled: boolean
-  syncLoaded: boolean
-  onClose: () => void
-  onSelectRanking: () => void
-  onCreateTournament: () => void
-  onOpenPublicTab: (target: 'proyeccion' | 'temporizadores' | 'organizar') => void
-  onLogout: () => void
-}
-
-function AdminDrawer({
-  open,
-  tournaments,
-  rankingSelected,
-  syncEnabled,
-  syncLoaded,
-  onClose,
-  onSelectRanking,
-  onCreateTournament,
-  onOpenPublicTab,
-  onLogout,
-}: AdminDrawerProps) {
-  if (!open) return null
-
-  return (
-    <div className="admin-drawer-backdrop" role="presentation" onMouseDown={onClose}>
-      <aside className="admin-drawer" role="dialog" aria-modal="true" aria-label="Menu de administracion" onMouseDown={event => event.stopPropagation()}>
-        <header>
-          <div>
-            <strong>Administracion</strong>
-            <span>Torneos y pantallas de tienda</span>
-          </div>
-          <button onClick={onClose} aria-label="Cerrar menu">
-            <i className="ti ti-x" aria-hidden="true" />
-          </button>
-        </header>
-
-        <section>
-          <div className="admin-drawer-section-title">Gestion</div>
-          <div className="admin-drawer-list">
-            <button className="admin-drawer-link" onClick={onCreateTournament} disabled={syncEnabled && !syncLoaded}>
-              <i className="ti ti-plus" aria-hidden="true" />
-              Crear torneo
-            </button>
-            <button className={rankingSelected ? 'admin-drawer-link active' : 'admin-drawer-link'} onClick={onSelectRanking}>
-              <i className="ti ti-chart-bar" aria-hidden="true" />
-              Ranking local
-            </button>
-          </div>
-        </section>
-
-        <section>
-          <div className="admin-drawer-section-title">Pantallas</div>
-          <div className="admin-drawer-actions">
-            <button disabled={!tournaments.length} onClick={() => onOpenPublicTab('proyeccion')}>
-              <i className="ti ti-external-link" aria-hidden="true" />
-              Emparejamientos
-            </button>
-            <button disabled={!tournaments.length} onClick={() => onOpenPublicTab('temporizadores')}>
-              <i className="ti ti-clock" aria-hidden="true" />
-              Temporizadores
-            </button>
-            <button disabled={!tournaments.length} onClick={() => onOpenPublicTab('organizar')}>
-              <i className="ti ti-arrows-shuffle" aria-hidden="true" />
-              Organizar mesas
-            </button>
-          </div>
-        </section>
-
-        <footer>
-          <button onClick={onLogout}>
-            <i className="ti ti-logout" aria-hidden="true" />
-            Cerrar sesion
-          </button>
-        </footer>
-      </aside>
-    </div>
-  )
-}
-
-function OrganizerRoute() {
-  const tournamentId = new URLSearchParams(window.location.search).get('torneo') ?? ''
-  const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
-
-  if (!tournamentId || !tournament) {
-    return (
-      <div className="empty-state">
-        <i className="ti ti-arrows-shuffle" aria-hidden="true" />
-        <div>No se ha encontrado el torneo para organizar.</div>
-      </div>
-    )
-  }
-
-  if (tournament.status !== 'active') {
-    return (
-      <div className="empty-state">
-        <i className="ti ti-lock" aria-hidden="true" />
-        <div>Solo se pueden organizar emparejamientos con el torneo activo.</div>
-      </div>
-    )
+    setSelectedTournamentId(id)
+    setTab('setup')
   }
 
   return (
-    <div>
-      <div className="tournament-header">
+    <main className="aether-app">
+      <header className="aether-hero">
         <div>
-          <h2>{tournament.name}</h2>
-          <p>Organizar emparejamientos de la ronda {tournament.currentRound}</p>
+          <span>AetherHub</span>
+          <h1>YuGiOh Tournament</h1>
         </div>
-        <StatusBadge status={tournament.status} />
-      </div>
-      <Round tournamentId={tournament.id} mode="organize" />
-    </div>
-  )
-}
+        <button onClick={handleCreateTournament}>
+          <i className="ti ti-plus" aria-hidden="true" />
+        </button>
+      </header>
 
-function LazyView({ children }: { children: ReactNode }) {
-  return (
-    <Suspense fallback={<LoadingScreen />}>
-      {children}
-    </Suspense>
-  )
-}
-
-function LoadingScreen() {
-  return (
-    <div className="loading-screen">
-      <i className="ti ti-loader-2" aria-hidden="true" />
-      <span>Cargando...</span>
-    </div>
-  )
-}
-
-function TournamentTopTabs({
-  tournaments,
-  selectedTab,
-  rankingSelected,
-  onSelectTournament,
-  onDeleteTournament,
-}: {
-  tournaments: Tournament[]
-  selectedTab: string
-  rankingSelected: boolean
-  onSelectTournament: (id: string) => void
-  onDeleteTournament: (tournament: Tournament) => void
-}) {
-  return (
-    <div className="top-tabs-scroll" aria-label="Torneos">
-      {tournaments.length === 0 && (
-        <div className="top-tabs-empty">
-          <i className="ti ti-trophy-off" aria-hidden="true" />
-          Sin torneos
-        </div>
-      )}
-
-      {tournaments.map(tournament => (
-        <div
-          key={tournament.id}
-          className={!rankingSelected && selectedTab === tournament.id ? 'top-tab active' : 'top-tab'}
-          role="button"
-          tabIndex={0}
-          title={tournament.name}
-          onClick={() => onSelectTournament(tournament.id)}
-          onKeyDown={event => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              onSelectTournament(tournament.id)
-            }
-          }}
-        >
-          <span className="status-dot" style={{ background: getStatusDotColor(tournament.status) }} />
-          <span>{tournament.name}</span>
-          <StatusBadge status={tournament.status} />
-          <button
-            onClick={event => {
-              event.stopPropagation()
-              onDeleteTournament(tournament)
-            }}
-            aria-label={`Eliminar ${tournament.name}`}
-            title="Eliminar torneo"
-          >
-            <i className="ti ti-x" aria-hidden="true" />
-          </button>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function AdminLogin({ onSubmit, configured }: { onSubmit: (code: string) => Promise<boolean>; configured: boolean }) {
-  const [code, setCode] = useState('')
-  const [error, setError] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!configured) {
-      setError('Falta configurar la clave de acceso.')
-      return
-    }
-    if (code.trim().length < MIN_ADMIN_CODE_LENGTH) {
-      setError(`Usa una clave de al menos ${MIN_ADMIN_CODE_LENGTH} caracteres.`)
-      return
-    }
-    setIsSubmitting(true)
-    try {
-      if (!await onSubmit(code)) {
-        setError('Clave incorrecta.')
-        setCode('')
-        return
-      }
-      setError('')
-    } catch {
-      setError('Clave incorrecta.')
-      setCode('')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  return (
-    <form className="admin-login-card" onSubmit={handleSubmit}>
-      <i className="ti ti-lock" aria-hidden="true" />
-      <h1>Acceso de tienda</h1>
-      <p>Introduce la clave para gestionar torneos.</p>
-      <input
-        value={code}
-        onChange={event => {
-          setCode(event.target.value)
-          setError('')
-        }}
-        type="password"
-        autoComplete="current-password"
-        placeholder="Clave segura"
-        aria-label="Clave de acceso"
-        autoFocus
-      />
-      <button type="submit" disabled={!configured || !code.trim() || isSubmitting}>
-        <i className={`ti ${isSubmitting ? 'ti-loader-2' : 'ti-login-2'}`} aria-hidden="true" />
-        {isSubmitting ? 'Comprobando...' : 'Entrar'}
-      </button>
-      {error && <div className="registration-feedback error">{error}</div>}
-      {!configured && (
-        <div className="registration-feedback error">
-          Define VITE_ADMIN_AUTH_EMAIL antes de publicar.
-        </div>
-      )}
-    </form>
-  )
-}
-
-function QrView() {
-  // Pantalla publica y limpia para proyectar o abrir el QR de inscripcion en otra pestana.
-  const tournamentId = new URLSearchParams(window.location.search).get('torneo') ?? ''
-  const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
-  const isMobileDevice = useIsMobileDevice()
-  const link = (() => {
-    const publicUrl = import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin
-    const url = new URL('/inscripcion', publicUrl)
-    if (tournamentId) url.searchParams.set('torneo', tournamentId)
-    return url.toString()
-  })()
-
-  useEffect(() => {
-    if (!isMobileDevice || !tournamentId) return
-    window.location.replace(link)
-  }, [isMobileDevice, link, tournamentId])
-
-  return (
-    <div className="qr-display-page">
-      <div>
-        <img src="/subterra-logo.jpg" alt="Subterra TCG" />
-        <h1>{tournament?.name ?? 'Inscripcion al torneo'}</h1>
-        <p>Escanea para apuntarte</p>
-      </div>
-      <div className="qr-display-box">
-        <RegistrationQr value={link} />
-      </div>
-    </div>
-  )
-}
-
-function useIsMobileDevice() {
-  // Bloquea herramientas de tienda en moviles y tablets; quedan solo para jugadores.
-  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 1180px), (pointer: coarse)').matches)
-
-  useEffect(() => {
-    const query = window.matchMedia('(max-width: 1180px), (pointer: coarse)')
-    function handleChange() {
-      setIsMobile(query.matches)
-    }
-
-    query.addEventListener('change', handleChange)
-    return () => query.removeEventListener('change', handleChange)
-  }, [])
-
-  return isMobile
-}
-
-function MobilePlayerOnly() {
-  return (
-    <div className="mobile-player-only">
-      <img src="/subterra-logo.jpg" alt="Subterra TCG" />
-      <h1>Acceso de jugadores</h1>
-      <p>En movil solo esta disponible la inscripcion y el panel personal desde el enlace o QR del torneo.</p>
-    </div>
-  )
-}
-
-function RegistrationQr({ value }: { value: string }) {
-  return (
-    <QRCodeSVG
-      value={value}
-      size={520}
-      level="M"
-      marginSize={4}
-      bgColor="#ffffff"
-      fgColor="#05070c"
-    />
-  )
-}
-
-interface TournamentViewProps {
-  tournament: Tournament
-  innerTab: TournamentInnerTab
-  onInnerTabChange: (tab: TournamentInnerTab) => void
-}
-
-function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentViewProps) {
-  const { id, status } = tournament
-  const tournamentFormatLabel = getTournamentFormatLabel(tournament)
-
-  return (
-    <div>
-      <div className="tournament-header">
-        <div>
-          <h2>{tournament.name}</h2>
-          <p>
-            {status === 'setup' && 'Configura el torneo antes de iniciar'}
-            {status === 'active' && `Ronda ${tournament.currentRound} en curso - ${tournamentFormatLabel}`}
-            {status === 'finished' && 'Torneo finalizado'}
-          </p>
-        </div>
-        <div className="tournament-header-actions">
-          <SnapshotPanel tournamentId={id} />
-          <StatusBadge status={status} />
-        </div>
-      </div>
-
-      {status === 'active' && (
-        <TournamentDayBar
-          tournament={tournament}
-          onInnerTabChange={onInnerTabChange}
-        />
-      )}
-
-      {status === 'active' && (
-        <div className="segmented-tabs">
-          {([
-            { id: 'ronda', label: 'Ronda', icon: 'ti-swords' },
-            { id: 'organizar', label: 'Organizar', icon: 'ti-arrows-shuffle' },
-            { id: 'clasificacion', label: 'Clasificación', icon: 'ti-trophy' },
-          ] as const).map(t => (
+      {tournaments.length > 1 && (
+        <div className="aether-tournament-strip" aria-label="Torneos">
+          {tournaments.map(tournament => (
             <button
-              key={t.id}
-              onClick={() => onInnerTabChange(t.id)}
-              className={innerTab === t.id ? 'active' : ''}
+              key={tournament.id}
+              className={selectedTournament?.id === tournament.id ? 'active' : ''}
+              onClick={() => {
+                setSelectedTournamentId(tournament.id)
+                setTab(tournament.status === 'setup' ? 'setup' : 'round')
+              }}
             >
-              <i className={`ti ${t.icon}`} aria-hidden="true" />
-              {t.label}
+              {tournament.name}
             </button>
           ))}
         </div>
       )}
 
-      {status === 'setup' && <Setup tournamentId={id} />}
-      {status === 'active' && innerTab === 'ronda' && <Round tournamentId={id} mode="results" />}
-      {status === 'active' && innerTab === 'organizar' && <Round tournamentId={id} mode="organize" />}
-      {status === 'active' && innerTab === 'clasificacion' && <Standings tournamentId={id} />}
-      {status === 'finished' && <Results tournamentId={id} />}
-    </div>
+      {!selectedTournament ? (
+        <EmptyHome onCreate={handleCreateTournament} />
+      ) : (
+        <>
+          <TournamentHeader
+            tournament={selectedTournament}
+            onDelete={() => {
+              if (!confirm(`Eliminar "${selectedTournament.name}"?`)) return
+              deleteTournament(selectedTournament.id)
+              const next = tournaments.find(tournament => tournament.id !== selectedTournament.id)
+              setSelectedTournamentId(next?.id ?? '')
+              setTab('setup')
+            }}
+          />
+
+          <section className="aether-panel-shell">
+            {tab === 'setup' && <SetupPanel tournament={selectedTournament} onGoRound={() => setTab('round')} />}
+            {tab === 'round' && <RoundPanel tournament={selectedTournament} />}
+            {tab === 'standings' && <StandingsPanel tournament={selectedTournament} />}
+          </section>
+
+          <nav className="aether-bottom-nav" aria-label="Navegacion principal">
+            <button className={tab === 'setup' ? 'active' : ''} onClick={() => setTab('setup')}>
+              <i className="ti ti-users" aria-hidden="true" />
+              Jugadores
+            </button>
+            <button className={tab === 'round' ? 'active' : ''} onClick={() => setTab('round')}>
+              <i className="ti ti-swords" aria-hidden="true" />
+              Ronda
+            </button>
+            <button className={tab === 'standings' ? 'active' : ''} onClick={() => setTab('standings')}>
+              <i className="ti ti-trophy" aria-hidden="true" />
+              Standing
+            </button>
+          </nav>
+        </>
+      )}
+    </main>
   )
 }
 
-function TournamentDayBar({
-  tournament,
-  onInnerTabChange,
-}: {
-  tournament: Tournament
-  onInnerTabChange: (tab: TournamentInnerTab) => void
-}) {
-  const nextRound = useTournamentsStore(s => s.nextRound)
-  const finishTournament = useTournamentsStore(s => s.finishTournament)
-  const timerData = useTimerData(tournament.id)
-  const {
-    allResultsIn,
-    unfinishedCount,
-    shouldFinish,
-    phaseMode,
-    topCut,
-    roundSummaries,
-  } = useSwissPairings(tournament.id)
-  const currentSummary = roundSummaries.find(summary => summary.number === tournament.currentRound)
-  const pendingCount = tournament.pendingResults?.length ?? 0
-  const completedMatches = currentSummary?.matchesDone ?? 0
-  const totalMatches = currentSummary?.matchesTotal ?? 0
-  const canCloseRound = allResultsIn && pendingCount === 0
-  const roundActionLabel = shouldFinish
-    ? phaseMode === 'swiss-top' ? `Publicar Top ${topCut}` : 'Finalizar torneo'
-    : 'Siguiente ronda'
-
-  function openTournamentScreen(target: 'proyeccion' | 'temporizadores' | 'organizar') {
-    const url = new URL(routePaths[target], window.location.origin)
-    if (target === 'proyeccion' || target === 'organizar') {
-      url.searchParams.set('torneo', tournament.id)
-    }
-    window.open(url.toString(), '_blank', 'noopener,noreferrer')
-  }
-
-  function handleRoundAction() {
-    if (!canCloseRound) return
-    if (shouldFinish) {
-      finishTournament(tournament.id)
-      return
-    }
-    nextRound(tournament.id)
-  }
-
+function EmptyHome({ onCreate }: { onCreate: () => void }) {
   return (
-    <section className="tournament-day-bar" aria-label="Estado rapido del torneo">
-      <div className="day-bar-status">
-        <span>Ronda {tournament.currentRound}</span>
-        <strong>{timerData?.formatted ?? '--:--'}</strong>
-        <em>{timerLabel(timerData?.status)}</em>
-      </div>
-
-      <div className="day-bar-metrics">
-        <DayBarMetric label="Resultados" value={`${completedMatches}/${totalMatches}`} tone={allResultsIn ? 'ready' : 'default'} />
-        <DayBarMetric label="Faltan" value={String(Math.max(0, unfinishedCount))} tone={unfinishedCount === 0 ? 'ready' : 'warning'} />
-        <DayBarMetric label="Por confirmar" value={String(pendingCount)} tone={pendingCount === 0 ? 'ready' : 'warning'} />
-      </div>
-
-      <div className="day-bar-actions">
-        <button type="button" onClick={() => openTournamentScreen('proyeccion')} title="Abre la pantalla publica de emparejamientos">
-          <i className="ti ti-external-link" aria-hidden="true" />
-          Emparejamientos
-        </button>
-        <button type="button" onClick={() => openTournamentScreen('temporizadores')} title="Abre la pantalla de temporizadores">
-          <i className="ti ti-clock" aria-hidden="true" />
-          Timer
-        </button>
-        <button type="button" onClick={() => {
-          onInnerTabChange('organizar')
-          openTournamentScreen('organizar')
-        }} title="Abre la pantalla de organizar mesas">
-          <i className="ti ti-arrows-shuffle" aria-hidden="true" />
-          Organizar
-        </button>
-        <button
-          type="button"
-          className="primary"
-          disabled={!canCloseRound}
-          onClick={handleRoundAction}
-          title={canCloseRound ? roundActionLabel : 'Introduce o confirma todos los resultados primero'}
-        >
-          <i className={shouldFinish ? 'ti ti-trophy' : 'ti ti-arrow-right'} aria-hidden="true" />
-          {roundActionLabel}
-        </button>
-      </div>
+    <section className="aether-empty">
+      <i className="ti ti-cards" aria-hidden="true" />
+      <h2>Prepara tu primer torneo</h2>
+      <p>Gestiona jugadores, rondas, resultados y standing final desde el movil.</p>
+      <button onClick={onCreate}>Crear torneo YuGiOh</button>
     </section>
   )
 }
 
-function DayBarMetric({
-  label,
-  value,
-  tone,
-}: {
-  label: string
-  value: string
-  tone: 'default' | 'ready' | 'warning'
-}) {
+function TournamentHeader({ tournament, onDelete }: { tournament: Tournament; onDelete: () => void }) {
+  const { totalRounds, roundSummaries } = useSwissPairings(tournament.id)
+  const playedRounds = roundSummaries.filter(round => round.matchesTotal > 0).length
+
   return (
-    <div className={`day-bar-metric ${tone}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
+    <section className="aether-tournament-card">
+      <div>
+        <span>{statusLabel(tournament.status)}</span>
+        <h2>{tournament.name}</h2>
+        <p>{tournament.players.length} jugadores · {playedRounds || tournament.currentRound || 0}/{totalRounds || '-'} rondas</p>
+      </div>
+      <button onClick={onDelete} aria-label="Eliminar torneo">
+        <i className="ti ti-trash" aria-hidden="true" />
+      </button>
+    </section>
+  )
+}
+
+function SetupPanel({ tournament, onGoRound }: { tournament: Tournament; onGoRound: () => void }) {
+  const updateTournamentName = useTournamentsStore(state => state.updateTournamentName)
+  const addPlayer = useTournamentsStore(state => state.addPlayer)
+  const removePlayer = useTournamentsStore(state => state.removePlayer)
+  const startTournament = useTournamentsStore(state => state.startTournament)
+  const [playerName, setPlayerName] = useState('')
+  const [error, setError] = useState('')
+  const { totalRounds } = useSwissPairings(tournament.id)
+
+  function handleAddPlayer() {
+    const nextName = playerName.trim()
+    setError('')
+    if (!nextName) return
+    const result = addPlayer(tournament.id, nextName)
+    if (!result) {
+      setError('Ese jugador ya existe.')
+      return
+    }
+    setPlayerName('')
+  }
+
+  function handleStart() {
+    if (tournament.players.length < 2) {
+      setError('Necesitas al menos 2 jugadores.')
+      return
+    }
+    startTournament(tournament.id)
+    onGoRound()
+  }
+
+  return (
+    <div className="aether-stack">
+      <label className="aether-field">
+        <span>Nombre del torneo</span>
+        <input
+          value={tournament.name}
+          onChange={event => updateTournamentName(tournament.id, event.target.value)}
+          placeholder="Torneo YuGiOh"
+        />
+      </label>
+
+      <div className="aether-kpi-grid">
+        <Kpi label="Jugadores" value={tournament.players.length} />
+        <Kpi label="Rondas" value={tournament.players.length >= 2 ? totalRounds : '-'} />
+        <Kpi label="Juego" value="YuGiOh" />
+      </div>
+
+      {tournament.status === 'setup' && (
+        <div className="aether-add-player">
+          <input
+            value={playerName}
+            onChange={event => {
+              setPlayerName(event.target.value)
+              setError('')
+            }}
+            onKeyDown={event => {
+              if (event.key === 'Enter') handleAddPlayer()
+            }}
+            placeholder="Nombre del jugador"
+          />
+          <button onClick={handleAddPlayer} disabled={!playerName.trim()}>
+            <i className="ti ti-user-plus" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
+      {error && <div className="aether-error">{error}</div>}
+
+      <div className="aether-list">
+        {tournament.players.length === 0 ? (
+          <div className="aether-list-empty">Aun no hay jugadores.</div>
+        ) : tournament.players.map((player, index) => (
+          <div key={player.id} className="aether-player-row">
+            <span>{index + 1}</span>
+            <strong>{player.name}</strong>
+            {tournament.status === 'setup' && (
+              <button onClick={() => removePlayer(tournament.id, player.id)} aria-label={`Quitar ${player.name}`}>
+                <i className="ti ti-x" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {tournament.status === 'setup' ? (
+        <button className="aether-primary" onClick={handleStart} disabled={tournament.players.length < 2}>
+          Comenzar ronda 1
+        </button>
+      ) : (
+        <div className="aether-note">El torneo ya esta iniciado. Los jugadores se gestionan desde resultados.</div>
+      )}
     </div>
   )
 }
 
-function timerLabel(status?: string) {
-  if (status === 'running') return 'en marcha'
-  if (status === 'paused') return 'pausado'
-  if (status === 'finished') return 'finalizado'
-  return 'sin iniciar'
-}
+function RoundPanel({ tournament }: { tournament: Tournament }) {
+  const setMatchResult = useTournamentsStore(state => state.setMatchResult)
+  const nextRound = useTournamentsStore(state => state.nextRound)
+  const finishTournament = useTournamentsStore(state => state.finishTournament)
+  const {
+    currentMatches,
+    currentRound,
+    allResultsIn,
+    shouldFinish,
+    totalRounds,
+    getPlayerName,
+  } = useRoundData(tournament.id)
 
-function getTournamentFormatLabel(tournament: Tournament) {
-  const teamLabel = tournament.teamMode === '2v2'
-    ? '2vs2'
-    : tournament.teamMode === '3v3'
-      ? '3vs3'
-      : 'Normal'
-  const phaseLabel = tournament.phaseMode === 'swiss-top'
-    ? `Suizo + Top ${tournament.topCut ?? 8}`
-    : 'Suizo'
-  return `${teamLabel} - ${phaseLabel}`
-}
-
-function StatusBadge({ status }: { status: Tournament['status'] }) {
-  const config = {
-    setup: { label: 'Configuración', bg: 'var(--color-draw-bg)', color: 'var(--color-accent-secondary)', border: 'var(--color-border-primary)' },
-    active: { label: 'En curso', bg: 'var(--color-success-bg)', color: 'var(--color-accent-secondary)', border: 'var(--color-border-success)' },
-    finished: { label: 'Finalizado', bg: 'var(--color-warning-bg)', color: 'var(--color-text-warning)', border: 'var(--color-border-warning)' },
+  if (tournament.status === 'setup') {
+    return (
+      <div className="aether-empty compact">
+        <i className="ti ti-swords" aria-hidden="true" />
+        <h2>Sin ronda activa</h2>
+        <p>Comienza el torneo desde Jugadores para generar los primeros emparejamientos.</p>
+      </div>
+    )
   }
-  const c = config[status]
 
   return (
-    <span className="status-badge" style={{
-      background: c.bg,
-      color: c.color,
-      borderColor: c.border,
-    }}>
-      {c.label}
-    </span>
+    <div className="aether-stack">
+      <div className="aether-section-title">
+        <div>
+          <span>Ronda actual</span>
+          <h2>Ronda {currentRound} de {totalRounds}</h2>
+        </div>
+        <button onClick={() => void shareText(`aetherhub-ronda-${currentRound}.txt`, buildPairingsText(tournament, currentMatches, getPlayerName))}>
+          <i className="ti ti-share-3" aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className="aether-match-list">
+        {currentMatches.map(match => (
+          <MatchRow
+            key={match.id}
+            match={match}
+            getPlayerName={getPlayerName}
+            onResult={result => setMatchResult(tournament.id, match.id, result)}
+          />
+        ))}
+      </div>
+
+      {tournament.status === 'active' && (
+        <button
+          className="aether-primary"
+          disabled={!allResultsIn}
+          onClick={() => shouldFinish ? finishTournament(tournament.id) : nextRound(tournament.id)}
+        >
+          {shouldFinish ? 'Finalizar torneo' : 'Generar siguiente ronda'}
+        </button>
+      )}
+
+      {tournament.status === 'finished' && (
+        <div className="aether-note">Torneo finalizado. Puedes compartir el standing final.</div>
+      )}
+    </div>
   )
 }
 
-function getStatusDotColor(status: Tournament['status']) {
-  if (status === 'active') return 'var(--color-accent-secondary)'
-  if (status === 'finished') return 'var(--color-text-warning)'
-  return 'var(--color-accent-primary)'
+function MatchRow({
+  match,
+  getPlayerName,
+  onResult,
+}: {
+  match: Match
+  getPlayerName: (id: string) => string
+  onResult: (result: MatchResult) => void
+}) {
+  const p1Name = getPlayerName(match.p1Id)
+  const p2Name = getPlayerName(match.p2Id)
+
+  return (
+    <article className="aether-match-card">
+      <header>
+        <span>Mesa {match.tableNumber}</span>
+        <strong>{resultLabel(match.result, p1Name, p2Name)}</strong>
+      </header>
+      <div className="aether-versus">
+        <strong>{p1Name}</strong>
+        <span>vs</span>
+        <strong>{p2Name}</strong>
+      </div>
+      {match.p2Id !== 'BYE' && (
+        <div className="aether-result-buttons">
+          <button className={match.result === 'p1' ? 'active' : ''} onClick={() => onResult('p1')}>Gana 1</button>
+          <button className={match.result === 'p2' ? 'active' : ''} onClick={() => onResult('p2')}>Gana 2</button>
+          <button className={match.result === 'timeout' ? 'active danger' : ''} onClick={() => onResult('timeout')}>Doble loss</button>
+        </div>
+      )}
+    </article>
+  )
+}
+
+function StandingsPanel({ tournament }: { tournament: Tournament }) {
+  const { standings, primaryTiebreakerMetric, tiebreakerLabel } = useSwissPairings(tournament.id)
+  const metricLabel = primaryTiebreakerMetric ? primaryTiebreakerMetric.toUpperCase() : tiebreakerLabel
+
+  return (
+    <div className="aether-stack">
+      <div className="aether-section-title">
+        <div>
+          <span>{tournament.status === 'finished' ? 'Final' : 'En curso'}</span>
+          <h2>Standing</h2>
+        </div>
+        <button onClick={() => void shareText('aetherhub-standing.txt', buildStandingText(tournament, standings))}>
+          <i className="ti ti-share-3" aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className="aether-standing-list">
+        <div className="aether-standing-header">
+          <span>#</span>
+          <span>Jugador</span>
+          <span>Pts</span>
+          <span>V-D</span>
+          <span>{metricLabel}</span>
+        </div>
+        {standings.map(row => (
+          <div key={row.player.id} className="aether-standing-row">
+            <span>{row.position}</span>
+            <strong>{row.player.name}</strong>
+            <span>{row.player.points}</span>
+            <span>{row.player.wins}-{row.player.losses}</span>
+            <span>{row.player.byes ? `${row.player.byes} bye` : '-'}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Kpi({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="aether-kpi">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  )
+}
+
+function useRoundData(tournamentId: string) {
+  const tournament = useTournamentsStore(state => state.tournaments.find(candidate => candidate.id === tournamentId))
+  const swiss = useSwissPairings(tournamentId)
+  return {
+    ...swiss,
+    currentRound: tournament?.currentRound ?? 0,
+  }
+}
+
+function statusLabel(status: Tournament['status']) {
+  if (status === 'setup') return 'Preparacion'
+  if (status === 'active') return 'En curso'
+  return 'Finalizado'
+}
+
+function resultLabel(result: MatchResult, p1Name: string, p2Name: string) {
+  if (result === 'bye') return 'BYE'
+  if (result === 'p1') return `Gana ${p1Name}`
+  if (result === 'p2') return `Gana ${p2Name}`
+  if (result === 'timeout') return 'Doble loss'
+  return 'Pendiente'
+}
+
+function buildPairingsText(tournament: Tournament, matches: Match[], getPlayerName: (id: string) => string) {
+  const lines = [
+    `AetherHub - ${tournament.name}`,
+    `Ronda ${tournament.currentRound}`,
+    '',
+    ...matches.map(match => `Mesa ${match.tableNumber}: ${getPlayerName(match.p1Id)} vs ${getPlayerName(match.p2Id)}`),
+  ]
+  return lines.join('\n')
+}
+
+function buildStandingText(
+  tournament: Tournament,
+  standings: Array<{ position: number; player: Tournament['players'][number] }>
+) {
+  const lines = [
+    `AetherHub - ${tournament.name}`,
+    'Standing final',
+    '',
+    ...standings.map(row => `${row.position}. ${row.player.name} - ${row.player.points} pts (${row.player.wins}-${row.player.losses})`),
+  ]
+  return lines.join('\n')
+}
+
+async function shareText(filename: string, text: string) {
+  if (navigator.share) {
+    await navigator.share({ title: 'AetherHub', text })
+    return
+  }
+  await navigator.clipboard.writeText(text)
+  alert(`${filename} copiado al portapapeles.`)
 }

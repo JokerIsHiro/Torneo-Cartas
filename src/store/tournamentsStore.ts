@@ -202,7 +202,7 @@ function rebuildPlayersFromRounds(players: Player[], rounds: Round[]): Player[] 
 
 const pendingTournamentWrites = new Map<string, Tournament>()
 const pendingTournamentDeletes = new Set<string>()
-const TOURNAMENT_CACHE_KEY = 'subterra-tournament-cache-v1'
+const TOURNAMENT_CACHE_KEY = 'aetherhub-yugioh-tournament-cache-v1'
 
 function loadCachedTournaments(): Tournament[] {
   try {
@@ -239,8 +239,8 @@ function createEmptyTournament(): Tournament {
   return {
     id: crypto.randomUUID(),
     organizerUid: getCurrentUserId() ?? undefined,
-    name: 'Nuevo torneo',
-    tcg: 'magic',
+    name: 'Torneo YuGiOh',
+    tcg: 'yugioh',
     magicFormat: 'pauper',
     teamMode: 'solo',
     phaseMode: 'swiss',
@@ -253,7 +253,7 @@ function createEmptyTournament(): Tournament {
     currentRound: 0,
     status: 'setup',
     timerDuration: 50 * 60,
-    tiebreakerSystem: getDefaultTiebreakerSystem('magic'),
+    tiebreakerSystem: getDefaultTiebreakerSystem('yugioh'),
     createdAt: now,
     updatedAt: now,
   }
