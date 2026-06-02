@@ -5414,7 +5414,7 @@ button:disabled {
 }
 
 .setup-card {
-  padding: .62rem .75rem !important;
+  padding: .72rem .85rem !important;
   margin-bottom: 0 !important;
 }
 
@@ -5423,16 +5423,29 @@ button:disabled {
   margin-bottom: .45rem;
 }
 
+.setup-card-header strong,
+.setup-card-header > div,
+.player-card-header strong,
+.player-card-header > div {
+  font-size: 15px !important;
+}
+
 .setup-card-header > span,
 .player-card-header > span {
-  max-width: 18ch;
-  font-size: 10px;
+  max-width: 24ch;
+  font-size: 12px;
   line-height: 1.25;
 }
 
 .setup-name-row {
-  grid-template-columns: 62px minmax(0, 1fr);
+  grid-template-columns: 72px minmax(0, 1fr);
   margin-bottom: .45rem;
+}
+
+.setup-name-row label,
+.setup-workspace input,
+.setup-workspace select {
+  font-size: 14px !important;
 }
 
 .setup-control-grid {
@@ -5446,7 +5459,7 @@ button:disabled {
 
 .setup-block-title {
   margin-bottom: 5px;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .setup-compact-settings {
@@ -5466,17 +5479,21 @@ button:disabled {
 }
 
 .option-pill {
-  min-height: 28px;
-  padding: 5px 7px;
-  font-size: 11px;
+  min-height: 32px;
+  padding: 6px 8px;
+  font-size: 13px;
 }
 
 .option-pill-stacked {
-  min-height: 34px;
-  padding: 5px 7px;
+  min-height: 38px;
+  padding: 6px 8px;
 }
 
 .option-pill-stacked strong {
+  font-size: 13px;
+}
+
+.option-pill-stacked span {
   font-size: 11px;
 }
 
@@ -5514,15 +5531,15 @@ button:disabled {
 }
 
 .invite-action-buttons button {
-  min-height: 30px;
-  padding: 6px 8px !important;
-  font-size: 12px !important;
+  min-height: 36px;
+  padding: 7px 10px !important;
+  font-size: 13px !important;
 }
 
 .invite-status {
   min-height: 0;
   margin-top: 6px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .setup-summary-card .setup-summary-grid {
@@ -5530,15 +5547,20 @@ button:disabled {
 }
 
 .setup-summary-card .setup-summary-cell {
-  padding: 6px 4px;
+  padding: 8px 6px;
 }
 
 .setup-summary-card .setup-summary-cell div {
-  font-size: 16px;
+  font-size: 20px;
+}
+
+.setup-summary-card .setup-summary-cell span {
+  font-size: 12px;
 }
 
 .start-tournament-button {
-  min-height: 42px;
+  min-height: 48px;
+  font-size: 14px;
   margin-top: 0;
 }
 
@@ -5557,9 +5579,12 @@ button:disabled {
 
 .setup-player-panel {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(120px, 1fr);
   gap: 8px;
+  box-sizing: border-box;
   min-height: 0;
+  height: 100%;
+  padding-bottom: 10px;
   overflow: hidden;
 }
 
@@ -5567,9 +5592,10 @@ button:disabled {
   position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  align-self: start;
+  align-self: stretch;
   min-height: 0;
   height: auto;
+  max-height: 100%;
   overflow: hidden;
   border-color: rgba(31, 122, 255, 0.38) !important;
   box-shadow: inset 0 0 0 1px rgba(31, 122, 255, 0.08);
@@ -5580,21 +5606,35 @@ button:disabled {
   pointer-events: none;
   position: absolute;
   inset: 0;
+  z-index: 1;
   border: 0.5px solid rgba(31, 122, 255, 0.48);
   border-radius: inherit;
 }
 
+.player-list-card > * {
+  position: relative;
+  z-index: 2;
+}
+
 .player-list-card > div:first-child {
-  min-height: 28px;
+  min-height: 34px;
+}
+
+.player-empty-state div {
+  font-size: 15px;
+}
+
+.player-empty-state span {
+  font-size: 13px;
 }
 
 .setup-player-list-body {
   min-height: 0;
-  height: auto;
-  max-height: clamp(220px, 32vh, 360px);
+  height: 100%;
+  max-height: none;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 2px 6px 0;
+  padding: 0 8px 12px 0;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
