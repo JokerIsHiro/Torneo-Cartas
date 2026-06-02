@@ -30,4 +30,5 @@ Invoke-Git @("merge", "dev")
 Invoke-Git @("push", "origin", "main")
 
 Write-Host "Main actualizado y subido. GitHub Actions desplegara Firebase Hosting." -ForegroundColor Green
-Write-Host "Rama actual: main. Para volver a tu rama de trabajo: git checkout $currentBranch"
+Write-Host "Rama actual: main. Volviendo a la rama $currentBranch"
+Invoke-Git @("checkout", "dev")
