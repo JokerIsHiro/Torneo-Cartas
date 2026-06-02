@@ -51,9 +51,9 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
     const c = colors[variant]
     return {
       flex: 1,
-      padding: '8px 10px',
-      minHeight: '42px',
-      fontSize: '12px',
+      padding: '6px 9px',
+      minHeight: '34px',
+      fontSize: '11px',
       border: active ? `0.5px solid ${c.border}` : '0.5px solid var(--color-border-tertiary)',
       borderRadius: 'var(--border-radius-md)',
       background: active ? c.bg : 'var(--color-background-secondary)',

@@ -321,8 +321,8 @@ function PairingOrganizer({
 
       <div className="pairing-table-grid">
         {currentMatches.map(match => (
-          <article key={match.id} className="pairing-table-card">
-            <header>
+          <article key={match.id} className="pairing-table-row-card">
+            <header className="pairing-table-row-header">
               <div className="pairing-table-number">
                 <span>Mesa</span>
                 <strong>{match.tableNumber}</strong>
@@ -330,27 +330,29 @@ function PairingOrganizer({
               {match.p2Id === 'BYE' && <span>BYE</span>}
             </header>
 
-            <PairingPlayerSlot
-              slot={`${match.id}:${match.p1Id}`}
-              playerName={getPlayerName(match.p1Id)}
-              selected={firstSwapSlot === `${match.id}:${match.p1Id}`}
-              disabled={!editablePairings || match.p2Id === 'BYE'}
-              label={slotLabels.get(`${match.id}:${match.p1Id}`)}
-              onClick={handleSlotClick}
-              onDrop={handleDrop}
-            />
+            <div className="pairing-table-row-players">
+              <PairingPlayerSlot
+                slot={`${match.id}:${match.p1Id}`}
+                playerName={getPlayerName(match.p1Id)}
+                selected={firstSwapSlot === `${match.id}:${match.p1Id}`}
+                disabled={!editablePairings || match.p2Id === 'BYE'}
+                label={slotLabels.get(`${match.id}:${match.p1Id}`)}
+                onClick={handleSlotClick}
+                onDrop={handleDrop}
+              />
 
-            <div className="pairing-table-versus">vs</div>
+              <div className="pairing-table-versus">vs</div>
 
-            <PairingPlayerSlot
-              slot={`${match.id}:${match.p2Id}`}
-              playerName={getPlayerName(match.p2Id)}
-              selected={firstSwapSlot === `${match.id}:${match.p2Id}`}
-              disabled={!editablePairings || match.p2Id === 'BYE'}
-              label={slotLabels.get(`${match.id}:${match.p2Id}`)}
-              onClick={handleSlotClick}
-              onDrop={handleDrop}
-            />
+              <PairingPlayerSlot
+                slot={`${match.id}:${match.p2Id}`}
+                playerName={getPlayerName(match.p2Id)}
+                selected={firstSwapSlot === `${match.id}:${match.p2Id}`}
+                disabled={!editablePairings || match.p2Id === 'BYE'}
+                label={slotLabels.get(`${match.id}:${match.p2Id}`)}
+                onClick={handleSlotClick}
+                onDrop={handleDrop}
+              />
+            </div>
           </article>
         ))}
       </div>

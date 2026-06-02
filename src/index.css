@@ -1156,7 +1156,7 @@ button:disabled {
 }
 
 .match-card {
-  padding: 1rem;
+  padding: .85rem;
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-lg);
   background:
@@ -1172,18 +1172,21 @@ button:disabled {
 .match-card-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 1rem;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: .7rem;
+  min-height: 38px;
+  position: relative;
 }
 
 .match-table-badge {
   display: inline-grid;
   grid-template-columns: auto auto;
   align-items: baseline;
-  gap: 8px;
-  min-width: 116px;
-  padding: 8px 12px;
+  justify-content: center;
+  gap: 7px;
+  min-width: 86px;
+  padding: 5px 10px;
   border: 0.5px solid var(--color-border-primary);
   border-radius: var(--border-radius-md);
   background: var(--color-draw-bg);
@@ -1192,37 +1195,37 @@ button:disabled {
 
 .match-table-badge span {
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
 }
 
 .match-table-badge strong {
   color: var(--color-text-primary);
-  font-size: 28px;
+  font-size: 22px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
 .match-players {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  min-height: 74px;
-  margin-bottom: .875rem;
+  gap: 8px;
+  min-height: 48px;
+  margin-bottom: .7rem;
 }
 
 .match-versus {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: 50%;
   background: var(--color-background-secondary);
   color: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -1233,23 +1236,23 @@ button:disabled {
 
 .player-name {
   overflow: hidden;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 650;
   line-height: 1.18;
   text-overflow: ellipsis;
   transition: color .2s;
 }
 
 .player-meta {
-  margin-top: 4px;
+  margin-top: 3px;
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .match-actions {
   display: flex;
-  gap: 7px;
-  padding-top: .75rem;
+  gap: 6px;
+  padding-top: .6rem;
   border-top: 0.5px solid var(--color-border-tertiary);
 }
 
@@ -1634,29 +1637,31 @@ button:disabled {
 
 .pairing-table-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
 
-.pairing-table-card {
+.pairing-table-row-card {
   min-width: 0;
-  padding: 14px;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 70px;
+  padding: 10px 12px;
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-lg);
   background:
     linear-gradient(180deg, rgba(88, 215, 255, 0.035), transparent 46%),
     var(--color-background-primary);
-  display: grid;
-  gap: 10px;
 }
 
-.pairing-table-card header {
+.pairing-table-row-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding-bottom: 8px;
-  border-bottom: 0.5px solid var(--color-border-tertiary);
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
 }
 
 .pairing-table-number {
@@ -1681,7 +1686,7 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
-.pairing-table-card header span {
+.pairing-table-row-header > span {
   padding: 2px 8px;
   border: 0.5px solid var(--color-border-warning);
   border-radius: var(--border-radius-md);
@@ -1690,10 +1695,18 @@ button:disabled {
   font-size: 11px;
 }
 
+.pairing-table-row-players {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .pairing-player-slot {
   width: 100%;
-  min-height: 58px;
-  padding: 12px 13px;
+  min-height: 44px;
+  padding: 9px 11px;
   border: 0.5px solid var(--color-border-secondary);
   border-radius: var(--border-radius-md);
   background: var(--color-background-secondary);
@@ -1707,7 +1720,7 @@ button:disabled {
 
 .pairing-player-slot i {
   color: var(--color-text-secondary);
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .pairing-player-slot:active {
@@ -1735,7 +1748,7 @@ button:disabled {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .pairing-table-versus {
@@ -3845,13 +3858,24 @@ button:disabled {
     line-height: 1.35;
   }
 
-  .pairing-player-slot {
-    min-height: 54px;
-    font-size: 14px;
+  .pairing-table-row-card {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px;
   }
 
-  .pairing-table-card {
-    padding: 11px;
+  .pairing-table-row-players {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .pairing-table-versus {
+    display: none;
+  }
+
+  .pairing-player-slot {
+    min-height: 44px;
+    font-size: 14px;
   }
 
   .deck-editor-controls,
