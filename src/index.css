@@ -1727,9 +1727,9 @@ button:disabled {
 
 /* Pantalla publica de inscripcion. */
 .registration-card {
-  width: min(100%, 460px);
+  width: min(100%, 500px);
   margin: clamp(1rem, 6vh, 4rem) auto 0;
-  padding: clamp(1.25rem, 4vw, 2rem);
+  padding: clamp(1.35rem, 4vw, 2.25rem);
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-lg);
   background: var(--color-background-primary);
@@ -1737,35 +1737,36 @@ button:disabled {
 }
 
 .registration-card > i {
-  font-size: 30px;
+  font-size: clamp(32px, 5vw, 40px);
   color: var(--color-accent-secondary);
   margin-bottom: 12px;
 }
 
 .registration-card h1 {
-  font-size: clamp(22px, 4vw, 32px);
+  font-size: clamp(26px, 4.8vw, 38px);
   line-height: 1.1;
   margin: 0;
   color: var(--color-text-primary);
 }
 
 .registration-card p {
-  margin: 10px 0 1.25rem;
+  margin: 12px 0 1.35rem;
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: clamp(14px, 2.4vw, 16px);
+  line-height: 1.45;
 }
 
 .registration-card form {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .registration-card input,
 .registration-card textarea {
   width: 100%;
   min-width: 0;
-  padding: 11px 12px;
-  font-size: 15px;
+  padding: 13px 14px;
+  font-size: clamp(16px, 2.5vw, 17px);
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-md);
   background: var(--color-background-secondary);
@@ -1785,11 +1786,13 @@ button:disabled {
 }
 
 .registration-card button {
-  min-height: 42px;
+  min-height: 48px;
+  padding: 10px 14px;
   border: 0.5px solid var(--color-border-secondary);
   border-radius: var(--border-radius-md);
   background: var(--color-background-secondary);
   color: var(--color-text-primary);
+  font-size: clamp(15px, 2.4vw, 16px);
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -1806,7 +1809,7 @@ button:disabled {
 .registration-feedback {
   margin-top: 12px;
   color: var(--color-accent-secondary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -1819,7 +1822,7 @@ button:disabled {
   padding-top: 1rem;
   border-top: 0.5px solid var(--color-border-tertiary);
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .player-portal {
