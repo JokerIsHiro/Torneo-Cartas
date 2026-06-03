@@ -88,7 +88,7 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
         )}
 
         <div style={footerStyle}>
-          Subterra TCG · {now}
+          AetherHub - YuGiOh - {now}
         </div>
       </div>
     )

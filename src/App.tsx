@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useTournamentsStore } from './store/tournamentsStore'
 import { useSwissPairings } from './hooks/useSwissPairings'
+import { useExportImage } from './hooks/useExportImage'
+import { RoundExport } from './components/RoundExport'
 import type { Match, MatchResult, Tournament } from './types/tournament'
 
 type AppTab = 'setup' | 'round' | 'standings'
@@ -288,6 +290,7 @@ function RoundPanel({ tournament }: { tournament: Tournament }) {
     totalRounds,
     getPlayerName,
   } = useRoundData(tournament.id)
+  const { ref: roundExportRef, shareImage: shareRoundImage, exportImage: exportRoundImage } = useExportImage({ scale: 3 })
 
   if (tournament.status === 'setup') {
     return (
@@ -302,12 +305,11 @@ function RoundPanel({ tournament }: { tournament: Tournament }) {
   return (
     <div className="aether-stack">
       <RoundStatusCard
-        tournament={tournament}
         currentRound={currentRound}
         totalRounds={totalRounds}
         allResultsIn={allResultsIn}
-        matches={currentMatches}
-        getPlayerName={getPlayerName}
+        onShare={() => shareRoundImage(`aetherhub-ronda-${currentRound}`)}
+        onDownload={() => exportRoundImage(`aetherhub-ronda-${currentRound}`)}
       />
 
       <div className="aether-section-title">
@@ -315,9 +317,13 @@ function RoundPanel({ tournament }: { tournament: Tournament }) {
           <span>Emparejamientos</span>
           <h2>Ronda {currentRound}</h2>
         </div>
-        <button onClick={() => void shareText(`aetherhub-ronda-${currentRound}.txt`, buildPairingsText(tournament, currentMatches, getPlayerName))}>
+        <button onClick={() => void shareRoundImage(`aetherhub-ronda-${currentRound}`)} aria-label="Compartir imagen de ronda">
           <i className="ti ti-share-3" aria-hidden="true" />
         </button>
+      </div>
+
+      <div className="aether-export-stage" aria-hidden="true">
+        <RoundExport ref={roundExportRef} tournamentId={tournament.id} type="round" />
       </div>
 
       <div className="aether-match-list">
@@ -349,33 +355,34 @@ function RoundPanel({ tournament }: { tournament: Tournament }) {
 }
 
 function RoundStatusCard({
-  tournament,
   currentRound,
   totalRounds,
   allResultsIn,
-  matches,
-  getPlayerName,
+  onShare,
+  onDownload,
 }: {
-  tournament: Tournament
   currentRound: number
   totalRounds: number
   allResultsIn: boolean
-  matches: Match[]
-  getPlayerName: (id: string) => string
+  onShare: () => void
+  onDownload: () => void
 }) {
-  const pending = matches.filter(match => match.result === null && match.p2Id !== 'BYE').length
-
   return (
     <section className="aether-round-status">
       <div>
         <span>Ronda actual</span>
         <h2>Ronda {currentRound} de {totalRounds}</h2>
-        <p>{allResultsIn ? 'Todos los resultados estan registrados.' : `${pending} resultado${pending === 1 ? '' : 's'} pendiente${pending === 1 ? '' : 's'}.`}</p>
+        <p>{allResultsIn ? 'Todos los resultados estan registrados.' : 'Registra resultados y comparte emparejamientos en PNG.'}</p>
       </div>
-      <button onClick={() => void shareText(`aetherhub-ronda-${currentRound}.txt`, buildPairingsText(tournament, matches, getPlayerName))}>
-        <i className="ti ti-share-3" aria-hidden="true" />
-        Compartir
-      </button>
+      <div className="aether-share-actions">
+        <button onClick={onShare}>
+          <i className="ti ti-share-3" aria-hidden="true" />
+          Compartir
+        </button>
+        <button onClick={onDownload} aria-label="Descargar imagen">
+          <i className="ti ti-download" aria-hidden="true" />
+        </button>
+      </div>
     </section>
   )
 }
@@ -416,6 +423,7 @@ function MatchRow({
 
 function StandingsPanel({ tournament }: { tournament: Tournament }) {
   const { standings, primaryTiebreakerMetric, tiebreakerLabel } = useSwissPairings(tournament.id)
+  const { ref: standingsExportRef, shareImage: shareStandingsImage, exportImage: exportStandingsImage } = useExportImage({ scale: 3 })
   const metricLabel = primaryTiebreakerMetric ? primaryTiebreakerMetric.toUpperCase() : tiebreakerLabel
 
   return (
@@ -426,10 +434,19 @@ function StandingsPanel({ tournament }: { tournament: Tournament }) {
           <h2>Clasificacion</h2>
           <p>{standings.length} jugadores ordenados por puntos y desempates.</p>
         </div>
-        <button onClick={() => void shareText('aetherhub-standing.txt', buildStandingText(tournament, standings))}>
-          <i className="ti ti-share-3" aria-hidden="true" />
-          Compartir
-        </button>
+        <div className="aether-share-actions">
+          <button onClick={() => void shareStandingsImage('aetherhub-clasificacion')}>
+            <i className="ti ti-share-3" aria-hidden="true" />
+            Compartir
+          </button>
+          <button onClick={() => void exportStandingsImage('aetherhub-clasificacion')} aria-label="Descargar imagen">
+            <i className="ti ti-download" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+
+      <div className="aether-export-stage" aria-hidden="true">
+        <RoundExport ref={standingsExportRef} tournamentId={tournament.id} type="standings" />
       </div>
 
       <div className="aether-standing-list">
@@ -484,36 +501,4 @@ function resultLabel(result: MatchResult, p1Name: string, p2Name: string) {
   if (result === 'p2') return `Gana ${p2Name}`
   if (result === 'timeout') return 'Doble loss'
   return 'Pendiente'
-}
-
-function buildPairingsText(tournament: Tournament, matches: Match[], getPlayerName: (id: string) => string) {
-  const lines = [
-    `AetherHub - ${tournament.name}`,
-    `Ronda ${tournament.currentRound}`,
-    '',
-    ...matches.map(match => `Mesa ${match.tableNumber}: ${getPlayerName(match.p1Id)} vs ${getPlayerName(match.p2Id)}`),
-  ]
-  return lines.join('\n')
-}
-
-function buildStandingText(
-  tournament: Tournament,
-  standings: Array<{ position: number; player: Tournament['players'][number] }>
-) {
-  const lines = [
-    `AetherHub - ${tournament.name}`,
-    'Standing final',
-    '',
-    ...standings.map(row => `${row.position}. ${row.player.name} - ${row.player.points} pts (${row.player.wins}-${row.player.losses})`),
-  ]
-  return lines.join('\n')
-}
-
-async function shareText(filename: string, text: string) {
-  if (navigator.share) {
-    await navigator.share({ title: 'AetherHub', text })
-    return
-  }
-  await navigator.clipboard.writeText(text)
-  alert(`${filename} copiado al portapapeles.`)
 }

@@ -391,6 +391,30 @@ input {
   padding: 0 12px;
 }
 
+.aether-share-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  gap: 8px;
+  min-width: 172px;
+}
+
+.aether-share-actions button:last-child {
+  min-width: 48px;
+  padding: 0;
+  background: var(--aether-card);
+  color: var(--aether-blue);
+}
+
+.aether-export-stage {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 720px;
+  height: auto;
+  pointer-events: none;
+  opacity: 0;
+}
+
 .aether-match-card {
   display: grid;
   gap: 12px;
