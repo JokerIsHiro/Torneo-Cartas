@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "phone": "powershell -ExecutionPolicy Bypass -File scripts/run-scrcpy-aether.ps1",
     "publish:main": "powershell -ExecutionPolicy Bypass -File scripts/publish-main.ps1"
   },
   "dependencies": {
