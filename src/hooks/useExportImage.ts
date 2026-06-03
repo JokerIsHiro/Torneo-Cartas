@@ -1,6 +1,7 @@
 // Hook de exportacion PNG. Si la descarga falla, revisa aqui la preparacion de
 // imagenes y la carga diferida de html2canvas.
 import { useRef, useCallback, type RefObject } from 'react'
+import { Capacitor } from '@capacitor/core'
 import { prepareImagesInElement, waitForImages } from '../utils/imageExport'
 
 // Convierte un nodo oculto del DOM en una imagen PNG descargable.
@@ -37,15 +38,47 @@ export function useExportImage(options: UseExportImageOptions = {}): UseExportIm
     const canvas = await createCanvas()
     if (!canvas) return
 
+    const dataUrl = canvas.toDataURL('image/png')
+
+    if (Capacitor.isNativePlatform()) {
+      const { Filesystem, Directory } = await import('@capacitor/filesystem')
+      await Filesystem.writeFile({
+        path: `${filename}.png`,
+        data: dataUrl.split(',')[1],
+        directory: Directory.Documents,
+      })
+      alert(`Imagen guardada como ${filename}.png`)
+      return
+    }
+
     const link = document.createElement('a')
     link.download = `${filename}.png`
-    link.href = canvas.toDataURL('image/png')
+    link.href = dataUrl
     link.click()
   }, [createCanvas])
 
   const shareImage = useCallback(async (filename = 'torneo') => {
     const canvas = await createCanvas()
     if (!canvas) return
+
+    const dataUrl = canvas.toDataURL('image/png')
+
+    if (Capacitor.isNativePlatform()) {
+      const { Filesystem, Directory } = await import('@capacitor/filesystem')
+      const { Share } = await import('@capacitor/share')
+      const writeResult = await Filesystem.writeFile({
+        path: `${filename}.png`,
+        data: dataUrl.split(',')[1],
+        directory: Directory.Cache,
+      })
+      await Share.share({
+        title: 'AetherHub',
+        text: filename,
+        files: [writeResult.uri],
+        dialogTitle: 'Compartir imagen',
+      })
+      return
+    }
 
     const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'))
     if (!blob) {

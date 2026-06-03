@@ -117,10 +117,10 @@ const systemSteps: Record<TournamentTiebreakerSystem, TiebreakerMetricKey[]> = {
   'fide-buchholz-median-1': ['buchholzMedian1', 'buchholz', 'sonnebornBerger', 'wins'],
   'fide-sonneborn-berger': ['sonnebornBerger', 'buchholz', 'progressiveScore', 'wins'],
   'fide-progressive': ['progressiveScore', 'buchholz', 'sonnebornBerger', 'wins'],
-  'direct-encounter': ['directEncounter', 'buchholz', 'wins'],
-  wins: ['wins', 'buchholz', 'opponentMatchWinPercentage'],
-  'fewest-losses': ['losses', 'buchholz', 'wins'],
-  'fewest-timeout-losses': ['timeoutLosses', 'buchholz', 'wins'],
+  'direct-encounter': ['directEncounter', 'wins'],
+  wins: ['wins', 'opponentMatchWinPercentage'],
+  'fewest-losses': ['losses', 'wins'],
+  'fewest-timeout-losses': ['timeoutLosses', 'wins'],
   none: [],
 }
 
@@ -128,6 +128,7 @@ export function getDefaultTiebreakerSystem(tcg: TournamentTCG): TournamentTiebre
   if (tcg === 'pokemon') return 'pokemon-official'
   if (tcg === 'magic') return 'magic-match'
   if (tcg === 'chess') return 'fide-buchholz'
+  if (tcg === 'yugioh') return 'wins'
   return 'tcg-resistance'
 }
 

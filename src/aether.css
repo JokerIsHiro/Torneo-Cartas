@@ -36,7 +36,7 @@ input {
   width: min(100%, 480px);
   min-height: 100dvh;
   margin: 0 auto;
-  padding: max(10px, env(safe-area-inset-top)) 10px calc(88px + env(safe-area-inset-bottom));
+  padding: max(10px, env(safe-area-inset-top)) 10px calc(86px + env(safe-area-inset-bottom));
   color: var(--aether-text);
 }
 
@@ -45,7 +45,7 @@ input {
   grid-template-columns: minmax(0, 1fr) 50px;
   align-items: center;
   gap: 12px;
-  padding: 14px;
+  padding: 12px 13px;
   border: 1px solid var(--aether-line);
   border-radius: 18px;
   background:
@@ -71,11 +71,10 @@ input {
 .aether-hero h1 {
   margin: 4px 0 0;
   color: var(--aether-text);
-  font-size: 31px;
+  font-size: 30px;
   line-height: 1;
 }
 
-.aether-hero p,
 .aether-panel-title p,
 .aether-round-status p,
 .aether-tournament-card p,
@@ -235,7 +234,10 @@ input {
   grid-template-columns: minmax(0, 1fr) 48px;
   gap: 10px;
   margin: 10px 0;
-  padding: 12px;
+  padding: 13px;
+  background:
+    linear-gradient(135deg, rgba(88, 215, 255, 0.06), rgba(245, 200, 76, 0.025)),
+    var(--aether-surface);
 }
 
 .aether-tournament-main {
@@ -283,7 +285,9 @@ input {
 }
 
 .aether-panel-shell {
-  padding: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .aether-stack {
@@ -295,6 +299,10 @@ input {
 .aether-config-card {
   display: grid;
   gap: 12px;
+}
+
+.aether-setup-summary {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .aether-panel-title h2,
@@ -336,7 +344,7 @@ input {
 .aether-fixed-options,
 .aether-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -396,10 +404,8 @@ input {
 }
 
 .aether-primary {
-  position: sticky;
-  bottom: calc(76px + env(safe-area-inset-bottom));
-  z-index: 5;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.44);
+  width: 100%;
+  margin-top: 2px;
 }
 
 .aether-primary:disabled,
@@ -457,9 +463,8 @@ input {
 
 .aether-section-title,
 .aether-round-status {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -491,7 +496,7 @@ input {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 48px;
   gap: 8px;
-  min-width: 172px;
+  width: 100%;
 }
 
 .aether-share-actions button:last-child {
@@ -508,7 +513,6 @@ input {
   width: 720px;
   height: auto;
   pointer-events: none;
-  opacity: 0;
 }
 
 .aether-match-card {
@@ -587,7 +591,7 @@ input {
 
 .aether-standing-header,
 .aether-standing-row {
-  grid-template-columns: 28px minmax(0, 1fr) 44px 54px 54px;
+  grid-template-columns: 28px minmax(0, 1fr) 44px 54px;
 }
 
 .aether-standing-header {
@@ -699,8 +703,7 @@ input {
     font-size: 28px;
   }
 
-  .aether-fixed-options,
-  .aether-kpi-grid {
+  .aether-fixed-options {
     grid-template-columns: 1fr;
   }
 

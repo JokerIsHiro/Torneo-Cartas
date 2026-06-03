@@ -83,7 +83,9 @@ export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
       }
     })
   )
-  const activeTiebreakerSystem = tiebreakerSystem ?? getDefaultTiebreakerSystem(tcg)
+  const activeTiebreakerSystem = tcg === 'yugioh'
+    ? 'wins'
+    : tiebreakerSystem ?? getDefaultTiebreakerSystem(tcg)
   const primaryTiebreakerMetric = useMemo(
     () => getPrimaryTiebreakerMetric(activeTiebreakerSystem),
     [activeTiebreakerSystem]
