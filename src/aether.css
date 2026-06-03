@@ -1,18 +1,18 @@
 :root {
-  --aether-bg: #050509;
-  --aether-surface: #0b1019;
-  --aether-surface-2: #101725;
-  --aether-card: #020308;
-  --aether-line: #203655;
-  --aether-line-hot: #2f86ff;
-  --aether-text: #f8fbff;
-  --aether-muted: #9db7df;
-  --aether-soft: #6e84a8;
-  --aether-cyan: #58d7ff;
-  --aether-blue: #2477ff;
-  --aether-gold: #f5c84c;
-  --aether-red: #ff5f7a;
-  --aether-green: #3ee49b;
+  --aether-bg: #05070b;
+  --aether-surface: #09111d;
+  --aether-surface-2: #0d1828;
+  --aether-card: #02050a;
+  --aether-line: #1e4d86;
+  --aether-line-soft: rgba(78, 151, 255, 0.24);
+  --aether-text: #f7fbff;
+  --aether-muted: #9bbdf1;
+  --aether-soft: #6982aa;
+  --aether-blue: #267cff;
+  --aether-cyan: #59dcff;
+  --aether-gold: #f3c957;
+  --aether-green: #38db92;
+  --aether-red: #ff5d78;
 }
 
 html,
@@ -24,33 +24,43 @@ body,
 
 body {
   background:
-    linear-gradient(180deg, #080b13 0%, #050509 36%, #050509 100%);
+    radial-gradient(circle at 50% -80px, rgba(38, 124, 255, 0.18), transparent 210px),
+    linear-gradient(180deg, rgba(9, 17, 29, 0.9), var(--aether-bg) 230px);
 }
 
 button,
 input {
   -webkit-tap-highlight-color: transparent;
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
 }
 
 .aether-app {
-  width: min(100%, 480px);
+  width: min(100%, 460px);
   min-height: 100dvh;
   margin: 0 auto;
-  padding: max(10px, env(safe-area-inset-top)) 10px calc(86px + env(safe-area-inset-bottom));
+  padding: max(8px, env(safe-area-inset-top)) 8px calc(64px + env(safe-area-inset-bottom));
   color: var(--aether-text);
+}
+
+.aether-app.has-tournament {
+  padding-bottom: calc(66px + env(safe-area-inset-bottom));
 }
 
 .aether-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
+  grid-template-columns: minmax(0, 1fr) 34px;
   align-items: center;
-  gap: 12px;
-  padding: 12px 13px;
-  border: 1px solid var(--aether-line);
-  border-radius: 18px;
-  background:
-    linear-gradient(135deg, rgba(36, 119, 255, 0.14), rgba(245, 200, 76, 0.05)),
-    var(--aether-surface);
+  gap: 9px;
+  min-height: 52px;
+  padding: 9px 10px;
+  border: 1px solid var(--aether-line-soft);
+  border-radius: 13px;
+  background: rgba(7, 13, 22, 0.94);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
 }
 
 .aether-hero span,
@@ -59,185 +69,149 @@ input {
 .aether-section-title span,
 .aether-field span,
 .aether-round-status span,
-.aether-fixed-options span,
 .aether-home-card > span {
   color: var(--aether-muted);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 850;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.055em;
   text-transform: uppercase;
 }
 
 .aether-hero h1 {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
+  overflow: hidden;
   color: var(--aether-text);
-  font-size: 30px;
-  line-height: 1;
-}
-
-.aether-panel-title p,
-.aether-round-status p,
-.aether-tournament-card p,
-.aether-home-card p {
-  margin: 7px 0 0;
-  color: var(--aether-muted);
-  font-size: 14px;
-  line-height: 1.38;
+  font-size: 20px;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .aether-hero button,
-.aether-tournament-card > button,
-.aether-section-title button {
-  width: 42px;
-  min-width: 42px;
-  height: 42px;
-  border: 1px solid var(--aether-line-hot);
-  border-radius: 12px;
-  background: #05070d;
-  color: var(--aether-cyan);
+.aether-tournament-card > button {
   display: grid;
   place-items: center;
-  font-size: 20px;
-}
-
-.aether-icon-danger {
-  border-color: rgba(255, 95, 122, 0.55) !important;
-  color: var(--aether-red) !important;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  border: 1px solid var(--aether-line);
+  border-radius: 10px;
+  background: var(--aether-card);
+  color: var(--aether-cyan);
+  font-size: 17px;
 }
 
 .aether-home {
   display: grid;
-  gap: 12px;
-  margin-top: 10px;
+  margin-top: 9px;
 }
 
 .aether-home-card {
   display: grid;
-  gap: 12px;
-  padding: 20px;
-  border: 1px solid var(--aether-line);
-  border-radius: 20px;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--aether-line-soft);
+  border-radius: 15px;
   background:
-    linear-gradient(180deg, rgba(47, 134, 255, 0.12), rgba(2, 3, 8, 0)),
+    linear-gradient(135deg, rgba(38, 124, 255, 0.12), rgba(89, 220, 255, 0.03)),
     var(--aether-surface);
 }
 
 .aether-brand-mark {
   display: grid;
   place-items: center;
-  width: 58px;
-  height: 58px;
-  border: 1px solid rgba(88, 215, 255, 0.5);
-  border-radius: 18px;
-  background: #020308;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(89, 220, 255, 0.42);
+  border-radius: 12px;
+  background: var(--aether-card);
   color: var(--aether-cyan);
-  font-size: 29px;
+  font-size: 22px;
 }
 
 .aether-home-card h2 {
-  margin: 2px 0 0;
-  max-width: 11ch;
+  margin: 0;
+  max-width: 14ch;
   color: var(--aether-text);
-  font-size: 32px;
-  line-height: 1.02;
+  font-size: 24px;
+  line-height: 1.05;
+}
+
+.aether-home-card p,
+.aether-panel-title p,
+.aether-round-status p,
+.aether-tournament-card p,
+.aether-note,
+.aether-list-empty {
+  margin: 4px 0 0;
+  color: var(--aether-muted);
+  font-size: 12px;
+  line-height: 1.33;
 }
 
 .aether-home-card button,
-.aether-empty button {
+.aether-primary,
+.aether-round-status button,
+.aether-add-player button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  width: 100%;
-  min-height: 44px;
-  margin-top: 4px;
-  border: 1px solid var(--aether-line-hot);
-  border-radius: 14px;
+  gap: 7px;
+  min-height: 36px;
+  border: 1px solid rgba(38, 124, 255, 0.88);
+  border-radius: 10px;
   background: var(--aether-blue);
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 950;
-}
-
-.aether-home-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.aether-home-grid div {
-  display: grid;
-  gap: 5px;
-  min-height: 92px;
-  padding: 10px;
-  border: 1px solid var(--aether-line);
-  border-radius: 15px;
-  background: var(--aether-card);
-}
-
-.aether-home-grid i {
-  color: var(--aether-gold);
-  font-size: 21px;
-}
-
-.aether-home-grid strong {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--aether-text);
+  color: #fff;
   font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.aether-home-grid span {
-  color: var(--aether-soft);
-  font-size: 12px;
-  line-height: 1.2;
+  font-weight: 850;
 }
 
 .aether-tournament-strip {
   display: flex;
-  gap: 8px;
-  margin: 10px -10px;
-  padding: 0 10px 2px;
+  gap: 6px;
+  margin: 8px -8px;
+  padding: 0 8px 2px;
   overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.aether-tournament-strip::-webkit-scrollbar {
+  display: none;
 }
 
 .aether-tournament-strip button {
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid var(--aether-line);
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--aether-line-soft);
   border-radius: 999px;
   background: var(--aether-card);
   color: var(--aether-muted);
-  font-weight: 850;
+  font-size: 12px;
+  font-weight: 800;
   white-space: nowrap;
 }
 
 .aether-tournament-strip button.active {
-  border-color: var(--aether-line-hot);
+  border-color: var(--aether-blue);
   color: var(--aether-text);
+  background: rgba(38, 124, 255, 0.12);
 }
 
 .aether-tournament-card,
-.aether-panel-shell,
-.aether-empty,
 .aether-config-card,
-.aether-round-status {
-  border: 1px solid var(--aether-line);
-  border-radius: 16px;
-  background: var(--aether-surface);
+.aether-round-status,
+.aether-empty {
+  border: 1px solid var(--aether-line-soft);
+  border-radius: 13px;
+  background: rgba(8, 15, 25, 0.94);
 }
 
 .aether-tournament-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
-  gap: 10px;
-  margin: 10px 0;
-  padding: 13px;
-  background:
-    linear-gradient(135deg, rgba(88, 215, 255, 0.06), rgba(245, 200, 76, 0.025)),
-    var(--aether-surface);
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 9px;
+  margin: 8px 0;
+  padding: 9px 10px;
 }
 
 .aether-tournament-main {
@@ -246,42 +220,16 @@ input {
 
 .aether-tournament-main h2 {
   overflow: hidden;
-  margin: 3px 0;
-  font-size: 20px;
+  margin: 2px 0;
+  font-size: 18px;
   line-height: 1.08;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.aether-flow-tabs {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.aether-flow-tabs button {
-  display: grid;
-  place-items: center;
-  gap: 4px;
-  min-height: 48px;
-  border: 1px solid var(--aether-line);
-  border-radius: 12px;
-  background: var(--aether-card);
-  color: var(--aether-muted);
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.aether-flow-tabs button i {
-  color: var(--aether-cyan);
-  font-size: 18px;
-}
-
-.aether-flow-tabs button.active {
-  border-color: var(--aether-line-hot);
-  background: #0b1b33;
-  color: var(--aether-text);
+.aether-icon-danger {
+  border-color: rgba(255, 93, 120, 0.55) !important;
+  color: var(--aether-red) !important;
 }
 
 .aether-panel-shell {
@@ -292,77 +240,46 @@ input {
 
 .aether-stack {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
-.aether-setup-top,
 .aether-config-card {
   display: grid;
-  gap: 12px;
+  gap: 9px;
+  padding: 10px;
 }
 
 .aether-setup-summary {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.aether-setup-summary .aether-kpi-grid {
+  grid-column: 1 / -1;
 }
 
 .aether-panel-title h2,
 .aether-section-title h2,
 .aether-round-status h2 {
-  margin: 3px 0 0;
-  font-size: 22px;
+  margin: 2px 0 0;
+  font-size: 19px;
   line-height: 1.08;
 }
 
-.aether-config-card {
-  padding: 12px;
-}
-
-.aether-field {
-  display: grid;
-  gap: 8px;
-}
-
-.aether-field input,
-.aether-add-player input {
-  width: 100%;
-  min-height: 48px;
-  padding: 0 13px;
-  border: 1px solid var(--aether-line);
-  border-radius: 12px;
-  background: var(--aether-card);
-  color: var(--aether-text);
-  font-size: 16px;
-  font-weight: 750;
-  outline: none;
-}
-
-.aether-field input:focus,
-.aether-add-player input:focus {
-  border-color: var(--aether-line-hot);
-}
-
-.aether-fixed-options,
-.aether-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
 .aether-pin-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 46px;
-  padding: 8px 10px;
-  border: 1px solid rgba(245, 200, 76, 0.42);
-  border-radius: 12px;
-  background: rgba(245, 200, 76, 0.08);
+  display: grid;
+  place-items: center;
+  min-width: 92px;
+  min-height: 48px;
+  padding: 6px 8px;
+  border: 1px solid rgba(243, 201, 87, 0.36);
+  border-radius: 10px;
+  background: rgba(243, 201, 87, 0.07);
 }
 
 .aether-pin-card span {
   color: var(--aether-gold);
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 900;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -370,68 +287,101 @@ input {
 
 .aether-pin-card strong {
   color: var(--aether-text);
-  font-size: 20px;
+  font-size: 17px;
   letter-spacing: 0.12em;
 }
 
-.aether-fixed-options div,
+.aether-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
 .aether-kpi {
   display: grid;
   align-content: center;
-  gap: 4px;
-  min-height: 60px;
-  padding: 9px;
-  border: 1px solid var(--aether-line);
-  border-radius: 12px;
+  gap: 3px;
+  min-height: 46px;
+  padding: 7px;
+  border: 1px solid var(--aether-line-soft);
+  border-radius: 10px;
   background: var(--aether-card);
-}
-
-.aether-fixed-options strong {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--aether-text);
-  font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.aether-kpi {
   text-align: center;
 }
 
 .aether-kpi strong {
   color: var(--aether-cyan);
-  font-size: 21px;
+  font-size: 18px;
   line-height: 1;
 }
 
 .aether-kpi span {
   color: var(--aether-muted);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 800;
+}
+
+.aether-field {
+  display: grid;
+  gap: 6px;
+}
+
+.aether-field input,
+.aether-add-player input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--aether-line-soft);
+  border-radius: 10px;
+  background: var(--aether-card);
+  color: var(--aether-text);
+  font-size: 14px;
+  font-weight: 720;
+  outline: none;
+}
+
+.aether-field input:focus,
+.aether-add-player input:focus {
+  border-color: var(--aether-blue);
+}
+
+.aether-section-title,
+.aether-round-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 9px;
+}
+
+.compact-title {
+  grid-template-columns: minmax(0, 1fr) 34px;
+  align-items: center;
+}
+
+.compact-title > strong {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--aether-line-soft);
+  border-radius: 10px;
+  background: var(--aether-card);
+  color: var(--aether-cyan);
 }
 
 .aether-add-player {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  gap: 7px;
 }
 
-.aether-add-player button,
-.aether-primary,
-.aether-round-status button {
-  min-height: 40px;
-  border: 1px solid var(--aether-line-hot);
-  border-radius: 12px;
-  background: var(--aether-blue);
-  color: var(--aether-text);
-  font-size: 14px;
-  font-weight: 950;
+.aether-add-player button {
+  min-width: 38px;
+  padding: 0;
 }
 
 .aether-primary {
   width: 100%;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .aether-primary:disabled,
@@ -443,20 +393,20 @@ input {
 .aether-match-list,
 .aether-standing-list {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .aether-player-row,
 .aether-standing-row,
 .aether-standing-header {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 7px 9px;
-  border: 1px solid var(--aether-line);
-  border-radius: 12px;
+  gap: 7px;
+  min-height: 38px;
+  padding: 6px 8px;
+  border: 1px solid var(--aether-line-soft);
+  border-radius: 10px;
   background: var(--aether-card);
 }
 
@@ -464,7 +414,7 @@ input {
 .aether-standing-row span,
 .aether-standing-header span {
   color: var(--aether-muted);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -473,60 +423,40 @@ input {
   min-width: 0;
   overflow: hidden;
   color: var(--aether-text);
-  font-size: 15px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .aether-player-row button {
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--aether-line);
-  border-radius: 10px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--aether-line-soft);
+  border-radius: 8px;
   background: transparent;
   color: var(--aether-muted);
 }
 
-.aether-section-title,
 .aether-round-status {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
-}
-
-.compact-title > strong {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border: 1px solid var(--aether-line);
-  border-radius: 12px;
-  background: var(--aether-card);
-  color: var(--aether-cyan);
-}
-
-.aether-round-status {
-  padding: 13px;
-}
-
-.aether-round-status button {
-  display: inline-flex;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-width: 116px;
-  padding: 0 12px;
+  padding: 10px;
 }
 
 .aether-share-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
-  gap: 8px;
-  width: 100%;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  gap: 6px;
+  width: 168px;
+}
+
+.aether-share-actions button {
+  min-height: 36px;
+  padding: 0 10px;
 }
 
 .aether-share-actions button:last-child {
-  min-width: 42px;
+  min-width: 36px;
   padding: 0;
   background: var(--aether-card);
   color: var(--aether-cyan);
@@ -543,15 +473,15 @@ input {
 
 .aether-match-card {
   display: grid;
-  gap: 10px;
-  padding: 11px;
-  border: 1px solid var(--aether-line);
-  border-radius: 14px;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid var(--aether-line-soft);
+  border-radius: 12px;
   background: var(--aether-card);
 }
 
 .aether-match-card.is-locked {
-  border-color: rgba(245, 200, 76, 0.45);
+  border-color: rgba(243, 201, 87, 0.44);
 }
 
 .aether-match-card header,
@@ -559,12 +489,12 @@ input {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
 .aether-match-card header span {
   color: var(--aether-cyan);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -578,7 +508,7 @@ input {
   min-width: 0;
   flex: 1;
   overflow: hidden;
-  font-size: 17px;
+  font-size: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -589,68 +519,34 @@ input {
 
 .aether-versus span {
   color: var(--aether-muted);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
 }
 
 .aether-result-buttons {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .aether-result-buttons button {
   display: grid;
   place-items: center;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
-  min-height: 36px;
-  padding: 5px 7px;
-  border: 1px solid var(--aether-line);
-  border-radius: 11px;
+  min-height: 32px;
+  padding: 4px 5px;
+  border: 1px solid var(--aether-line-soft);
+  border-radius: 9px;
   background: var(--aether-surface-2);
   color: var(--aether-text);
-  font-size: 13px;
-  font-weight: 850;
-}
-
-.aether-locked-result {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  padding-top: 2px;
-}
-
-.aether-locked-result span {
-  color: var(--aether-gold);
-  font-size: 12px;
-  font-weight: 850;
-}
-
-.aether-locked-result button,
-.aether-secondary-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 34px;
-  padding: 0 10px;
-  border: 1px solid var(--aether-line);
-  border-radius: 10px;
-  background: var(--aether-surface-2);
-  color: var(--aether-text);
-  font-size: 12px;
-  font-weight: 850;
-}
-
-.aether-secondary-action {
-  width: 100%;
+  font-size: 11px;
+  font-weight: 830;
 }
 
 .aether-result-buttons button span {
   color: var(--aether-muted);
-  font-size: 10px;
+  font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -660,7 +556,7 @@ input {
   max-width: 100%;
   overflow: hidden;
   color: inherit;
-  font-size: 13px;
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -675,13 +571,47 @@ input {
   color: var(--aether-red);
 }
 
+.aether-locked-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.aether-locked-result span {
+  color: var(--aether-gold);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.aether-locked-result button,
+.aether-secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--aether-line-soft);
+  border-radius: 9px;
+  background: var(--aether-surface-2);
+  color: var(--aether-text);
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.aether-secondary-action {
+  width: 100%;
+}
+
 .aether-standing-header,
 .aether-standing-row {
-  grid-template-columns: 28px minmax(0, 1fr) 44px 54px;
+  grid-template-columns: 28px minmax(0, 1fr) 38px 50px;
 }
 
 .aether-standing-header {
-  min-height: 32px;
+  min-height: 26px;
+  padding-block: 3px;
   background: transparent;
   border-color: transparent;
   font-weight: 900;
@@ -690,49 +620,43 @@ input {
 .aether-empty {
   display: grid;
   place-items: center;
-  gap: 10px;
-  min-height: 280px;
-  padding: 24px;
-  border: 1px solid var(--aether-line);
-  border-radius: 16px;
-  background: var(--aether-surface);
+  gap: 8px;
+  min-height: 180px;
+  padding: 18px;
   text-align: center;
+}
+
+.aether-empty.compact {
+  min-height: 150px;
 }
 
 .aether-empty i {
   color: var(--aether-cyan);
-  font-size: 34px;
+  font-size: 28px;
 }
 
 .aether-empty h2 {
-  font-size: 24px;
-}
-
-.aether-empty p,
-.aether-note,
-.aether-list-empty {
-  color: var(--aether-muted);
-  font-size: 14px;
-  line-height: 1.45;
+  margin: 0;
+  font-size: 21px;
 }
 
 .aether-list-empty {
   display: grid;
   place-items: center;
-  min-height: 92px;
-  border: 1px dashed var(--aether-line);
-  border-radius: 12px;
+  min-height: 66px;
+  border: 1px dashed var(--aether-line-soft);
+  border-radius: 10px;
   background: var(--aether-card);
   text-align: center;
 }
 
 .aether-error {
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 95, 122, 0.7);
-  border-radius: 12px;
-  background: rgba(255, 95, 122, 0.12);
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 93, 120, 0.68);
+  border-radius: 10px;
+  background: rgba(255, 93, 120, 0.11);
   color: var(--aether-red);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -740,35 +664,34 @@ input {
   position: fixed;
   z-index: 20;
   left: 50%;
-  bottom: max(10px, env(safe-area-inset-bottom));
+  bottom: max(8px, env(safe-area-inset-bottom));
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  width: min(calc(100% - 20px), 460px);
-  padding: 8px;
-  border: 1px solid var(--aether-line);
-  border-radius: 18px;
-  background: rgba(5, 5, 9, 0.96);
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 6px;
+  width: min(calc(100% - 16px), 444px);
+  padding: 6px;
+  border: 1px solid var(--aether-line-soft);
+  border-radius: 15px;
+  background: rgba(5, 7, 11, 0.96);
   backdrop-filter: blur(14px);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.5);
   transform: translateX(-50%);
 }
 
 .aether-bottom-nav button {
   display: grid;
   place-items: center;
-  gap: 4px;
-  min-height: 42px;
+  gap: 2px;
+  min-height: 38px;
   border: 0;
-  border-radius: 13px;
+  border-radius: 10px;
   background: transparent;
   color: var(--aether-muted);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 880;
 }
 
 .aether-bottom-nav button i {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .aether-bottom-nav button.active {
@@ -776,21 +699,23 @@ input {
   color: var(--aether-text);
 }
 
-@media (max-width: 360px) {
+@media (max-width: 380px) {
+  .aether-round-status {
+    grid-template-columns: 1fr;
+  }
+
+  .aether-share-actions {
+    width: 100%;
+  }
+}
+
+@media (max-width: 350px) {
   .aether-app {
-    padding-inline: 8px;
+    padding-inline: 7px;
   }
 
   .aether-hero h1 {
-    font-size: 27px;
-  }
-
-  .aether-home-card h2 {
-    font-size: 28px;
-  }
-
-  .aether-fixed-options {
-    grid-template-columns: 1fr;
+    font-size: 18px;
   }
 
   .aether-result-buttons {

@@ -15,6 +15,10 @@ export default function App() {
   const [tab, setTab] = useState<AppTab>('setup')
 
   const selectedTournament = tournaments.find(tournament => tournament.id === selectedTournamentId) ?? tournaments.at(-1) ?? null
+  const canShowStandings = selectedTournament?.status === 'finished'
+  const visibleTab: AppTab = tab === 'standings' && !canShowStandings
+    ? selectedTournament?.status === 'setup' ? 'setup' : 'round'
+    : tab
 
   function handleCreateTournament() {
     const id = createTournament()
@@ -23,11 +27,11 @@ export default function App() {
   }
 
   return (
-    <main className="aether-app">
+    <main className={`aether-app ${selectedTournament ? 'has-tournament' : ''}`}>
       <header className="aether-hero">
         <div>
           <span>AetherHub</span>
-          <h1>YuGiOh</h1>
+          <h1>YuGiOh Tournament</h1>
         </div>
         <button onClick={handleCreateTournament} aria-label="Crear torneo">
           <i className="ti ti-plus" aria-hidden="true" />
@@ -67,24 +71,26 @@ export default function App() {
           />
 
           <section className="aether-panel-shell">
-            {tab === 'setup' && <SetupPanel tournament={selectedTournament} onGoRound={() => setTab('round')} />}
-            {tab === 'round' && <RoundPanel tournament={selectedTournament} />}
-            {tab === 'standings' && <StandingsPanel tournament={selectedTournament} />}
+            {visibleTab === 'setup' && <SetupPanel tournament={selectedTournament} onGoRound={() => setTab('round')} />}
+            {visibleTab === 'round' && <RoundPanel tournament={selectedTournament} onFinished={() => setTab('standings')} />}
+            {visibleTab === 'standings' && canShowStandings && <StandingsPanel tournament={selectedTournament} />}
           </section>
 
           <nav className="aether-bottom-nav" aria-label="Navegacion principal">
-            <button className={tab === 'setup' ? 'active' : ''} onClick={() => setTab('setup')}>
+            <button className={visibleTab === 'setup' ? 'active' : ''} onClick={() => setTab('setup')}>
               <i className="ti ti-users" aria-hidden="true" />
               Jugadores
             </button>
-            <button className={tab === 'round' ? 'active' : ''} onClick={() => setTab('round')}>
+            <button className={visibleTab === 'round' ? 'active' : ''} onClick={() => setTab('round')}>
               <i className="ti ti-swords" aria-hidden="true" />
               Ronda
             </button>
-            <button className={tab === 'standings' ? 'active' : ''} onClick={() => setTab('standings')}>
-              <i className="ti ti-trophy" aria-hidden="true" />
-              Standing
-            </button>
+            {canShowStandings && (
+              <button className={visibleTab === 'standings' ? 'active' : ''} onClick={() => setTab('standings')}>
+                <i className="ti ti-trophy" aria-hidden="true" />
+                Standing
+              </button>
+            )}
           </nav>
         </>
       )}
@@ -246,7 +252,7 @@ function SetupPanel({ tournament, onGoRound }: { tournament: Tournament; onGoRou
   )
 }
 
-function RoundPanel({ tournament }: { tournament: Tournament }) {
+function RoundPanel({ tournament, onFinished }: { tournament: Tournament; onFinished: () => void }) {
   const setMatchResult = useTournamentsStore(state => state.setMatchResult)
   const setRoundMatchResult = useTournamentsStore(state => state.setRoundMatchResult)
   const nextRound = useTournamentsStore(state => state.nextRound)
@@ -334,7 +340,14 @@ function RoundPanel({ tournament }: { tournament: Tournament }) {
         <button
           className="aether-primary"
           disabled={!allResultsIn}
-          onClick={() => shouldFinish ? finishTournament(tournament.id) : nextRound(tournament.id)}
+          onClick={() => {
+            if (shouldFinish) {
+              finishTournament(tournament.id)
+              onFinished()
+              return
+            }
+            nextRound(tournament.id)
+          }}
         >
           {shouldFinish ? 'Finalizar torneo' : 'Siguiente ronda'}
         </button>
