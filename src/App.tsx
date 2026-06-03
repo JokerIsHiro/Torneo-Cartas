@@ -97,11 +97,37 @@ export default function App() {
 
 function EmptyHome({ onCreate }: { onCreate: () => void }) {
   return (
-    <section className="aether-empty">
-      <i className="ti ti-cards" aria-hidden="true" />
-      <h2>Prepara tu primer torneo</h2>
-      <p>Gestiona jugadores, rondas, resultados y standing final desde el movil.</p>
-      <button onClick={onCreate}>Crear torneo YuGiOh</button>
+    <section className="aether-home">
+      <div className="aether-home-card">
+        <div className="aether-brand-mark">
+          <i className="ti ti-cards" aria-hidden="true" />
+        </div>
+        <span>YuGiOh Swiss Tool</span>
+        <h2>Prepara el torneo en segundos</h2>
+        <p>Inscribes jugadores, generas rondas, marcas resultados y compartes emparejamientos o clasificacion como imagen.</p>
+        <button onClick={onCreate}>
+          <i className="ti ti-plus" aria-hidden="true" />
+          Crear torneo
+        </button>
+      </div>
+
+      <div className="aether-home-grid" aria-label="Funciones principales">
+        <div>
+          <i className="ti ti-users" aria-hidden="true" />
+          <strong>Jugadores</strong>
+          <span>Alta rapida</span>
+        </div>
+        <div>
+          <i className="ti ti-swords" aria-hidden="true" />
+          <strong>Rondas</strong>
+          <span>Suizo automatico</span>
+        </div>
+        <div>
+          <i className="ti ti-photo-share" aria-hidden="true" />
+          <strong>Imagenes</strong>
+          <span>Listas para compartir</span>
+        </div>
+      </div>
     </section>
   )
 }
