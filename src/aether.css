@@ -42,7 +42,7 @@ input {
 
 .aether-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 50px;
+  grid-template-columns: minmax(0, 1fr) 42px;
   align-items: center;
   gap: 12px;
   padding: 12px 13px;
@@ -88,11 +88,11 @@ input {
 .aether-hero button,
 .aether-tournament-card > button,
 .aether-section-title button {
-  width: 48px;
-  min-width: 48px;
-  height: 48px;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
   border: 1px solid var(--aether-line-hot);
-  border-radius: 14px;
+  border-radius: 12px;
   background: #05070d;
   color: var(--aether-cyan);
   display: grid;
@@ -149,13 +149,13 @@ input {
   justify-content: center;
   gap: 9px;
   width: 100%;
-  min-height: 54px;
+  min-height: 48px;
   margin-top: 4px;
   border: 1px solid var(--aether-line-hot);
   border-radius: 14px;
   background: var(--aether-blue);
   color: #ffffff;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 950;
 }
 
@@ -231,7 +231,7 @@ input {
 
 .aether-tournament-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px;
+  grid-template-columns: minmax(0, 1fr) 42px;
   gap: 10px;
   margin: 10px 0;
   padding: 13px;
@@ -387,19 +387,19 @@ input {
 
 .aether-add-player {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 52px;
+  grid-template-columns: minmax(0, 1fr) 44px;
   gap: 8px;
 }
 
 .aether-add-player button,
 .aether-primary,
 .aether-round-status button {
-  min-height: 48px;
+  min-height: 42px;
   border: 1px solid var(--aether-line-hot);
   border-radius: 12px;
   background: var(--aether-blue);
   color: var(--aether-text);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 950;
 }
 
@@ -494,13 +494,13 @@ input {
 
 .aether-share-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px;
+  grid-template-columns: minmax(0, 1fr) 42px;
   gap: 8px;
   width: 100%;
 }
 
 .aether-share-actions button:last-child {
-  min-width: 48px;
+  min-width: 42px;
   padding: 0;
   background: var(--aether-card);
   color: var(--aether-cyan);
@@ -570,13 +570,35 @@ input {
 }
 
 .aether-result-buttons button {
-  min-height: 42px;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 38px;
+  padding: 6px 7px;
   border: 1px solid var(--aether-line);
   border-radius: 11px;
   background: var(--aether-surface-2);
   color: var(--aether-text);
   font-size: 13px;
   font-weight: 850;
+}
+
+.aether-result-buttons button span {
+  color: var(--aether-muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.aether-result-buttons button strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: inherit;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .aether-result-buttons button.active {
@@ -672,17 +694,17 @@ input {
   display: grid;
   place-items: center;
   gap: 4px;
-  min-height: 52px;
+  min-height: 46px;
   border: 0;
   border-radius: 13px;
   background: transparent;
   color: var(--aether-muted);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
 }
 
 .aether-bottom-nav button i {
-  font-size: 19px;
+  font-size: 18px;
 }
 
 .aether-bottom-nav button.active {

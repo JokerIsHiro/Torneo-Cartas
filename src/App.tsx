@@ -342,8 +342,14 @@ function MatchRow({
       </div>
       {match.p2Id !== 'BYE' && (
         <div className="aether-result-buttons">
-          <button className={match.result === 'p1' ? 'active' : ''} onClick={() => onResult('p1')}>Gana 1</button>
-          <button className={match.result === 'p2' ? 'active' : ''} onClick={() => onResult('p2')}>Gana 2</button>
+          <button className={match.result === 'p1' ? 'active' : ''} onClick={() => onResult('p1')}>
+            <span>Gana</span>
+            <strong>{p1Name}</strong>
+          </button>
+          <button className={match.result === 'p2' ? 'active' : ''} onClick={() => onResult('p2')}>
+            <span>Gana</span>
+            <strong>{p2Name}</strong>
+          </button>
           <button className={match.result === 'timeout' ? 'active danger' : ''} onClick={() => onResult('timeout')}>Doble loss</button>
         </div>
       )}
