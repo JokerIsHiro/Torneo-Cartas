@@ -260,6 +260,7 @@ function normalizeTournament(data: Partial<Tournament> & { id: string }): Tourna
     status: data.status ?? 'setup',
     timerDuration: data.timerDuration ?? 50 * 60,
     tiebreakerSystem: data.tiebreakerSystem ?? getDefaultTiebreakerSystem(data.tcg ?? 'magic'),
+    creatorPin: data.creatorPin,
     createdAt: data.createdAt ?? Date.now(),
     updatedAt: data.updatedAt ?? data.createdAt ?? Date.now(),
   }

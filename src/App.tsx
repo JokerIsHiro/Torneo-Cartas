@@ -167,6 +167,10 @@ function SetupPanel({ tournament, onGoRound }: { tournament: Tournament; onGoRou
           <h2>Nuevo torneo</h2>
           <p>YuGiOh - Suizo - Normal</p>
         </div>
+        <div className="aether-pin-card">
+          <span>PIN creador</span>
+          <strong>{tournament.creatorPin ?? '0000'}</strong>
+        </div>
         <div className="aether-kpi-grid">
           <Kpi label="Jugadores" value={tournament.players.length} />
           <Kpi label="Rondas" value={tournament.players.length >= 2 ? totalRounds : '-'} />
@@ -244,6 +248,7 @@ function SetupPanel({ tournament, onGoRound }: { tournament: Tournament; onGoRou
 
 function RoundPanel({ tournament }: { tournament: Tournament }) {
   const setMatchResult = useTournamentsStore(state => state.setMatchResult)
+  const setRoundMatchResult = useTournamentsStore(state => state.setRoundMatchResult)
   const nextRound = useTournamentsStore(state => state.nextRound)
   const finishTournament = useTournamentsStore(state => state.finishTournament)
   const {
@@ -255,6 +260,27 @@ function RoundPanel({ tournament }: { tournament: Tournament }) {
     getPlayerName,
   } = useRoundData(tournament.id)
   const { ref: roundExportRef, shareImage: shareRoundImage, exportImage: exportRoundImage } = useExportImage({ scale: 3 })
+  const [editableMatchId, setEditableMatchId] = useState<string | null>(null)
+  const [pinError, setPinError] = useState('')
+
+  function requestEdit(matchId: string) {
+    setPinError('')
+    const pin = prompt('PIN de creador')
+    if (pin !== (tournament.creatorPin ?? '0000')) {
+      setPinError('PIN incorrecto. Solo el creador puede modificar resultados.')
+      return
+    }
+    setEditableMatchId(matchId)
+  }
+
+  function handleResult(match: Match, result: MatchResult) {
+    if (editableMatchId === match.id) {
+      setRoundMatchResult(tournament.id, currentRound, match.id, result)
+      setEditableMatchId(null)
+      return
+    }
+    setMatchResult(tournament.id, match.id, result)
+  }
 
   if (tournament.status === 'setup') {
     return (
@@ -290,12 +316,16 @@ function RoundPanel({ tournament }: { tournament: Tournament }) {
       </div>
 
       <div className="aether-match-list">
+        {pinError && <div className="aether-error">{pinError}</div>}
         {currentMatches.map(match => (
           <MatchRow
             key={match.id}
             match={match}
             getPlayerName={getPlayerName}
-            onResult={result => setMatchResult(tournament.id, match.id, result)}
+            isEditing={editableMatchId === match.id}
+            onEdit={() => requestEdit(match.id)}
+            onCancelEdit={() => setEditableMatchId(null)}
+            onResult={result => handleResult(match, result)}
           />
         ))}
       </div>
@@ -320,17 +350,24 @@ function RoundPanel({ tournament }: { tournament: Tournament }) {
 function MatchRow({
   match,
   getPlayerName,
+  isEditing,
+  onEdit,
+  onCancelEdit,
   onResult,
 }: {
   match: Match
   getPlayerName: (id: string) => string
+  isEditing: boolean
+  onEdit: () => void
+  onCancelEdit: () => void
   onResult: (result: MatchResult) => void
 }) {
   const p1Name = getPlayerName(match.p1Id)
   const p2Name = getPlayerName(match.p2Id)
+  const isLocked = match.result !== null && !isEditing
 
   return (
-    <article className="aether-match-card">
+    <article className={`aether-match-card ${isLocked ? 'is-locked' : ''}`}>
       <header>
         <span>Mesa {match.tableNumber}</span>
         <strong>{resultLabel(match.result, p1Name, p2Name)}</strong>
@@ -340,7 +377,18 @@ function MatchRow({
         <span>vs</span>
         <strong>{p2Name}</strong>
       </div>
-      {match.p2Id !== 'BYE' && (
+
+      {isLocked && (
+        <div className="aether-locked-result">
+          <span>Resultado bloqueado</span>
+          <button onClick={onEdit}>
+            <i className="ti ti-lock-open" aria-hidden="true" />
+            Editar
+          </button>
+        </div>
+      )}
+
+      {match.p2Id !== 'BYE' && !isLocked && (
         <div className="aether-result-buttons">
           <button className={match.result === 'p1' ? 'active' : ''} onClick={() => onResult('p1')}>
             <span>Gana</span>
@@ -352,6 +400,12 @@ function MatchRow({
           </button>
           <button className={match.result === 'timeout' ? 'active danger' : ''} onClick={() => onResult('timeout')}>Doble loss</button>
         </div>
+      )}
+
+      {isEditing && (
+        <button className="aether-secondary-action" onClick={onCancelEdit}>
+          Cancelar edicion
+        </button>
       )}
     </article>
   )

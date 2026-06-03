@@ -149,7 +149,7 @@ input {
   justify-content: center;
   gap: 9px;
   width: 100%;
-  min-height: 48px;
+  min-height: 44px;
   margin-top: 4px;
   border: 1px solid var(--aether-line-hot);
   border-radius: 14px;
@@ -348,6 +348,32 @@ input {
   gap: 8px;
 }
 
+.aether-pin-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 46px;
+  padding: 8px 10px;
+  border: 1px solid rgba(245, 200, 76, 0.42);
+  border-radius: 12px;
+  background: rgba(245, 200, 76, 0.08);
+}
+
+.aether-pin-card span {
+  color: var(--aether-gold);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.aether-pin-card strong {
+  color: var(--aether-text);
+  font-size: 20px;
+  letter-spacing: 0.12em;
+}
+
 .aether-fixed-options div,
 .aether-kpi {
   display: grid;
@@ -394,7 +420,7 @@ input {
 .aether-add-player button,
 .aether-primary,
 .aether-round-status button {
-  min-height: 42px;
+  min-height: 40px;
   border: 1px solid var(--aether-line-hot);
   border-radius: 12px;
   background: var(--aether-blue);
@@ -427,8 +453,8 @@ input {
   grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  min-height: 46px;
-  padding: 8px 10px;
+  min-height: 42px;
+  padding: 7px 9px;
   border: 1px solid var(--aether-line);
   border-radius: 12px;
   background: var(--aether-card);
@@ -517,11 +543,15 @@ input {
 
 .aether-match-card {
   display: grid;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 11px;
   border: 1px solid var(--aether-line);
   border-radius: 14px;
   background: var(--aether-card);
+}
+
+.aether-match-card.is-locked {
+  border-color: rgba(245, 200, 76, 0.45);
 }
 
 .aether-match-card header,
@@ -574,14 +604,48 @@ input {
   place-items: center;
   gap: 2px;
   min-width: 0;
-  min-height: 38px;
-  padding: 6px 7px;
+  min-height: 36px;
+  padding: 5px 7px;
   border: 1px solid var(--aether-line);
   border-radius: 11px;
   background: var(--aether-surface-2);
   color: var(--aether-text);
   font-size: 13px;
   font-weight: 850;
+}
+
+.aether-locked-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.aether-locked-result span {
+  color: var(--aether-gold);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.aether-locked-result button,
+.aether-secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--aether-line);
+  border-radius: 10px;
+  background: var(--aether-surface-2);
+  color: var(--aether-text);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.aether-secondary-action {
+  width: 100%;
 }
 
 .aether-result-buttons button span {
@@ -694,7 +758,7 @@ input {
   display: grid;
   place-items: center;
   gap: 4px;
-  min-height: 46px;
+  min-height: 42px;
   border: 0;
   border-radius: 13px;
   background: transparent;

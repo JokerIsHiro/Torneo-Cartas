@@ -121,6 +121,7 @@ export interface Tournament {
   status: TournamentStatus
   timerDuration: number  // segundos
   tiebreakerSystem: TournamentTiebreakerSystem
+  creatorPin?: string
   createdAt: number
   updatedAt: number
 }

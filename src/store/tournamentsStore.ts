@@ -254,9 +254,14 @@ function createEmptyTournament(): Tournament {
     status: 'setup',
     timerDuration: 50 * 60,
     tiebreakerSystem: getDefaultTiebreakerSystem('yugioh'),
+    creatorPin: generateCreatorPin(),
     createdAt: now,
     updatedAt: now,
   }
+}
+
+function generateCreatorPin() {
+  return String(Math.floor(1000 + Math.random() * 9000))
 }
 
 function snapshotData(tournament: Tournament): TournamentSnapshotData {
@@ -817,6 +822,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const round = tournament.rounds[tournament.currentRound - 1]
         const match = round?.matches.find(m => m.id === matchId)
         if (!match || match.p2Id === 'BYE') return
+        if (match.result !== null) return
 
         const updatedPlayers = applyResult(tournament.players, match, result)
         const updatedRounds = tournament.rounds.map(r =>
