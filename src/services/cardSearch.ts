@@ -42,7 +42,7 @@ export interface CardSearchFilters {
 // ---------------------------------------------------------------------------
 
 const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
-const SCRYFALL_MIN_REQUEST_INTERVAL_MS = 260;
+const SCRYFALL_MIN_REQUEST_INTERVAL_MS = 170;
 
 const searchResultCache = new Map<
   string,
