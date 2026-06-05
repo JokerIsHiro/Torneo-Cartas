@@ -42,7 +42,7 @@ export interface CardSearchFilters {
 // ---------------------------------------------------------------------------
 
 const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
-const SCRYFALL_MIN_REQUEST_INTERVAL_MS = 95;
+const SCRYFALL_MIN_REQUEST_INTERVAL_MS = 130;
 
 const searchResultCache = new Map<
   string,
@@ -285,6 +285,7 @@ async function searchMagic(
   signal?: AbortSignal,
   filters: CardSearchFilters = {},
 ): Promise<CardSuggestion[]> {
+  const normalizedQuery = normalizeMagicSlug(query.trim());
   if (
     filters.exact &&
     !filters.kind &&
@@ -292,7 +293,7 @@ async function searchMagic(
     !filters.text?.trim()
   ) {
     const exactUrl = new URL("https://api.scryfall.com/cards/named");
-    exactUrl.searchParams.set("exact", query);
+    exactUrl.searchParams.set("exact", normalizedQuery);
     const card = await fetchScryfallJson<ScryfallCard>(exactUrl, signal);
     if (card?.id) {
       return [scryfallCardToSuggestion(card)];
@@ -300,7 +301,7 @@ async function searchMagic(
   }
 
   const url = new URL("https://api.scryfall.com/cards/search");
-  const baseQuery = filters.exact ? `!"${escapeScryfallQuery(query)}"` : query;
+  const baseQuery = filters.exact ? `!"${escapeScryfallQuery(normalizedQuery)}"` : normalizedQuery;
   const typeQuery = filters.kind ? ` t:${filters.kind}` : "";
   const colorQuery = filters.color ? ` c:${filters.color}` : "";
   const formatQuery = filters.format ? ` f:${filters.format}` : "";
@@ -446,6 +447,7 @@ export async function resolveMagicCardsBatch(
 
   for (const lookup of pending) {
     const rawId = normalizeMagicLookupId(lookup.cardId);
+    const lookupName = normalizeMagicCardLookupName(lookup.name, rawId);
     const scryfallId = getScryfallUuid(rawId);
     const setCollector = parseMagicSetCollector(rawId);
     const identifier = scryfallId
@@ -455,7 +457,7 @@ export async function resolveMagicCardsBatch(
             set: setCollector.set,
             collector_number: setCollector.collectorNumber,
           } satisfies ScryfallCollectionIdentifier)
-        : ({ name: lookup.name.trim() || rawId } satisfies ScryfallCollectionIdentifier);
+        : ({ name: lookupName } satisfies ScryfallCollectionIdentifier);
 
     identifierByKey.set(getScryfallIdentifierKey(identifier), identifier);
   }
@@ -463,18 +465,9 @@ export async function resolveMagicCardsBatch(
   const fetchedCards: ScryfallCard[] = [];
   const identifiers = [...identifierByKey.values()];
 
-  for (let start = 0; start < identifiers.length; start += 75) {
-    const chunk = identifiers.slice(start, start + 75);
-    const payload = await fetchScryfallJson<{ data?: ScryfallCard[] }>(
-      "https://api.scryfall.com/cards/collection",
-      signal,
-      2,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifiers: chunk }),
-      },
-    );
+  for (let start = 0; start < identifiers.length; start += 50) {
+    const chunk = identifiers.slice(start, start + 50);
+    const payload = await fetchScryfallCollectionChunk(chunk, signal);
 
     fetchedCards.push(...(payload?.data ?? []));
   }
@@ -500,6 +493,7 @@ export async function resolveMagicCardsBatch(
 
   for (const lookup of pending) {
     const rawId = normalizeMagicLookupId(lookup.cardId);
+    const lookupName = normalizeMagicCardLookupName(lookup.name, rawId);
     const scryfallId = getScryfallUuid(rawId);
     const setCollector = parseMagicSetCollector(rawId);
     const found =
@@ -513,12 +507,36 @@ export async function resolveMagicCardsBatch(
           )
         : undefined) ??
       byName.get(normalizeMagicName(lookup.name)) ??
+      byName.get(normalizeMagicName(lookupName)) ??
       byName.get(normalizeMagicName(rawId));
 
     if (found) matches.set(lookup.cardId, scryfallCardToSuggestion(found));
   }
 
   return matches;
+}
+
+async function fetchScryfallCollectionChunk(
+  identifiers: ScryfallCollectionIdentifier[],
+  signal?: AbortSignal,
+): Promise<{ data?: ScryfallCard[] } | null> {
+  const payload = await fetchScryfallJson<{ data?: ScryfallCard[] }>(
+    "https://api.scryfall.com/cards/collection",
+    signal,
+    2,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifiers }),
+    },
+  );
+
+  if (payload || identifiers.length <= 1) return payload;
+
+  const splitAt = Math.ceil(identifiers.length / 2);
+  const left = await fetchScryfallCollectionChunk(identifiers.slice(0, splitAt), signal);
+  const right = await fetchScryfallCollectionChunk(identifiers.slice(splitAt), signal);
+  return { data: [...(left?.data ?? []), ...(right?.data ?? [])] };
 }
 
 async function fetchScryfallCardByLookup(
@@ -562,7 +580,21 @@ function normalizeMagicLookupId(value: string) {
     rawId = rawId.split(":").filter(Boolean).pop() ?? rawId;
   }
 
-  return rawId.trim();
+  return normalizeMagicSlug(rawId.trim());
+}
+
+function normalizeMagicSlug(value: string) {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)+$/i.test(value)) return value;
+  if (/^[a-z]{2,8}-[a-z0-9]{1,8}$/i.test(value)) return value;
+  if (/^[a-z]{1,4}\d{0,2}-\d{3}/i.test(value)) return value;
+  if (value === "harmonized-trio-brainstorm") return "Harmonized Trio // Brainstorm";
+  return value.replace(/-/g, " ");
+}
+
+function normalizeMagicCardLookupName(name: string, fallback: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return fallback;
+  return normalizeMagicSlug(trimmed);
 }
 
 function parseMagicSetCollector(value: string) {

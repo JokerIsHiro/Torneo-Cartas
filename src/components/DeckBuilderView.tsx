@@ -404,6 +404,8 @@ function DeckBuilderEditor({
     setCards(current => {
       const target = current.filter(card => card.section === section)
       const sorted = [...target].sort((a, b) => {
+        const landOrder = compareMagicLandOrder(currentTournament.tcg, section, a, b)
+        if (landOrder !== 0) return landOrder
         if (mode === 'quantity') return b.quantity - a.quantity || a.name.localeCompare(b.name)
         if (mode === 'type') return (a.kind ?? '').localeCompare(b.kind ?? '') || a.name.localeCompare(b.name)
         return a.name.localeCompare(b.name)
@@ -1071,7 +1073,7 @@ function DeckImageExport({
         <div className="deck-export-body">
           {sections.map(section => {
             if (shouldSkipExportSection(deck.game, section, cards)) return null
-            const sectionCards = getExportSectionCards(section, cards)
+            const sectionCards = getExportSectionCards(deck.game, section, cards)
             if (!sectionCards.length) return null
             const visualCards = getExportVisualCards(deck.game, section, sectionCards, cards)
             return (
@@ -1151,8 +1153,8 @@ function shouldSkipExportSection(game: TournamentTCG, sectionId: string, cards: 
   return cards.some(card => card.section === 'Legend') && cards.some(card => card.section === 'Rune')
 }
 
-function getExportSectionCards(sectionId: string, cards: DeckCard[]) {
-  return cards.filter(card => card.section === sectionId)
+function getExportSectionCards(game: TournamentTCG, sectionId: string, cards: DeckCard[]) {
+  return orderVisibleDeckCards(game, sectionId, cards.filter(card => card.section === sectionId))
 }
 
 function getExportVisualCards(
@@ -1282,7 +1284,25 @@ function getCardsForVisibleSection(game: TournamentTCG, sectionId: string, cards
     return cards.filter(card => card.section === 'Legend' || card.section === 'Rune')
   }
 
-  return cards.filter(card => card.section === sectionId)
+  return orderVisibleDeckCards(game, sectionId, cards.filter(card => card.section === sectionId))
+}
+
+function orderVisibleDeckCards(game: TournamentTCG, sectionId: string, cards: DeckCard[]) {
+  if (game !== 'magic' || sectionId !== 'Main') return cards
+  return [...cards].sort((a, b) => compareMagicLandOrder(game, sectionId, a, b))
+}
+
+function compareMagicLandOrder(
+  game: TournamentTCG,
+  sectionId: string,
+  a: Pick<DeckCard, 'name' | 'kind'>,
+  b: Pick<DeckCard, 'name' | 'kind'>,
+) {
+  if (game !== 'magic' || sectionId !== 'Main') return 0
+  const aLand = isMagicLandCard(a)
+  const bLand = isMagicLandCard(b)
+  if (aLand === bLand) return 0
+  return aLand ? 1 : -1
 }
 
 function getPlacementLabel(position?: number) {
@@ -1410,6 +1430,10 @@ function getMagicFormatLabel(format: MagicFormat) {
 
 function isBasicMagicLand(name: string) {
   return ['plains', 'island', 'swamp', 'mountain', 'forest', 'wastes'].includes(name.toLowerCase())
+}
+
+function isMagicLandCard(card: Pick<DeckCard, 'name' | 'kind'>) {
+  return /\bland\b/i.test(card.kind ?? '') || isBasicMagicLand(card.name.trim())
 }
 
 function titleCase(value: string) {

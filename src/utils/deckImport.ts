@@ -313,7 +313,11 @@ export function formatDeckCards(
 
   return orderedSections
     .map(section => {
-      const sectionCards = groupedCards.filter(card => card.section === section)
+      const sectionCards = orderDeckSectionCards(
+        game,
+        section,
+        groupedCards.filter(card => card.section === section),
+      )
       if (!sectionCards.length) return ''
       const lines = sectionCards.map(card => `${card.quantity} ${formatDeckCardLine(card, includeMetadata, game)}`)
       return [`${section}:`, ...lines].join('\n')
@@ -559,6 +563,25 @@ function mergeImportedCards(cards: ImportedDeckCard[]) {
     }
   }
   return [...merged.values()]
+}
+
+function orderDeckSectionCards(
+  game: TournamentTCG | undefined,
+  section: string,
+  cards: ImportedDeckCard[],
+) {
+  if (game !== 'magic' || section !== 'Main') return cards
+  return [...cards].sort((a, b) => {
+    const aLand = isMagicLandCard(a)
+    const bLand = isMagicLandCard(b)
+    if (aLand !== bLand) return aLand ? 1 : -1
+    return 0
+  })
+}
+
+function isMagicLandCard(card: Pick<ImportedDeckCard, 'name' | 'kind'>) {
+  if (/\bland\b/i.test(card.kind ?? '')) return true
+  return ['plains', 'island', 'swamp', 'mountain', 'forest', 'wastes'].includes(card.name.trim().toLowerCase())
 }
 
 function formatDeckCardLine(card: ImportedDeckCard, includeMetadata: boolean, game?: TournamentTCG) {

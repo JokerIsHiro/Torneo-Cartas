@@ -102,10 +102,25 @@ export function parseDeckLine(game: TournamentTCG, rawLine: string): ParsedDeckL
 
   for (const attempt of attempts) {
     const parsed = attempt()
-    if (parsed && parsed.quantity > 0 && parsed.name) return parsed
+    if (parsed && parsed.quantity > 0 && parsed.name) return applyLineMetadata(game, line, parsed)
   }
 
   return null
+}
+
+function applyLineMetadata(game: TournamentTCG, line: string, parsed: ParsedDeckLine): ParsedDeckLine {
+  if (game !== 'magic') return parsed
+
+  const tags = line.match(/\s+#\s*(.+)$/)?.[1]?.toLowerCase() ?? ''
+  const sectionHint = /(?:^|\s)!?commander\b/i.test(tags)
+    ? 'Commander'
+    : parsed.sectionHint
+
+  return {
+    ...parsed,
+    name: cleanName(game, parsed.name, parsed.cardCode),
+    sectionHint,
+  }
 }
 
 function parseOptcgSimLine(line: string): ParsedDeckLine | null {
@@ -361,6 +376,8 @@ function cleanName(game: TournamentTCG, raw: string, cardCode?: string) {
   }
 
   name = name
+    .replace(/\s+#.*$/g, '')
+    .replace(/^\[[A-Z0-9]{2,8}\]\s+/i, '')
     .replace(/\s*\([^)]*(?:alternate|alt|manga|parallel|reprint|full art|sp|aa|aa)[^)]*\)/gi, '')
     .replace(/\s*\[(?!(?:id|img|art|orient|sub|kind)=)[^\]]+\]\s*$/gi, '')
     .replace(/\s*[-–—]\s*$/g, '')
