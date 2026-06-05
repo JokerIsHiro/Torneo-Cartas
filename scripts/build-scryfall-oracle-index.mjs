@@ -13,27 +13,29 @@ async function main() {
   }
 
   const bulkPayload = await bulkResponse.json();
-  const defaultCardsFile = bulkPayload.data?.find((item) => item.type === "default_cards");
-  if (!defaultCardsFile?.download_uri) {
-    throw new Error("No se encontro el archivo default_cards de Scryfall.");
+  const oracleFile = bulkPayload.data?.find((item) => item.type === "oracle_cards");
+  if (!oracleFile?.download_uri) {
+    throw new Error("No se encontro el archivo oracle_cards de Scryfall.");
   }
 
-  console.log(`Descargando ${defaultCardsFile.name}...`);
-  const cardsResponse = await fetch(defaultCardsFile.download_uri);
+  console.log(`Descargando ${oracleFile.name}...`);
+  const cardsResponse = await fetch(oracleFile.download_uri);
   if (!cardsResponse.ok) {
-    throw new Error(`No se pudo descargar default_cards: ${cardsResponse.status}`);
+    throw new Error(`No se pudo descargar oracle_cards: ${cardsResponse.status}`);
   }
 
   const cards = await cardsResponse.json();
   const bestCards = new Map();
+  const namesByKey = new Map();
 
   for (const card of cards) {
     if (!card.id || !card.name || !getImageUrl(card)) continue;
     if (card.lang && card.lang !== "en") continue;
     if (card.digital) continue;
-    if (card.layout === "art_series" || card.layout === "token" || card.layout === "emblem") continue;
+    if (shouldSkipPrint(card)) continue;
 
     const key = card.oracle_id ?? normalizeName(card.name);
+    namesByKey.set(key, new Set([...(namesByKey.get(key) ?? []), ...getCardNames(card)]));
     const current = bestCards.get(key);
     if (!current || scoreNormalPrint(card) > scoreNormalPrint(current)) {
       bestCards.set(key, card);
@@ -48,6 +50,7 @@ async function main() {
     artUrl: getArtUrl(card),
     kind: card.type_line,
     legalities: card.legalities,
+    names: [...(namesByKey.get(card.oracle_id ?? normalizeName(card.name)) ?? [])],
   }));
 
   await mkdir(path.dirname(OUTPUT_PATH), { recursive: true });
@@ -55,7 +58,7 @@ async function main() {
     OUTPUT_PATH,
     JSON.stringify({
       source: "scryfall-oracle_cards",
-      updatedAt: defaultCardsFile.updated_at,
+      updatedAt: oracleFile.updated_at,
       generatedAt: new Date().toISOString(),
       cards: compactCards,
     }),
@@ -70,18 +73,19 @@ function scoreNormalPrint(card) {
   const frameEffects = new Set(card.frame_effects ?? []);
   let score = 0;
 
+  if (isNormalLookingPrint(card)) score += 500;
   if (card.lang === "en") score += 100;
-  if (!card.promo) score += 80;
-  if (!card.full_art) score += 70;
-  if (!card.textless) score += 45;
-  if (!card.oversized) score += 45;
-  if (!card.variation) score += 45;
-  if (!frameEffects.has("showcase")) score += 75;
-  if (!frameEffects.has("extendedart")) score += 75;
-  if (!frameEffects.has("borderless")) score += 65;
-  if (!frameEffects.has("inverted")) score += 40;
-  if (!frameEffects.has("etched")) score += 40;
-  if (card.booster) score += 30;
+  if (!card.promo) score += 120;
+  if (!card.full_art) score += 120;
+  if (!card.textless) score += 120;
+  if (!card.oversized) score += 80;
+  if (!card.variation) score += 80;
+  if (!frameEffects.has("showcase")) score += 140;
+  if (!frameEffects.has("extendedart")) score += 140;
+  if (!frameEffects.has("borderless")) score += 140;
+  if (!frameEffects.has("inverted")) score += 70;
+  if (!frameEffects.has("etched")) score += 70;
+  if (card.booster) score += 90;
   if (card.highres_image) score += 10;
   if (card.image_status === "highres_scan") score += 10;
 
@@ -90,6 +94,36 @@ function scoreNormalPrint(card) {
   }
 
   return score;
+}
+
+function shouldSkipPrint(card) {
+  if (["art_series", "token", "emblem", "memorabilia"].includes(card.layout)) return true;
+  if (["memorabilia", "token", "alchemy"].includes(card.set_type)) return true;
+  return false;
+}
+
+function isNormalLookingPrint(card) {
+  const frameEffects = new Set(card.frame_effects ?? []);
+  return !card.promo
+    && !card.full_art
+    && !card.textless
+    && !card.oversized
+    && !card.variation
+    && card.border_color !== "borderless"
+    && !frameEffects.has("showcase")
+    && !frameEffects.has("extendedart")
+    && !frameEffects.has("borderless")
+    && !frameEffects.has("inverted")
+    && !frameEffects.has("etched");
+}
+
+function getCardNames(card) {
+  const names = new Set([card.name]);
+  const frontFace = card.name.split("//")[0]?.trim();
+  if (frontFace) names.add(frontFace);
+  const printedName = card.printed_name?.trim();
+  if (printedName) names.add(printedName);
+  return [...names];
 }
 
 function getImageUrl(card) {

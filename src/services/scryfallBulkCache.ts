@@ -11,6 +11,7 @@ type BulkCard = {
   artUrl?: string;
   kind?: string;
   legalities?: Record<string, string>;
+  names?: string[];
 };
 
 type BulkIndex = {
@@ -67,7 +68,7 @@ async function loadBulkIndex() {
         legalities: card.legalities,
       };
 
-      for (const name of getCardNames(card.name)) {
+      for (const name of getCardNames(card)) {
         index.set(normalizeMagicName(name), suggestion);
       }
     }
@@ -87,9 +88,9 @@ function getLookupNames(lookup: BulkLookup) {
   ].filter(Boolean);
 }
 
-function getCardNames(name: string) {
-  const frontFace = name.split("//")[0]?.trim();
-  return [name, frontFace, nameToSlug(name)].filter((value, index, values): value is string =>
+function getCardNames(card: BulkCard) {
+  const frontFace = card.name.split("//")[0]?.trim();
+  return [card.name, frontFace, nameToSlug(card.name), ...(card.names ?? [])].filter((value, index, values): value is string =>
     Boolean(value) && values.indexOf(value) === index
   );
 }
