@@ -11,10 +11,10 @@ export default function App() {
   const tournaments = useTournamentsStore(state => state.tournaments)
   const createTournament = useTournamentsStore(state => state.createTournament)
   const deleteTournament = useTournamentsStore(state => state.deleteTournament)
-  const [selectedTournamentId, setSelectedTournamentId] = useState(() => tournaments.at(-1)?.id ?? '')
+  const [selectedTournamentId, setSelectedTournamentId] = useState('')
   const [tab, setTab] = useState<AppTab>('setup')
 
-  const selectedTournament = tournaments.find(tournament => tournament.id === selectedTournamentId) ?? tournaments.at(-1) ?? null
+  const selectedTournament = tournaments.find(tournament => tournament.id === selectedTournamentId) ?? null
   const canShowStandings = selectedTournament?.status === 'finished'
   const visibleTab: AppTab = tab === 'standings' && !canShowStandings
     ? selectedTournament?.status === 'setup' ? 'setup' : 'round'
@@ -28,17 +28,29 @@ export default function App() {
 
   return (
     <main className={`aether-app ${selectedTournament ? 'has-tournament' : ''}`}>
-      <header className="aether-hero">
-        <div>
-          <span>AetherHub</span>
-          <h1>YuGiOh Tournament</h1>
-        </div>
-        <button onClick={handleCreateTournament} aria-label="Crear torneo">
-          <i className="ti ti-plus" aria-hidden="true" />
-        </button>
-      </header>
+      {(selectedTournament || tournaments.length > 0) && (
+        <header className={`aether-hero ${!selectedTournament ? 'is-home' : ''}`}>
+          <button
+            className="aether-ghost-action"
+            onClick={() => {
+              setSelectedTournamentId('')
+              setTab('setup')
+            }}
+            aria-label="Volver a torneos"
+          >
+            <i className="ti ti-layout-list" aria-hidden="true" />
+          </button>
+          <div>
+            <span>AetherHub</span>
+            <h1>{selectedTournament ? selectedTournament.name : 'Torneos'}</h1>
+          </div>
+          <button onClick={handleCreateTournament} aria-label="Crear torneo">
+            <i className="ti ti-plus" aria-hidden="true" />
+          </button>
+        </header>
+      )}
 
-      {tournaments.length > 1 && (
+      {selectedTournament && tournaments.length > 1 && (
         <div className="aether-tournament-strip" aria-label="Torneos">
           {tournaments.map(tournament => (
             <button
@@ -56,22 +68,45 @@ export default function App() {
       )}
 
       {!selectedTournament ? (
-        <EmptyHome onCreate={handleCreateTournament} />
-      ) : (
-        <>
-          <TournamentHeader
-            tournament={selectedTournament}
-            onDelete={() => {
-              if (!confirm(`Eliminar "${selectedTournament.name}"?`)) return
-              deleteTournament(selectedTournament.id)
-              const next = tournaments.find(tournament => tournament.id !== selectedTournament.id)
-              setSelectedTournamentId(next?.id ?? '')
-              setTab('setup')
+        tournaments.length === 0 ? (
+          <EmptyHome onCreate={handleCreateTournament} />
+        ) : (
+          <TournamentLobby
+            tournaments={tournaments}
+            onCreate={handleCreateTournament}
+            onOpen={tournament => {
+              setSelectedTournamentId(tournament.id)
+              setTab(tournament.status === 'setup' ? 'setup' : 'round')
             }}
           />
+        )
+      ) : (
+        <>
+          {visibleTab !== 'setup' && (
+            <TournamentHeader
+              tournament={selectedTournament}
+              onDelete={() => {
+                if (!confirm(`Eliminar "${selectedTournament.name}"?`)) return
+                deleteTournament(selectedTournament.id)
+                setSelectedTournamentId('')
+                setTab('setup')
+              }}
+            />
+          )}
 
           <section className="aether-panel-shell">
-            {visibleTab === 'setup' && <SetupPanel tournament={selectedTournament} onGoRound={() => setTab('round')} />}
+            {visibleTab === 'setup' && (
+              <SetupPanel
+                tournament={selectedTournament}
+                onGoRound={() => setTab('round')}
+                onDelete={() => {
+                  if (!confirm(`Eliminar "${selectedTournament.name}"?`)) return
+                  deleteTournament(selectedTournament.id)
+                  setSelectedTournamentId('')
+                  setTab('setup')
+                }}
+              />
+            )}
             {visibleTab === 'round' && <RoundPanel tournament={selectedTournament} onFinished={() => setTab('standings')} />}
             {visibleTab === 'standings' && canShowStandings && <StandingsPanel tournament={selectedTournament} />}
           </section>
@@ -102,18 +137,53 @@ function EmptyHome({ onCreate }: { onCreate: () => void }) {
   return (
     <section className="aether-home">
       <div className="aether-home-card">
-        <div className="aether-brand-mark">
-          <i className="ti ti-cards" aria-hidden="true" />
-        </div>
-        <span>YuGiOh Swiss Tool</span>
-        <h2>Prepara el torneo</h2>
-        <p>Jugadores, rondas, resultados y exports en imagen desde una app ligera para movil.</p>
         <button onClick={onCreate}>
           <i className="ti ti-plus" aria-hidden="true" />
           Crear torneo
         </button>
       </div>
     </section>
+  )
+}
+
+function TournamentLobby({
+  tournaments,
+  onCreate,
+  onOpen,
+}: {
+  tournaments: Tournament[]
+  onCreate: () => void
+  onOpen: (tournament: Tournament) => void
+}) {
+  return (
+    <section className="aether-lobby" aria-label="Torneos disponibles">
+      <div className="aether-lobby-list">
+        {tournaments.map(tournament => (
+          <TournamentLobbyCard
+            key={tournament.id}
+            tournament={tournament}
+            onOpen={() => onOpen(tournament)}
+          />
+        ))}
+      </div>
+      <button className="aether-secondary-action" onClick={onCreate}>
+        <i className="ti ti-plus" aria-hidden="true" />
+        Nuevo torneo
+      </button>
+    </section>
+  )
+}
+
+function TournamentLobbyCard({ tournament, onOpen }: { tournament: Tournament; onOpen: () => void }) {
+  const { totalRounds, roundSummaries } = useSwissPairings(tournament.id)
+  const playedRounds = roundSummaries.filter(round => round.matchesTotal > 0).length
+
+  return (
+    <button className="aether-lobby-card" onClick={onOpen}>
+      <span>{statusLabel(tournament.status)}</span>
+      <strong>{tournament.name}</strong>
+      <small>{tournament.players.length} jugadores - {playedRounds || tournament.currentRound || 0}/{totalRounds || '-'} rondas</small>
+    </button>
   )
 }
 
@@ -135,7 +205,7 @@ function TournamentHeader({ tournament, onDelete }: { tournament: Tournament; on
   )
 }
 
-function SetupPanel({ tournament, onGoRound }: { tournament: Tournament; onGoRound: () => void }) {
+function SetupPanel({ tournament, onGoRound, onDelete }: { tournament: Tournament; onGoRound: () => void; onDelete: () => void }) {
   const updateTournamentName = useTournamentsStore(state => state.updateTournamentName)
   const addPlayer = useTournamentsStore(state => state.addPlayer)
   const removePlayer = useTournamentsStore(state => state.removePlayer)
@@ -167,23 +237,23 @@ function SetupPanel({ tournament, onGoRound }: { tournament: Tournament; onGoRou
 
   return (
     <div className="aether-stack">
-      <section className="aether-config-card aether-setup-summary">
-        <div className="aether-panel-title">
-          <span>Configuracion</span>
-          <h2>Nuevo torneo</h2>
-          <p>YuGiOh - Suizo - Normal</p>
+      <section className="aether-config-card aether-setup-panel">
+        <div className="aether-setup-head">
+          <div className="aether-panel-title">
+            <span>Preparacion</span>
+            <h2>Nuevo torneo</h2>
+          </div>
+          <div className="aether-setup-tools">
+            <div className="aether-pin-card">
+              <span>PIN</span>
+              <strong>{tournament.creatorPin ?? '0000'}</strong>
+            </div>
+            <button className="aether-icon-danger subtle" onClick={onDelete} aria-label="Eliminar torneo">
+              <i className="ti ti-trash" aria-hidden="true" />
+            </button>
+          </div>
         </div>
-        <div className="aether-pin-card">
-          <span>PIN creador</span>
-          <strong>{tournament.creatorPin ?? '0000'}</strong>
-        </div>
-        <div className="aether-kpi-grid">
-          <Kpi label="Jugadores" value={tournament.players.length} />
-          <Kpi label="Rondas" value={tournament.players.length >= 2 ? totalRounds : '-'} />
-        </div>
-      </section>
 
-      <section className="aether-config-card">
         <label className="aether-field">
           <span>Nombre del torneo</span>
           <input
@@ -192,12 +262,17 @@ function SetupPanel({ tournament, onGoRound }: { tournament: Tournament; onGoRou
             placeholder="Torneo YuGiOh"
           />
         </label>
-      </section>
 
-      <section className="aether-config-card">
+        <div className="aether-meta-row">
+          <span>YuGiOh</span>
+          <span>Suizo</span>
+          <span>{tournament.players.length} jugadores</span>
+          {tournament.players.length >= 2 && <span>{totalRounds} rondas</span>}
+        </div>
+
         <div className="aether-section-title compact-title">
           <div>
-            <span>Anadir jugadores</span>
+            <span>Jugadores</span>
             <h2>Inscritos</h2>
           </div>
           <strong>{tournament.players.length}</strong>
@@ -239,15 +314,15 @@ function SetupPanel({ tournament, onGoRound }: { tournament: Tournament; onGoRou
             </div>
           ))}
         </div>
-      </section>
 
-      {tournament.status === 'setup' ? (
-        <button className="aether-primary" onClick={handleStart} disabled={tournament.players.length < 2}>
-          Comenzar ronda 1
-        </button>
-      ) : (
-        <div className="aether-note">El torneo ya esta iniciado.</div>
-      )}
+        {tournament.status === 'setup' ? (
+          <button className="aether-primary" onClick={handleStart} disabled={tournament.players.length < 2}>
+            Comenzar ronda 1
+          </button>
+        ) : (
+          <div className="aether-note">El torneo ya esta iniciado.</div>
+        )}
+      </section>
     </div>
   )
 }
@@ -467,15 +542,6 @@ function StandingsPanel({ tournament }: { tournament: Tournament }) {
           </div>
         ))}
       </div>
-    </div>
-  )
-}
-
-function Kpi({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="aether-kpi">
-      <strong>{value}</strong>
-      <span>{label}</span>
     </div>
   )
 }

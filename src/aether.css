@@ -1,18 +1,18 @@
 :root {
-  --aether-bg: #05070b;
-  --aether-surface: #09111d;
-  --aether-surface-2: #0d1828;
-  --aether-card: #02050a;
-  --aether-line: #1e4d86;
-  --aether-line-soft: rgba(78, 151, 255, 0.24);
-  --aether-text: #f7fbff;
-  --aether-muted: #9bbdf1;
-  --aether-soft: #6982aa;
-  --aether-blue: #267cff;
-  --aether-cyan: #59dcff;
-  --aether-gold: #f3c957;
-  --aether-green: #38db92;
-  --aether-red: #ff5d78;
+  --aether-bg: #07090d;
+  --aether-surface: #10151d;
+  --aether-surface-2: #151c27;
+  --aether-card: #0b0f15;
+  --aether-line: #263141;
+  --aether-line-soft: rgba(148, 163, 184, 0.16);
+  --aether-text: #f4f7fb;
+  --aether-muted: #a7b4c7;
+  --aether-soft: #748298;
+  --aether-blue: #3b82f6;
+  --aether-cyan: #67e8f9;
+  --aether-gold: #f4c95d;
+  --aether-green: #35d49a;
+  --aether-red: #fb7185;
 }
 
 html,
@@ -24,8 +24,8 @@ body,
 
 body {
   background:
-    radial-gradient(circle at 50% -80px, rgba(38, 124, 255, 0.18), transparent 210px),
-    linear-gradient(180deg, rgba(9, 17, 29, 0.9), var(--aether-bg) 230px);
+    radial-gradient(circle at 50% -120px, rgba(59, 130, 246, 0.11), transparent 230px),
+    linear-gradient(180deg, #0a0d13 0%, var(--aether-bg) 260px);
 }
 
 button,
@@ -38,11 +38,33 @@ button {
   cursor: pointer;
 }
 
+@keyframes aether-screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes aether-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .aether-app {
-  width: min(100%, 460px);
+  width: min(100%, 440px);
   min-height: 100dvh;
   margin: 0 auto;
-  padding: max(8px, env(safe-area-inset-top)) 8px calc(64px + env(safe-area-inset-bottom));
+  padding: max(10px, env(safe-area-inset-top)) 14px calc(64px + env(safe-area-inset-bottom));
   color: var(--aether-text);
 }
 
@@ -52,15 +74,19 @@ button {
 
 .aether-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
   align-items: center;
-  gap: 9px;
-  min-height: 52px;
-  padding: 9px 10px;
-  border: 1px solid var(--aether-line-soft);
-  border-radius: 13px;
-  background: rgba(7, 13, 22, 0.94);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 2px 10px;
+  border: 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.11);
+  border-radius: 0;
+  background: transparent;
+}
+
+.aether-hero.is-home {
+  grid-template-columns: minmax(0, 1fr) 32px;
 }
 
 .aether-hero span,
@@ -70,10 +96,10 @@ button {
 .aether-field span,
 .aether-round-status span,
 .aether-home-card > span {
-  color: var(--aether-muted);
-  font-size: 10px;
-  font-weight: 850;
-  letter-spacing: 0.055em;
+  color: var(--aether-soft);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -81,7 +107,7 @@ button {
   margin: 2px 0 0;
   overflow: hidden;
   color: var(--aether-text);
-  font-size: 20px;
+  font-size: 21px;
   line-height: 1.05;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -91,30 +117,42 @@ button {
 .aether-tournament-card > button {
   display: grid;
   place-items: center;
-  width: 34px;
-  min-width: 34px;
-  height: 34px;
-  border: 1px solid var(--aether-line);
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
   border-radius: 10px;
-  background: var(--aether-card);
-  color: var(--aether-cyan);
-  font-size: 17px;
+  background: rgba(15, 23, 42, 0.64);
+  color: var(--aether-text);
+  font-size: 16px;
+}
+
+.aether-hero.is-home .aether-ghost-action {
+  display: none;
+}
+
+.aether-ghost-action {
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--aether-muted) !important;
 }
 
 .aether-home {
   display: grid;
-  margin-top: 9px;
+  min-height: 100dvh;
+  place-items: center;
+  margin-top: 0;
+  padding-bottom: calc(52px + env(safe-area-inset-bottom));
 }
 
 .aether-home-card {
   display: grid;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid var(--aether-line-soft);
-  border-radius: 15px;
-  background:
-    linear-gradient(135deg, rgba(38, 124, 255, 0.12), rgba(89, 220, 255, 0.03)),
-    var(--aether-surface);
+  width: 100%;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .aether-brand-mark {
@@ -131,10 +169,10 @@ button {
 
 .aether-home-card h2 {
   margin: 0;
-  max-width: 14ch;
+  max-width: 16ch;
   color: var(--aether-text);
-  font-size: 24px;
-  line-height: 1.05;
+  font-size: 32px;
+  line-height: 1;
 }
 
 .aether-home-card p,
@@ -145,8 +183,8 @@ button {
 .aether-list-empty {
   margin: 4px 0 0;
   color: var(--aether-muted);
-  font-size: 12px;
-  line-height: 1.33;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .aether-home-card button,
@@ -157,20 +195,118 @@ button {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 36px;
-  border: 1px solid rgba(38, 124, 255, 0.88);
-  border-radius: 10px;
-  background: var(--aether-blue);
+  min-height: 42px;
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #3b82f6, #2563eb);
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 850;
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.24);
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    background-color 150ms ease,
+    opacity 150ms ease;
+}
+
+.aether-home-card button:active,
+.aether-primary:active,
+.aether-round-status button:active,
+.aether-add-player button:active,
+.aether-hero button:active,
+.aether-lobby-card:active,
+.aether-bottom-nav button:active {
+  transform: scale(0.98);
+}
+
+.aether-lobby {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  animation: aether-screen-in 220ms ease both;
+}
+
+.aether-lobby-list {
+  display: grid;
+  gap: 10px;
+}
+
+.aether-lobby-card {
+  display: grid;
+  position: relative;
+  gap: 6px;
+  width: 100%;
+  min-height: 78px;
+  padding: 13px 14px 13px 16px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.008)),
+    rgba(12, 17, 24, 0.92);
+  color: var(--aether-text);
+  text-align: left;
+  animation: aether-card-in 220ms ease both;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+
+.aether-lobby-card::before {
+  position: absolute;
+  inset: 13px auto 13px 0;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--aether-blue);
+  content: "";
+}
+
+.aether-lobby-card:nth-child(2) {
+  animation-delay: 35ms;
+}
+
+.aether-lobby-card:nth-child(3) {
+  animation-delay: 70ms;
+}
+
+.aether-lobby-card:nth-child(n + 4) {
+  animation-delay: 105ms;
+}
+
+.aether-lobby-card:active {
+  border-color: rgba(96, 165, 250, 0.34);
+  background: rgba(18, 25, 36, 0.96);
+}
+
+.aether-lobby-card span {
+  color: var(--aether-soft);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.aether-lobby-card strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 18px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aether-lobby-card small {
+  color: var(--aether-muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .aether-tournament-strip {
   display: flex;
   gap: 6px;
-  margin: 8px -8px;
-  padding: 0 8px 2px;
+  margin: 10px -14px 8px;
+  padding: 0 14px 2px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -180,38 +316,43 @@ button {
 }
 
 .aether-tournament-strip button {
-  min-height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--aether-line-soft);
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(148, 163, 184, 0.13);
   border-radius: 999px;
-  background: var(--aether-card);
+  background: rgba(12, 17, 24, 0.78);
   color: var(--aether-muted);
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease;
 }
 
 .aether-tournament-strip button.active {
-  border-color: var(--aether-blue);
+  border-color: rgba(96, 165, 250, 0.56);
   color: var(--aether-text);
-  background: rgba(38, 124, 255, 0.12);
+  background: rgba(59, 130, 246, 0.16);
 }
 
 .aether-tournament-card,
 .aether-config-card,
 .aether-round-status,
 .aether-empty {
-  border: 1px solid var(--aether-line-soft);
-  border-radius: 13px;
-  background: rgba(8, 15, 25, 0.94);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 14px;
+  background: rgba(12, 17, 24, 0.9);
 }
 
 .aether-tournament-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 34px;
   gap: 9px;
-  margin: 8px 0;
-  padding: 9px 10px;
+  margin: 10px 0;
+  padding: 11px 12px;
 }
 
 .aether-tournament-main {
@@ -232,54 +373,70 @@ button {
   color: var(--aether-red) !important;
 }
 
+.aether-icon-danger.subtle {
+  border-color: rgba(255, 93, 120, 0.32) !important;
+  background: rgba(255, 93, 120, 0.04) !important;
+}
+
 .aether-panel-shell {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  animation: aether-screen-in 200ms ease both;
+}
+
+.aether-stack {
+  display: grid;
+  gap: 7px;
+}
+
+.aether-config-card {
+  display: grid;
+  gap: 14px;
   padding: 0;
   border: 0;
   background: transparent;
 }
 
-.aether-stack {
+.aether-setup-panel {
+  margin-top: 18px;
+}
+
+.aether-setup-head {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 8px;
 }
 
-.aether-config-card {
-  display: grid;
-  gap: 9px;
-  padding: 10px;
-}
-
-.aether-setup-summary {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-}
-
-.aether-setup-summary .aether-kpi-grid {
-  grid-column: 1 / -1;
+.aether-setup-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .aether-panel-title h2,
 .aether-section-title h2,
 .aether-round-status h2 {
   margin: 2px 0 0;
-  font-size: 19px;
+  font-size: 21px;
   line-height: 1.08;
 }
 
 .aether-pin-card {
   display: grid;
   place-items: center;
-  min-width: 92px;
-  min-height: 48px;
-  padding: 6px 8px;
-  border: 1px solid rgba(243, 201, 87, 0.36);
-  border-radius: 10px;
-  background: rgba(243, 201, 87, 0.07);
+  min-width: 60px;
+  min-height: 32px;
+  padding: 4px 7px;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(244, 201, 93, 0.08);
 }
 
 .aether-pin-card span {
   color: var(--aether-gold);
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -287,37 +444,23 @@ button {
 
 .aether-pin-card strong {
   color: var(--aether-text);
-  font-size: 17px;
-  letter-spacing: 0.12em;
+  font-size: 13px;
+  letter-spacing: 0.08em;
 }
 
-.aether-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.aether-meta-row {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
-.aether-kpi {
-  display: grid;
-  align-content: center;
-  gap: 3px;
-  min-height: 46px;
-  padding: 7px;
-  border: 1px solid var(--aether-line-soft);
-  border-radius: 10px;
-  background: var(--aether-card);
-  text-align: center;
-}
-
-.aether-kpi strong {
-  color: var(--aether-cyan);
-  font-size: 18px;
-  line-height: 1;
-}
-
-.aether-kpi span {
+.aether-meta-row span {
+  padding: 5px 9px;
+  border: 1px solid rgba(148, 163, 184, 0.11);
+  border-radius: 999px;
+  background: rgba(12, 17, 24, 0.58);
   color: var(--aether-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -329,11 +472,11 @@ button {
 .aether-field input,
 .aether-add-player input {
   width: 100%;
-  min-height: 40px;
-  padding: 0 11px;
-  border: 1px solid var(--aether-line-soft);
-  border-radius: 10px;
-  background: var(--aether-card);
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: 12px;
+  background: rgba(9, 13, 19, 0.88);
   color: var(--aether-text);
   font-size: 14px;
   font-weight: 720;
@@ -342,7 +485,8 @@ button {
 
 .aether-field input:focus,
 .aether-add-player input:focus {
-  border-color: var(--aether-blue);
+  border-color: rgba(96, 165, 250, 0.62);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
 }
 
 .aether-section-title,
@@ -353,35 +497,39 @@ button {
 }
 
 .compact-title {
-  grid-template-columns: minmax(0, 1fr) 34px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
 }
 
 .compact-title > strong {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--aether-line-soft);
-  border-radius: 10px;
-  background: var(--aether-card);
-  color: var(--aether-cyan);
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 999px;
+  background: rgba(12, 17, 24, 0.78);
+  color: var(--aether-text);
 }
 
 .aether-add-player {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 38px;
-  gap: 7px;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 8px;
 }
 
 .aether-add-player button {
-  min-width: 38px;
+  min-width: 42px;
+  min-height: 42px;
   padding: 0;
 }
 
 .aether-primary {
   width: 100%;
   margin-top: 1px;
+  min-height: 42px;
+  border-radius: 12px;
 }
 
 .aether-primary:disabled,
@@ -393,21 +541,21 @@ button {
 .aether-match-list,
 .aether-standing-list {
   display: grid;
-  gap: 6px;
+  gap: 7px;
 }
 
 .aether-player-row,
 .aether-standing-row,
 .aether-standing-header {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
   align-items: center;
   gap: 7px;
-  min-height: 38px;
-  padding: 6px 8px;
-  border: 1px solid var(--aether-line-soft);
-  border-radius: 10px;
-  background: var(--aether-card);
+  min-height: 40px;
+  padding: 6px 9px;
+  border: 1px solid rgba(148, 163, 184, 0.07);
+  border-radius: 12px;
+  background: rgba(11, 15, 21, 0.82);
 }
 
 .aether-player-row span,
@@ -429,9 +577,9 @@ button {
 }
 
 .aether-player-row button {
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--aether-line-soft);
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(148, 163, 184, 0.13);
   border-radius: 8px;
   background: transparent;
   color: var(--aether-muted);
@@ -440,7 +588,7 @@ button {
 .aether-round-status {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  padding: 10px;
+  padding: 12px;
 }
 
 .aether-share-actions {
@@ -474,10 +622,11 @@ button {
 .aether-match-card {
   display: grid;
   gap: 8px;
-  padding: 9px;
-  border: 1px solid var(--aether-line-soft);
-  border-radius: 12px;
-  background: var(--aether-card);
+  padding: 11px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 14px;
+  background: rgba(11, 15, 21, 0.9);
+  animation: aether-card-in 180ms ease both;
 }
 
 .aether-match-card.is-locked {
@@ -534,10 +683,10 @@ button {
   place-items: center;
   gap: 1px;
   min-width: 0;
-  min-height: 32px;
+  min-height: 34px;
   padding: 4px 5px;
-  border: 1px solid var(--aether-line-soft);
-  border-radius: 9px;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: 10px;
   background: var(--aether-surface-2);
   color: var(--aether-text);
   font-size: 11px;
@@ -592,9 +741,9 @@ button {
   gap: 6px;
   min-height: 30px;
   padding: 0 9px;
-  border: 1px solid var(--aether-line-soft);
-  border-radius: 9px;
-  background: var(--aether-surface-2);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 10px;
+  background: rgba(21, 28, 39, 0.9);
   color: var(--aether-text);
   font-size: 12px;
   font-weight: 820;
@@ -644,9 +793,9 @@ button {
   display: grid;
   place-items: center;
   min-height: 66px;
-  border: 1px dashed var(--aether-line-soft);
-  border-radius: 10px;
-  background: var(--aether-card);
+  border: 1px dashed rgba(148, 163, 184, 0.16);
+  border-radius: 12px;
+  background: rgba(11, 15, 21, 0.66);
   text-align: center;
 }
 
@@ -664,15 +813,15 @@ button {
   position: fixed;
   z-index: 20;
   left: 50%;
-  bottom: max(8px, env(safe-area-inset-bottom));
+  bottom: max(7px, env(safe-area-inset-bottom));
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 6px;
-  width: min(calc(100% - 16px), 444px);
-  padding: 6px;
-  border: 1px solid var(--aether-line-soft);
-  border-radius: 15px;
-  background: rgba(5, 7, 11, 0.96);
+  width: min(calc(100% - 28px), 412px);
+  padding: 5px;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: 16px;
+  background: rgba(9, 13, 19, 0.92);
   backdrop-filter: blur(14px);
   transform: translateX(-50%);
 }
@@ -683,11 +832,15 @@ button {
   gap: 2px;
   min-height: 38px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 12px;
   background: transparent;
   color: var(--aether-muted);
   font-size: 10px;
   font-weight: 880;
+  transition:
+    transform 150ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
 }
 
 .aether-bottom-nav button i {
@@ -695,8 +848,19 @@ button {
 }
 
 .aether-bottom-nav button.active {
-  background: var(--aether-surface-2);
+  background: rgba(59, 130, 246, 0.14);
   color: var(--aether-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
 }
 
 @media (max-width: 380px) {
@@ -711,7 +875,7 @@ button {
 
 @media (max-width: 350px) {
   .aether-app {
-    padding-inline: 7px;
+    padding-inline: 10px;
   }
 
   .aether-hero h1 {
