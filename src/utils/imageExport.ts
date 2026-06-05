@@ -96,10 +96,6 @@ export function proxiedImageUrl(url?: string) {
   }
 }
 
-function corsProxyUrl(url: string) {
-  return `https://corsproxy.io/?${encodeURIComponent(url)}`;
-}
-
 export function getExportImageCandidates(url: string) {
   if (!url || url.startsWith("data:")) return [url];
   if (!/^https?:\/\//i.test(url)) return [url];
@@ -107,17 +103,16 @@ export function getExportImageCandidates(url: string) {
   if (isDeadUrl(url)) return [];
 
   const proxied = proxiedImageUrl(url);
-  const corsProxy = corsProxyUrl(url);
 
   if (EXPORT_PROXY_FIRST_HOSTS.test(url)) {
-    return [...new Set([proxied, corsProxy, url].filter(Boolean) as string[])];
+    return [...new Set([proxied, url].filter(Boolean) as string[])];
   }
 
   if (/images\.ygoprodeck\.com|optcgapi\.com/i.test(url)) {
-    return [...new Set([url, proxied, corsProxy].filter(Boolean) as string[])];
+    return [...new Set([url, proxied].filter(Boolean) as string[])];
   }
 
-  return [...new Set([proxied, corsProxy, url].filter(Boolean) as string[])];
+  return [...new Set([proxied, url].filter(Boolean) as string[])];
 }
 
 export function isEmbeddableImageUrl(url?: string) {

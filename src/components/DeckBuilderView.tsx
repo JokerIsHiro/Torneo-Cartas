@@ -1096,11 +1096,6 @@ function DeckImageExport({
                           src={card.imageUrl}
                           alt=""
                           className={getExportCardImageClass(deck.game, card)}
-                          crossOrigin={
-                            card.imageUrl.startsWith('data:') || card.imageUrl.includes('images.weserv.nl')
-                              ? undefined
-                              : 'anonymous'
-                          }
                         />
                       )}
                       <div className="deck-export-card-fallback">{card.name}</div>
