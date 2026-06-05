@@ -1667,7 +1667,7 @@ async function hydrateMagicDeckImages(
     }
   }
 
-  return hydrateCardsUniquely(cards, 8, async card => {
+  return hydrateCardsUniquely(cards, 1, async card => {
     if (card.imageUrl) {
       const usableImageUrl = forExport
         ? await cachedExportImage(card.imageUrl, imageCache)

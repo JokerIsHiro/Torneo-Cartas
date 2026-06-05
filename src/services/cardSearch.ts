@@ -42,7 +42,7 @@ export interface CardSearchFilters {
 // ---------------------------------------------------------------------------
 
 const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
-const SCRYFALL_MIN_REQUEST_INTERVAL_MS = 130;
+const SCRYFALL_MIN_REQUEST_INTERVAL_MS = 260;
 
 const searchResultCache = new Map<
   string,
@@ -353,7 +353,16 @@ async function fetchScryfallJson<T>(
 
     if (response.ok) return (await response.json()) as T;
 
-    if (![429, 500, 502, 503, 504].includes(response.status)) return null;
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get("Retry-After") ?? "0");
+      const cooldownMs = Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(retryAfter * 1000, 60_000)
+        : 5_000;
+      nextScryfallRequestAt = Math.max(nextScryfallRequestAt, Date.now() + cooldownMs);
+      return null;
+    }
+
+    if (![500, 502, 503, 504].includes(response.status)) return null;
 
     if (attempt < retries) {
       await new Promise(resolve => globalThis.setTimeout(resolve, 450 * (attempt + 1)));
@@ -465,9 +474,18 @@ export async function resolveMagicCardsBatch(
   const fetchedCards: ScryfallCard[] = [];
   const identifiers = [...identifierByKey.values()];
 
-  for (let start = 0; start < identifiers.length; start += 50) {
-    const chunk = identifiers.slice(start, start + 50);
-    const payload = await fetchScryfallCollectionChunk(chunk, signal);
+  for (let start = 0; start < identifiers.length; start += 75) {
+    const chunk = identifiers.slice(start, start + 75);
+    const payload = await fetchScryfallJson<{ data?: ScryfallCard[] }>(
+      "https://api.scryfall.com/cards/collection",
+      signal,
+      1,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifiers: chunk }),
+      },
+    );
 
     fetchedCards.push(...(payload?.data ?? []));
   }
@@ -514,29 +532,6 @@ export async function resolveMagicCardsBatch(
   }
 
   return matches;
-}
-
-async function fetchScryfallCollectionChunk(
-  identifiers: ScryfallCollectionIdentifier[],
-  signal?: AbortSignal,
-): Promise<{ data?: ScryfallCard[] } | null> {
-  const payload = await fetchScryfallJson<{ data?: ScryfallCard[] }>(
-    "https://api.scryfall.com/cards/collection",
-    signal,
-    2,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identifiers }),
-    },
-  );
-
-  if (payload || identifiers.length <= 1) return payload;
-
-  const splitAt = Math.ceil(identifiers.length / 2);
-  const left = await fetchScryfallCollectionChunk(identifiers.slice(0, splitAt), signal);
-  const right = await fetchScryfallCollectionChunk(identifiers.slice(splitAt), signal);
-  return { data: [...(left?.data ?? []), ...(right?.data ?? [])] };
 }
 
 async function fetchScryfallCardByLookup(
