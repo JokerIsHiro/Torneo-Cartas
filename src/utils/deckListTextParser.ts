@@ -369,6 +369,7 @@ function extractCardCode(game: TournamentTCG, value: string) {
 function cleanName(game: TournamentTCG, raw: string, cardCode?: string) {
   let name = raw.trim()
   if (!name) return cardCode ?? ''
+  name = name.replace(/^["']+|["']+$/g, '').trim()
 
   if (cardCode) {
     name = name.replace(new RegExp(cardCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '')
@@ -405,6 +406,7 @@ function cleanName(game: TournamentTCG, raw: string, cardCode?: string) {
   }
 
   name = name.replace(/\s*\(TR\)\s*$/i, '').trim()
+  name = name.replace(/^["']+|["']+$/g, '').trim()
 
   if (!name && cardCode) return cardCode
   return name

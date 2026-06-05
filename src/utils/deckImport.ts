@@ -423,6 +423,7 @@ function looksLikeQuantityCardLine(line: string) {
 function normalizeLine(value: string) {
   return decodeHtmlEntities(value)
     .replace(/^#+\s*/, '')
+    .replace(/^["']+|["']+$/g, '')
     .replace(/^\*+\s*|\s*\*+$/g, '')
     .replace(/^\s*[-•▪►]\s+/, '')
     .replace(/\s+/g, ' ')
