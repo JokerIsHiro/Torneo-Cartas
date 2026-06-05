@@ -26,6 +26,7 @@ import { DeckCardImage } from './DeckCardImage'
 import { displayImageUrl, fetchImageAsDataUrl, proxiedImageUrl } from '../utils/imageExport'
 import { ActionButton } from './ActionButton'
 import { extractOnePieceCardCode } from '../utils/onePieceCardCode'
+import { resolveMagicCardsFromBulkIndex } from '../services/scryfallBulkCache'
 
 type DeckCard = ImportedDeckCard
 type DeckExportFormat = 'social'
@@ -1638,12 +1639,16 @@ async function hydrateMagicDeckImages(
   imageCache: Map<string, Promise<string>>,
   searchCache: Map<string, Promise<CardSuggestion[]>>,
 ) {
+  const magicLookups = cards
+    .filter(card => !card.imageUrl)
+    .map(card => ({ cardId: card.cardId, name: card.name }))
   const batchMatches = await resolveMagicCardsBatch(
-    cards
-      .filter(card => !card.imageUrl)
-      .map(card => ({ cardId: card.cardId, name: card.name })),
+    magicLookups,
   ).catch(() => new Map<string, CardSuggestion>())
   const skipMagicFallbackSearches = isScryfallRateLimited()
+  const bulkMatches = (skipMagicFallbackSearches || batchMatches.size < magicLookups.length)
+    ? await resolveMagicCardsFromBulkIndex(magicLookups)
+    : new Map<string, CardSuggestion>()
 
   const hydrateWithMatch = async (card: DeckCard, match: CardSuggestion) => {
     if (!match.imageUrl) return card
@@ -1679,6 +1684,8 @@ async function hydrateMagicDeckImages(
 
     const batchMatch = batchMatches.get(card.cardId)
     if (batchMatch?.imageUrl) return hydrateWithMatch(card, batchMatch)
+    const bulkMatch = bulkMatches.get(card.cardId)
+    if (bulkMatch?.imageUrl) return hydrateWithMatch(card, bulkMatch)
     if (skipMagicFallbackSearches || isScryfallRateLimited()) return card
 
     const cardById = await hydrateKnownCardById(card, 'magic', forExport, imageCache).catch(() => null)

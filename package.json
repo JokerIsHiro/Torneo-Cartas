@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "publish:main": "powershell -ExecutionPolicy Bypass -File scripts/publish-main.ps1"
+    "publish:main": "powershell -ExecutionPolicy Bypass -File scripts/publish-main.ps1",
+    "scryfall:cache": "node scripts/build-scryfall-oracle-index.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
