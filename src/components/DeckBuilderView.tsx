@@ -6,6 +6,7 @@ import { useTournamentsStore } from '../store/tournamentsStore'
 import {
   getAdvancedCardFilterOptions,
   getCardFilterOptions,
+  isScryfallRateLimited,
   resolveMagicCard,
   resolveMagicCardsBatch,
   resolvePokemonCard,
@@ -1647,6 +1648,7 @@ async function hydrateMagicDeckImages(
       .filter(card => !card.imageUrl)
       .map(card => ({ cardId: card.cardId, name: card.name })),
   ).catch(() => new Map<string, CardSuggestion>())
+  const skipMagicFallbackSearches = isScryfallRateLimited()
 
   const hydrateWithMatch = async (card: DeckCard, match: CardSuggestion) => {
     if (!match.imageUrl) return card
@@ -1682,6 +1684,7 @@ async function hydrateMagicDeckImages(
 
     const batchMatch = batchMatches.get(card.cardId)
     if (batchMatch?.imageUrl) return hydrateWithMatch(card, batchMatch)
+    if (skipMagicFallbackSearches || isScryfallRateLimited()) return card
 
     const cardById = await hydrateKnownCardById(card, 'magic', forExport, imageCache).catch(() => null)
     if (cardById) return cardById

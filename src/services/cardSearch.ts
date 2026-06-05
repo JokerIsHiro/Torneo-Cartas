@@ -49,6 +49,8 @@ const searchResultCache = new Map<
   { expires: number; cards: CardSuggestion[] }
 >();
 let nextScryfallRequestAt = 0;
+let scryfallCooldownUntil = 0;
+const SCRYFALL_COOLDOWN_KEY = "subterra:scryfall-cooldown-until";
 
 function searchCacheKey(
   game: TournamentTCG,
@@ -324,12 +326,31 @@ async function searchMagic(
 }
 
 async function waitForScryfallTurn() {
+  if (isScryfallRateLimited()) return false;
+
   const now = Date.now();
   const waitMs = Math.max(0, nextScryfallRequestAt - now);
   nextScryfallRequestAt = now + waitMs + SCRYFALL_MIN_REQUEST_INTERVAL_MS;
 
   if (waitMs > 0) {
     await new Promise(resolve => globalThis.setTimeout(resolve, waitMs));
+  }
+
+  return !isScryfallRateLimited();
+}
+
+export function isScryfallRateLimited() {
+  const storedCooldown = Number(globalThis.localStorage?.getItem(SCRYFALL_COOLDOWN_KEY) ?? "0");
+  const cooldownUntil = Math.max(scryfallCooldownUntil, Number.isFinite(storedCooldown) ? storedCooldown : 0);
+  return cooldownUntil > Date.now();
+}
+
+function setScryfallCooldown(cooldownMs: number) {
+  scryfallCooldownUntil = Math.max(scryfallCooldownUntil, Date.now() + cooldownMs);
+  try {
+    globalThis.localStorage?.setItem(SCRYFALL_COOLDOWN_KEY, String(scryfallCooldownUntil));
+  } catch {
+    // No pasa nada si el navegador bloquea localStorage.
   }
 }
 
@@ -340,7 +361,8 @@ async function fetchScryfallJson<T>(
   init: RequestInit = {},
 ): Promise<T | null> {
   for (let attempt = 0; attempt <= retries; attempt += 1) {
-    await waitForScryfallTurn();
+    const canRequest = await waitForScryfallTurn();
+    if (!canRequest) return null;
 
     const headers = new Headers(init.headers);
     if (!headers.has("Accept")) headers.set("Accept", "application/json");
@@ -358,7 +380,7 @@ async function fetchScryfallJson<T>(
       const cooldownMs = Number.isFinite(retryAfter) && retryAfter > 0
         ? Math.min(retryAfter * 1000, 60_000)
         : 5_000;
-      nextScryfallRequestAt = Math.max(nextScryfallRequestAt, Date.now() + cooldownMs);
+      setScryfallCooldown(cooldownMs);
       return null;
     }
 
