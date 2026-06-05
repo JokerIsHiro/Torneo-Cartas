@@ -4,6 +4,7 @@ import { forwardRef } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import { formatTiebreakerValue, getTiebreakerMetricLabel, getTiebreakerValue } from '../utils/tiebreakers'
+import type { Match } from '../types/tournament'
 
 // Plantilla oculta que se renderiza para exportar imagenes de ronda o clasificacion.
 interface RoundExportProps {
@@ -41,15 +42,25 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
         {type === 'round' && (
           <div>
             {currentMatches.map(match => {
-              const p1Name = getPlayerName(match.p1Id)
-              const p2Name = match.p2Id === 'BYE' ? 'BYE' : getPlayerName(match.p2Id)
+              const playerNames = getMatchPlayerIds(match).map(getPlayerName)
+              const isPod = playerNames.length > 2
 
               return (
-                <div key={match.id} style={pairingRowStyle}>
+                <div key={match.id} style={isPod ? pairingPodRowStyle : pairingRowStyle}>
                   <span style={tableNumberStyle}>Mesa {match.tableNumber}</span>
-                  <span style={{ ...playerNameStyle, textAlign: 'right' }}>{p1Name}</span>
-                  <span style={vsStyle}>vs</span>
-                  <span style={playerNameStyle}>{p2Name}</span>
+                  {isPod ? (
+                    <div style={podPlayerGridStyle}>
+                      {playerNames.map(name => (
+                        <span key={name} style={playerNameStyle}>{name}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <span style={{ ...playerNameStyle, textAlign: 'right' }}>{playerNames[0]}</span>
+                      <span style={vsStyle}>vs</span>
+                      <span style={playerNameStyle}>{playerNames[1]}</span>
+                    </>
+                  )}
                 </div>
               )
             })}
@@ -96,6 +107,11 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
 )
 
 RoundExport.displayName = 'RoundExport'
+
+function getMatchPlayerIds(match: Match): string[] {
+  if (match.playerIds?.length) return match.playerIds
+  return match.p2Id === 'BYE' ? [match.p1Id] : [match.p1Id, match.p2Id]
+}
 
 function ExportHeader({
   tournamentName,
@@ -173,6 +189,18 @@ const pairingRowStyle: React.CSSProperties = {
   border: '1px solid #0d274f',
   borderRadius: '8px',
   background: '#000000',
+}
+
+const pairingPodRowStyle: React.CSSProperties = {
+  ...pairingRowStyle,
+  gridTemplateColumns: '82px 1fr',
+}
+
+const podPlayerGridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: '8px 14px',
+  minWidth: 0,
 }
 
 const tableNumberStyle: React.CSSProperties = {

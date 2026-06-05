@@ -34,13 +34,14 @@ export interface DeckList {
   updatedAt: number
 }
 
-export type MatchResult = 'p1' | 'p2' | 'draw' | 'timeout' | 'bye' | null
+export type MatchResult = 'p1' | 'p2' | 'p3' | 'p4' | 'draw' | 'timeout' | 'bye' | null
 
 export interface Match {
   id: string
   tableNumber: number
   p1Id: string
   p2Id: string | 'BYE'
+  playerIds?: string[]
   result: MatchResult
 }
 
@@ -120,6 +121,7 @@ export interface Tournament {
   currentRound: number
   status: TournamentStatus
   timerDuration: number  // segundos
+  manualRoundCount?: number | null
   tiebreakerSystem: TournamentTiebreakerSystem
   createdAt: number
   updatedAt: number

@@ -60,7 +60,7 @@ const phaseModeOptions: Array<{ label: string; shortLabel: string; value: Tourna
 ]
 
 export function Setup({ tournamentId }: SetupProps) {
-  const { name, tcg, magicFormat, teamMode, phaseMode, topCut, timerDuration, tiebreakerSystem, playerCount, exists } = useTournamentsStore(
+  const { name, tcg, magicFormat, teamMode, phaseMode, topCut, timerDuration, manualRoundCount, tiebreakerSystem, playerCount, exists } = useTournamentsStore(
     useShallow(s => {
       const t = s.tournaments.find(t => t.id === tournamentId)
       return {
@@ -72,6 +72,7 @@ export function Setup({ tournamentId }: SetupProps) {
         phaseMode: t?.phaseMode ?? 'swiss',
         topCut: t?.topCut ?? 8,
         timerDuration: t?.timerDuration ?? 50 * 60,
+        manualRoundCount: t?.manualRoundCount ?? null,
         tiebreakerSystem: t?.tiebreakerSystem ?? 'tcg-resistance',
         playerCount: t?.players.length ?? 0,
       }
@@ -84,9 +85,11 @@ export function Setup({ tournamentId }: SetupProps) {
   const setTournamentPhaseMode = useTournamentsStore(s => s.setTournamentPhaseMode)
   const setTournamentTopCut = useTournamentsStore(s => s.setTournamentTopCut)
   const setTimerDuration = useTournamentsStore(s => s.setTimerDuration)
+  const setManualRoundCount = useTournamentsStore(s => s.setManualRoundCount)
   const setTiebreakerSystem = useTournamentsStore(s => s.setTiebreakerSystem)
   const startTournament = useTournamentsStore(s => s.startTournament)
   const { totalRounds } = useSwissPairings(tournamentId)
+  const recommendedRoundCount = getRecommendedRoundCount(playerCount)
   const [error, setError] = useState('')
   const [inviteStatus, setInviteStatus] = useState('')
   const firebaseConfigured = hasFirebaseConfig()
@@ -177,53 +180,51 @@ export function Setup({ tournamentId }: SetupProps) {
               <div className="setup-block-title">
                 <i className="ti ti-cards" aria-hidden="true" /> Juego
               </div>
-              <div className="option-grid option-grid-compact">
+              <select
+                value={tcg}
+                onChange={event => setTournamentTCG(tournamentId, event.target.value as TournamentTCG)}
+                style={inputStyle}
+              >
                 {tcgOptions.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setTournamentTCG(tournamentId, opt.value)}
-                    className={tcg === opt.value ? 'option-pill active' : 'option-pill'}
-                  >
+                  <option key={opt.value} value={opt.value}>
                     {opt.label}
-                  </button>
+                  </option>
                 ))}
-              </div>
+              </select>
             </section>
 
             <section className="setup-control-block">
               <div className="setup-block-title">
                 <i className="ti ti-users-group" aria-hidden="true" /> Modalidad
               </div>
-              <div className="option-grid option-grid-tight">
+              <select
+                value={teamMode}
+                onChange={event => setTournamentTeamMode(tournamentId, event.target.value as TournamentTeamMode)}
+                style={inputStyle}
+              >
                 {teamModeOptions.map(option => (
-                  <button
-                    key={option.value}
-                    onClick={() => setTournamentTeamMode(tournamentId, option.value)}
-                    className={teamMode === option.value ? 'option-pill option-pill-stacked active' : 'option-pill option-pill-stacked'}
-                  >
-                    <strong>{option.label}</strong>
-                    <span>{option.shortLabel}</span>
-                  </button>
+                  <option key={option.value} value={option.value}>
+                    {option.label} - {option.shortLabel}
+                  </option>
                 ))}
-              </div>
+              </select>
             </section>
 
             <section className="setup-control-block">
               <div className="setup-block-title">
                 <i className="ti ti-brackets" aria-hidden="true" /> Estructura
               </div>
-              <div className="option-grid option-grid-tight">
+              <select
+                value={phaseMode}
+                onChange={event => setTournamentPhaseMode(tournamentId, event.target.value as TournamentPhaseMode)}
+                style={inputStyle}
+              >
                 {phaseModeOptions.map(option => (
-                  <button
-                    key={option.value}
-                    onClick={() => setTournamentPhaseMode(tournamentId, option.value)}
-                    className={phaseMode === option.value ? 'option-pill option-pill-stacked active' : 'option-pill option-pill-stacked'}
-                  >
-                    <strong>{option.label}</strong>
-                    <span>{option.shortLabel}</span>
-                  </button>
+                  <option key={option.value} value={option.value}>
+                    {option.label} - {option.shortLabel}
+                  </option>
                 ))}
-              </div>
+              </select>
               {phaseMode === 'swiss-top' && (
                 <label className="setup-inline-number">
                   <span>Corte de Top</span>
@@ -256,17 +257,17 @@ export function Setup({ tournamentId }: SetupProps) {
               <div style={cardTitleStyle}>
                 <i className="ti ti-stack-2" aria-hidden="true" /> Formato de Magic
               </div>
-              <div className="option-grid option-grid-compact">
+              <select
+                value={magicFormat}
+                onChange={event => setTournamentMagicFormat(tournamentId, event.target.value as MagicFormat)}
+                style={inputStyle}
+              >
                 {magicFormatOptions.map(option => (
-                  <button
-                    key={option.value}
-                    onClick={() => setTournamentMagicFormat(tournamentId, option.value)}
-                    className={magicFormat === option.value ? 'option-pill active' : 'option-pill'}
-                  >
+                  <option key={option.value} value={option.value}>
                     {option.label}
-                  </button>
+                  </option>
                 ))}
-              </div>
+              </select>
               <div className="setup-note">
                 <i className="ti ti-info-circle" aria-hidden="true" /> {selectedMagicFormat?.description}
               </div>
@@ -287,6 +288,30 @@ export function Setup({ tournamentId }: SetupProps) {
                   {opt.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="setup-card" style={cardStyle}>
+            <div style={cardTitleStyle}>
+              <i className="ti ti-list-numbers" aria-hidden="true" /> Rondas del torneo
+            </div>
+            <select
+              value={manualRoundCount ?? 'auto'}
+              onChange={event => {
+                const value = event.target.value
+                setManualRoundCount(tournamentId, value === 'auto' ? null : Number(value))
+              }}
+              style={inputStyle}
+            >
+              <option value="auto">Automatico ({playerCount >= 2 ? recommendedRoundCount : '-'} rondas)</option>
+              {Array.from({ length: 12 }, (_, index) => index + 1).map(roundCount => (
+                <option key={roundCount} value={roundCount}>
+                  {roundCount} {roundCount === 1 ? 'ronda' : 'rondas'}
+                </option>
+              ))}
+            </select>
+            <div className="setup-note">
+              <i className="ti ti-info-circle" aria-hidden="true" /> Usalo para eventos casuales o ligas cortas; el suizo seguira ordenando por puntos.
             </div>
           </div>
 
@@ -426,6 +451,17 @@ function SummaryRow({ label, value }: { label: string; value: string | number })
       <strong>{value}</strong>
     </div>
   )
+}
+
+function getRecommendedRoundCount(playerCount: number): number {
+  if (playerCount <= 0) return 0
+  if (playerCount <= 2) return 1
+  if (playerCount <= 4) return 2
+  if (playerCount <= 8) return 3
+  if (playerCount <= 16) return 4
+  if (playerCount <= 32) return 5
+  if (playerCount <= 64) return 6
+  return 7
 }
 
 const cardStyle: React.CSSProperties = {

@@ -1,4 +1,4 @@
-// Mesa de trabajo de la ronda activa. Aqui se introducen resultados, se organizan
+﻿// Mesa de trabajo de la ronda activa. Aqui se introducen resultados, se organizan
 // emparejamientos y se exportan imagenes de ronda/clasificacion.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -8,7 +8,7 @@ import { Timer } from '../components/Timer'
 import { MatchCard } from '../components/MatchCard'
 import { RoundExport } from '../components/RoundExport'
 import { useExportImage } from '../hooks/useExportImage'
-import type { Match, PendingMatchResult, Tournament } from '../types/tournament'
+import type { Match, MatchResult, PendingMatchResult, Tournament } from '../types/tournament'
 
 interface RoundProps {
   tournamentId: string
@@ -68,10 +68,10 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
     // Lista plana de jugadores movibles: cada item sabe en que mesa y slot esta.
     return currentMatches
       .filter(match => match.p2Id !== 'BYE')
-      .flatMap(match => [
-        { value: `${match.id}:${match.p1Id}`, label: `Mesa ${match.tableNumber} · ${getPlayerName(match.p1Id)}` },
-        { value: `${match.id}:${match.p2Id}`, label: `Mesa ${match.tableNumber} · ${getPlayerName(match.p2Id)}` },
-      ])
+      .flatMap(match => getMatchPlayerIds(match).map(playerId => ({
+        value: `${match.id}:${playerId}`,
+        label: `Mesa ${match.tableNumber} Â· ${getPlayerName(playerId)}`,
+      })))
   }, [currentMatches, getPlayerName])
 
   function handleSwapPlayers(firstValue: string, secondValue: string) {
@@ -357,28 +357,24 @@ function PairingOrganizer({
               {match.p2Id === 'BYE' && <span>BYE</span>}
             </header>
 
-            <div className="pairing-table-row-players">
-              <PairingPlayerSlot
-                slot={`${match.id}:${match.p1Id}`}
-                playerName={getPlayerName(match.p1Id)}
-                selected={firstSwapSlot === `${match.id}:${match.p1Id}`}
-                target={secondSwapSlot === `${match.id}:${match.p1Id}`}
-                disabled={!editablePairings || match.p2Id === 'BYE'}
-                label={slotLabels.get(`${match.id}:${match.p1Id}`)}
-                onClick={handleSlotClick}
-              />
-
-              <div className="pairing-table-versus">vs</div>
-
-              <PairingPlayerSlot
-                slot={`${match.id}:${match.p2Id}`}
-                playerName={getPlayerName(match.p2Id)}
-                selected={firstSwapSlot === `${match.id}:${match.p2Id}`}
-                target={secondSwapSlot === `${match.id}:${match.p2Id}`}
-                disabled={!editablePairings || match.p2Id === 'BYE'}
-                label={slotLabels.get(`${match.id}:${match.p2Id}`)}
-                onClick={handleSlotClick}
-              />
+            <div className={getMatchPlayerIds(match).length > 2 ? 'pairing-table-row-players pairing-table-row-players-pod' : 'pairing-table-row-players'}>
+              {getMatchPlayerIds(match).map((playerId, index, ids) => {
+                const slot = `${match.id}:${playerId}`
+                return (
+                  <div key={slot} className="pairing-player-slot-wrap">
+                    <PairingPlayerSlot
+                      slot={slot}
+                      playerName={getPlayerName(playerId)}
+                      selected={firstSwapSlot === slot}
+                      target={secondSwapSlot === slot}
+                      disabled={!editablePairings || match.p2Id === 'BYE'}
+                      label={slotLabels.get(slot)}
+                      onClick={handleSlotClick}
+                    />
+                    {ids.length === 2 && index === 0 && <div className="pairing-table-versus">vs</div>}
+                  </div>
+                )
+              })}
             </div>
           </article>
         ))}
@@ -436,18 +432,16 @@ function PendingResultsPanel({
     const round = tournament.rounds.find(r => r.number === pendingResult.roundNumber)
     const match = round?.matches.find(m => m.id === pendingResult.matchId)
     if (!match) return 'Resultado enviado'
-    const p1Name = playerName(match.p1Id)
-    const p2Name = match.p2Id === 'BYE' ? 'BYE' : playerName(match.p2Id)
+    const winnerId = resultForMatchPlayer(match, pendingResult.result)
     if (pendingResult.result === 'draw') return `${playerName(pendingResult.playerId)} reporta empate`
-    if (pendingResult.result === 'p1') return `${playerName(pendingResult.playerId)} reporta que gana ${p1Name}`
-    if (pendingResult.result === 'p2') return `${playerName(pendingResult.playerId)} reporta que gana ${p2Name}`
+    if (winnerId) return `${playerName(pendingResult.playerId)} reporta que gana ${playerName(winnerId)}`
     return `${playerName(pendingResult.playerId)} reporta tiempo agotado`
   }
 
   function tableText(pendingResult: PendingMatchResult) {
     const round = tournament.rounds.find(r => r.number === pendingResult.roundNumber)
     const match = round?.matches.find(m => m.id === pendingResult.matchId)
-    return match ? `Ronda ${pendingResult.roundNumber} · Mesa ${match.tableNumber}` : `Ronda ${pendingResult.roundNumber}`
+    return match ? `Ronda ${pendingResult.roundNumber} Â· Mesa ${match.tableNumber}` : `Ronda ${pendingResult.roundNumber}`
   }
 
   return (
@@ -495,6 +489,17 @@ function canSwapSlots(firstValue: string, secondValue: string) {
   if (first.matchId === second.matchId) return false
   if (first.playerId === second.playerId) return false
   return true
+}
+
+function getMatchPlayerIds(match: Match): string[] {
+  if (match.playerIds?.length) return match.playerIds
+  return match.p2Id === 'BYE' ? [match.p1Id] : [match.p1Id, match.p2Id]
+}
+
+function resultForMatchPlayer(match: Match, result: MatchResult) {
+  if (!result || result === 'draw' || result === 'timeout' || result === 'bye') return ''
+  const index = Number(result.slice(1)) - 1
+  return getMatchPlayerIds(match)[index] ?? ''
 }
 
 function findConsensusPendingResult(pendingResults: PendingMatchResult[]) {

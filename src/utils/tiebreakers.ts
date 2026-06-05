@@ -251,8 +251,8 @@ function getPokemonWinPercentage(player: Player) {
 function getCompletedOpponentIds(playerId: string, rounds: Round[]) {
   return rounds.flatMap(round =>
     round.matches
-      .filter(match => match.result && match.result !== 'bye' && match.p2Id !== 'BYE' && (match.p1Id === playerId || match.p2Id === playerId))
-      .map(match => match.p1Id === playerId ? match.p2Id : match.p1Id)
+      .filter(match => match.result && match.result !== 'bye' && match.p2Id !== 'BYE' && getMatchPlayerIds(match).includes(playerId))
+      .flatMap(match => getMatchPlayerIds(match).filter(opponentId => opponentId !== playerId))
   )
 }
 
@@ -260,10 +260,13 @@ function getSonnebornBerger(playerId: string, players: Player[], rounds: Round[]
   return rounds.reduce((total, round) => {
     return total + round.matches.reduce((roundTotal, match) => {
       if (!match.result || match.result === 'bye' || match.p2Id === 'BYE') return roundTotal
-      if (match.p1Id !== playerId && match.p2Id !== playerId) return roundTotal
-      const opponentId = match.p1Id === playerId ? match.p2Id : match.p1Id
-      const opponent = players.find(candidate => candidate.id === opponentId)
-      return roundTotal + (opponent?.points ?? 0) * getScoreAgainst(playerId, match)
+      const opponentIds = getMatchPlayerIds(match).filter(opponentId => opponentId !== playerId)
+      if (!opponentIds.length) return roundTotal
+      const score = getScoreAgainst(playerId, match)
+      return roundTotal + opponentIds.reduce((total, opponentId) => {
+        const opponent = players.find(candidate => candidate.id === opponentId)
+        return total + (opponent?.points ?? 0) * score
+      }, 0)
     }, 0)
   }, 0)
 }
@@ -273,7 +276,7 @@ function getProgressiveScore(playerId: string, rounds: Round[]) {
   return [...rounds]
     .sort((a, b) => a.number - b.number)
     .reduce((total, round) => {
-      const match = round.matches.find(candidate => candidate.p1Id === playerId || candidate.p2Id === playerId)
+      const match = round.matches.find(candidate => getMatchPlayerIds(candidate).includes(playerId))
       if (match?.result) currentScore += getScoreAgainst(playerId, match)
       return total + currentScore
     }, 0)
@@ -283,9 +286,8 @@ function getHeadToHeadScore(playerId: string, opponentId: string, rounds: Round[
   return rounds.reduce((total, round) => {
     return total + round.matches.reduce((roundTotal, match) => {
       if (!match.result || match.result === 'bye' || match.p2Id === 'BYE') return roundTotal
-      const isDirectMatch =
-        (match.p1Id === playerId && match.p2Id === opponentId) ||
-        (match.p1Id === opponentId && match.p2Id === playerId)
+      const directPlayers = getMatchPlayerIds(match)
+      const isDirectMatch = directPlayers.includes(playerId) && directPlayers.includes(opponentId)
       return isDirectMatch ? roundTotal + getScoreAgainst(playerId, match) : roundTotal
     }, 0)
   }, 0)
@@ -295,9 +297,20 @@ function getScoreAgainst(playerId: string, match: Match) {
   if (match.result === 'bye') return match.p1Id === playerId ? 3 : 0
   if (match.result === 'draw') return 1
   if (match.result === 'timeout') return 0
-  if (match.result === 'p1') return match.p1Id === playerId ? 3 : 0
-  if (match.result === 'p2') return match.p2Id === playerId ? 3 : 0
+  const winnerId = getWinnerPlayerId(match)
+  if (winnerId) return winnerId === playerId ? 3 : 0
   return 0
+}
+
+function getMatchPlayerIds(match: Match): string[] {
+  if (match.playerIds?.length) return match.playerIds
+  return match.p2Id === 'BYE' ? [match.p1Id] : [match.p1Id, match.p2Id]
+}
+
+function getWinnerPlayerId(match: Match) {
+  if (!match.result || match.result === 'draw' || match.result === 'timeout' || match.result === 'bye') return ''
+  const index = Number(match.result.slice(1)) - 1
+  return getMatchPlayerIds(match)[index] ?? ''
 }
 
 function cutLow(values: number[]) {

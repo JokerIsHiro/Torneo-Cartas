@@ -68,7 +68,7 @@ export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
   // ✅ useShallow evita re-renders cuando el contenido no cambia.
   // Extraemos solo los campos primitivos y arrays que necesitamos,
   // no el objeto torneo entero (que .find() recrea en cada render).
-  const { players, rounds, currentRound, status, tcg, tiebreakerSystem, phaseMode, topCut } = useTournamentsStore(
+  const { players, rounds, currentRound, status, tcg, tiebreakerSystem, phaseMode, topCut, manualRoundCount } = useTournamentsStore(
     useShallow(s => {
       const t = s.tournaments.find(t => t.id === tournamentId)
       return {
@@ -80,6 +80,7 @@ export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
         tiebreakerSystem: t?.tiebreakerSystem,
         phaseMode: t?.phaseMode ?? 'swiss',
         topCut: t?.topCut ?? 8,
+        manualRoundCount: t?.manualRoundCount ?? null,
       }
     })
   )
@@ -90,7 +91,10 @@ export function useSwissPairings(tournamentId: string): UseSwissPairingsReturn {
   )
   const tiebreakerLabel = getTiebreakerSystemOption(activeTiebreakerSystem).shortLabel
 
-  const totalRounds = useMemo(() => calcTotalRounds(players.length), [players.length])
+  const totalRounds = useMemo(
+    () => manualRoundCount ?? calcTotalRounds(players.length),
+    [manualRoundCount, players.length]
+  )
 
   const roundsLeft = useMemo(
     () => Math.max(0, totalRounds - (currentRound > 0 ? currentRound - 1 : 0)),

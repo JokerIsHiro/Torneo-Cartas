@@ -1598,6 +1598,18 @@ button:disabled {
   margin-bottom: 0;
 }
 
+.match-players-pod {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.match-players-pod .player-cell {
+  padding: 8px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+}
+
 .match-versus {
   display: grid;
   place-items: center;
@@ -2180,6 +2192,14 @@ button:disabled {
   align-items: center;
   gap: 8px;
   min-width: 0;
+}
+
+.pairing-table-row-players-pod {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pairing-player-slot-wrap {
+  display: contents;
 }
 
 .pairing-player-slot {

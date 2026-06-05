@@ -2,7 +2,7 @@
 // puntos de recuperacion antes de acciones peligrosas.
 import { useMemo, useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
-import type { Player, TournamentSnapshot } from '../types/tournament'
+import type { Match, Player, TournamentSnapshot } from '../types/tournament'
 
 interface SnapshotPanelProps {
   tournamentId: string
@@ -125,9 +125,9 @@ function SnapshotPreview({ snapshot }: { snapshot: TournamentSnapshot }) {
             <div key={match.id}>
               <span>Mesa {match.tableNumber}</span>
               <p>
-                {getPlayerName(data.players, match.p1Id)}
-                <em>vs</em>
-                {match.p2Id === 'BYE' ? 'BYE' : getPlayerName(data.players, match.p2Id)}
+                {getMatchPlayerIds(match).map(playerId =>
+                  playerId === 'BYE' ? 'BYE' : getPlayerName(data.players, playerId)
+                ).join(getMatchPlayerIds(match).length > 2 ? ' · ' : ' vs ')}
               </p>
             </div>
           ))}
@@ -151,6 +151,11 @@ function PreviewStat({ label, value }: { label: string; value: string }) {
 
 function getPlayerName(players: Pick<Player, 'id' | 'name'>[], playerId: string) {
   return players.find(player => player.id === playerId)?.name ?? 'Jugador'
+}
+
+function getMatchPlayerIds(match: Match): string[] {
+  if (match.playerIds?.length) return match.playerIds
+  return match.p2Id === 'BYE' ? [match.p1Id] : [match.p1Id, match.p2Id]
 }
 
 function getStatusLabel(status: string) {

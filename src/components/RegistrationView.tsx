@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
-import type { MatchResult, Player, Tournament } from '../types/tournament'
+import type { Match, MatchResult, Player, Tournament } from '../types/tournament'
 
 interface PlayerSession {
   tournamentId: string
@@ -196,35 +196,41 @@ function PlayerPortal({
   const standing = standings.find(row => row.player.id === player.id)
   const isDropped = Boolean(player.droppedAt)
   const round = tournament.rounds[tournament.currentRound - 1]
-  const match = round?.matches.find(m => m.p1Id === player.id || m.p2Id === player.id)
-  const opponentId = match?.p1Id === player.id ? match.p2Id : match?.p1Id
-  const opponent = opponentId === 'BYE'
-    ? 'BYE'
-    : tournament.players.find(p => p.id === opponentId)?.name
+  const match = round?.matches.find(m => getMatchPlayerIds(m).includes(player.id))
+  const matchPlayerIds = match ? getMatchPlayerIds(match) : []
+  const opponents = matchPlayerIds
+    .filter(playerId => playerId !== player.id)
+    .map(playerId => playerId === 'BYE'
+      ? 'BYE'
+      : tournament.players.find(p => p.id === playerId)?.name ?? 'Rival')
+  const isPodMatch = matchPlayerIds.length > 2
   const pendingResult = tournament.pendingResults?.find(p =>
     p.playerId === player.id && p.matchId === match?.id
   )
   const playerHistory = tournament.rounds
     .map(historyRound => {
-      const historyMatch = historyRound.matches.find(m => m.p1Id === player.id || m.p2Id === player.id)
+      const historyMatch = historyRound.matches.find(m => getMatchPlayerIds(m).includes(player.id))
       if (!historyMatch) return null
-      const historyOpponentId = historyMatch.p1Id === player.id ? historyMatch.p2Id : historyMatch.p1Id
-      const historyOpponent = historyOpponentId === 'BYE'
-        ? 'BYE'
-        : tournament.players.find(candidate => candidate.id === historyOpponentId)?.name ?? 'Rival'
+      const historyOpponent = getMatchPlayerIds(historyMatch)
+        .filter(playerId => playerId !== player.id)
+        .map(playerId => playerId === 'BYE'
+          ? 'BYE'
+          : tournament.players.find(candidate => candidate.id === playerId)?.name ?? 'Rival')
+        .join(' · ')
       return {
         roundNumber: historyRound.number,
         tableNumber: historyMatch.tableNumber,
         opponent: historyOpponent,
-        result: getResultLabelForPlayer(historyMatch.result, historyMatch.p1Id === player.id, historyMatch.p2Id === 'BYE'),
+        result: getResultLabelForPlayer(historyMatch, player.id),
       }
     })
     .filter(Boolean)
-  const allowsDraw = tournament.tcg !== 'yugioh'
+  const allowsDraw = tournament.tcg !== 'yugioh' && !isPodMatch
   const canReport = !isDropped && tournament.status === 'active' && match && match.p2Id !== 'BYE' && match.result === null
 
   function resultFromPlayerPerspective(playerWon: boolean): Exclude<MatchResult, 'bye' | null> {
     if (!match) return 'draw'
+    if (isPodMatch) return resultForPlayerId(match, player.id)
     if (playerWon) return match.p1Id === player.id ? 'p1' : 'p2'
     return match.p1Id === player.id ? 'p2' : 'p1'
   }
@@ -281,7 +287,7 @@ function PlayerPortal({
         <div className="player-panel">
           <div className="player-match-table">Mesa {match.tableNumber}</div>
           <strong>Ronda {tournament.currentRound}</strong>
-          <span>{opponent ? `Contra ${opponent}` : 'Esperando rival'}</span>
+          <span>{opponents.length ? `Mesa con ${opponents.join(' · ')}` : 'Esperando rival'}</span>
 
           {match.p2Id === 'BYE' && (
             <div className="registration-feedback">
@@ -299,7 +305,7 @@ function PlayerPortal({
             <div className="player-result-actions">
               <button onClick={() => onSubmitResult(match.id, resultFromPlayerPerspective(true))} title="Envia victoria para que el organizador la confirme">
                 <i className="ti ti-trophy" aria-hidden="true" />
-                Reportar victoria
+                {isPodMatch ? 'Reportar mi victoria' : 'Reportar victoria'}
               </button>
               {allowsDraw && (
                 <button onClick={() => onSubmitResult(match.id, 'draw')} title="Envia empate para confirmacion">
@@ -307,10 +313,12 @@ function PlayerPortal({
                   Reportar empate
                 </button>
               )}
-              <button onClick={() => onSubmitResult(match.id, resultFromPlayerPerspective(false))} title="Envia derrota para confirmacion">
-                <i className="ti ti-flag" aria-hidden="true" />
-                Reportar derrota
-              </button>
+              {!isPodMatch && (
+                <button onClick={() => onSubmitResult(match.id, resultFromPlayerPerspective(false))} title="Envia derrota para confirmacion">
+                  <i className="ti ti-flag" aria-hidden="true" />
+                  Reportar derrota
+                </button>
+              )}
             </div>
           )}
 
@@ -402,13 +410,31 @@ function PlayerPortal({
   )
 }
 
-function getResultLabelForPlayer(result: MatchResult, isP1: boolean, isBye: boolean) {
+function getResultLabelForPlayer(match: Match, playerId: string) {
+  const result = match.result
   if (result === null) return 'Pendiente'
-  if (result === 'bye' || isBye) return 'BYE'
+  if (result === 'bye' || match.p2Id === 'BYE') return 'BYE'
   if (result === 'draw') return 'Empate'
   if (result === 'timeout') return 'Tiempo'
-  if ((result === 'p1' && isP1) || (result === 'p2' && !isP1)) return 'Victoria'
+  if (getWinnerPlayerId(match) === playerId) return 'Victoria'
   return 'Derrota'
+}
+
+function getMatchPlayerIds(match: Match): string[] {
+  if (match.playerIds?.length) return match.playerIds
+  return match.p2Id === 'BYE' ? [match.p1Id] : [match.p1Id, match.p2Id]
+}
+
+function resultForPlayerId(match: Match, playerId: string): Exclude<MatchResult, 'bye' | null> {
+  const index = getMatchPlayerIds(match).indexOf(playerId)
+  if (index < 0) return 'timeout'
+  return `p${index + 1}` as Exclude<MatchResult, 'bye' | null>
+}
+
+function getWinnerPlayerId(match: Match) {
+  if (!match.result || match.result === 'draw' || match.result === 'timeout' || match.result === 'bye') return ''
+  const index = Number(match.result.slice(1)) - 1
+  return getMatchPlayerIds(match)[index] ?? ''
 }
 
 function getTargetTournamentId() {

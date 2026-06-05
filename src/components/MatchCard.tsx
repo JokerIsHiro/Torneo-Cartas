@@ -18,11 +18,15 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
   const tcg = useTournamentsStore(
     s => s.tournaments.find(t => t.id === tournamentId)?.tcg ?? 'magic'
   )
+  const magicFormat = useTournamentsStore(
+    s => s.tournaments.find(t => t.id === tournamentId)?.magicFormat
+  )
   const currentRound = useTournamentsStore(
     s => s.tournaments.find(t => t.id === tournamentId)?.currentRound ?? 0
   )
   const { getPlayerName, getPlayerById } = useSwissPairings(tournamentId)
 
+  const playerIds = getMatchPlayerIds(match)
   const p1 = getPlayerById(match.p1Id)
   const p2Name = match.p2Id === 'BYE' ? 'BYE' : getPlayerName(match.p2Id)
   const p2 = match.p2Id !== 'BYE' ? getPlayerById(match.p2Id) : null
@@ -30,7 +34,8 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
   const isBye     = match.p2Id === 'BYE'
   const isTimeout = match.result === 'timeout'
   const isDone    = match.result !== null
-  const allowsDraw = tcg !== 'yugioh'
+  const isCommanderPod = tcg === 'magic' && magicFormat === 'commander' && playerIds.length > 2
+  const allowsDraw = tcg !== 'yugioh' && !isCommanderPod
 
   function handleResult(result: MatchResult) {
     if (isBye) return
@@ -79,41 +84,78 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
         </div>
 
         {/* Jugadores */}
-        <div className="match-players">
-          <PlayerCell
-            name={getPlayerName(match.p1Id)}
-            points={p1?.points ?? 0}
-            losses={p1?.losses ?? 0}
-            align="left"
-            isWinner={match.result === 'p1'}
-            isLoser={match.result === 'p2' || match.result === 'timeout'}
-          />
-          <span className="match-versus">
-            vs
-          </span>
-          <PlayerCell
-            name={p2Name}
-            points={p2?.points ?? 0}
-            losses={p2?.losses ?? 0}
-            align="right"
-            isWinner={match.result === 'p2'}
-            isLoser={match.result === 'p1' || match.result === 'timeout'}
-            isBye={isBye}
-          />
-        </div>
+        {isCommanderPod ? (
+          <div className="match-players match-players-pod">
+            {playerIds.map((playerId, index) => {
+              const resultKey = resultForPlayerIndex(index)
+              const player = getPlayerById(playerId)
+              return (
+                <PlayerCell
+                  key={playerId}
+                  name={getPlayerName(playerId)}
+                  points={player?.points ?? 0}
+                  losses={player?.losses ?? 0}
+                  align="left"
+                  isWinner={match.result === resultKey}
+                  isLoser={Boolean(match.result && match.result !== resultKey)}
+                />
+              )
+            })}
+          </div>
+        ) : (
+          <div className="match-players">
+            <PlayerCell
+              name={getPlayerName(match.p1Id)}
+              points={p1?.points ?? 0}
+              losses={p1?.losses ?? 0}
+              align="left"
+              isWinner={match.result === 'p1'}
+              isLoser={match.result === 'p2' || match.result === 'timeout'}
+            />
+            <span className="match-versus">
+              vs
+            </span>
+            <PlayerCell
+              name={p2Name}
+              points={p2?.points ?? 0}
+              losses={p2?.losses ?? 0}
+              align="right"
+              isWinner={match.result === 'p2'}
+              isLoser={match.result === 'p1' || match.result === 'timeout'}
+              isBye={isBye}
+            />
+          </div>
+        )}
       </div>
 
       {/* Botones de resultado */}
       {!isBye && !readOnly && (
         <div className="match-actions">
-          <button
-            className="result-button result-button-win"
-            style={{...resultBtnStyle(match.result === 'p1', 'win'), borderRadius: 'var(--border-radius-md)'}}
-            onClick={() => handleResult('p1')}
-          >
-            <i className="ti ti-trophy" aria-hidden="true" style={{ fontSize: '12px' }} />
-            <span>Gana {getPlayerName(match.p1Id)}</span>
-          </button>
+          {isCommanderPod ? (
+            playerIds.map((playerId, index) => {
+              const resultKey = resultForPlayerIndex(index)
+              return (
+                <button
+                  key={playerId}
+                  className="result-button result-button-win"
+                  style={{...resultBtnStyle(match.result === resultKey, 'win'), borderRadius: 'var(--border-radius-md)'}}
+                  onClick={() => handleResult(resultKey)}
+                >
+                  <i className="ti ti-trophy" aria-hidden="true" style={{ fontSize: '12px' }} />
+                  <span>Gana {getPlayerName(playerId)}</span>
+                </button>
+              )
+            })
+          ) : (
+            <button
+              className="result-button result-button-win"
+              style={{...resultBtnStyle(match.result === 'p1', 'win'), borderRadius: 'var(--border-radius-md)'}}
+              onClick={() => handleResult('p1')}
+            >
+              <i className="ti ti-trophy" aria-hidden="true" style={{ fontSize: '12px' }} />
+              <span>Gana {getPlayerName(match.p1Id)}</span>
+            </button>
+          )}
 
           {allowsDraw && (
             <button
@@ -126,14 +168,16 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
             </button>
           )}
 
-          <button
-            className="result-button result-button-win"
-            style={{...resultBtnStyle(match.result === 'p2', 'win'), borderRadius: 'var(--border-radius-md)'}}
-            onClick={() => handleResult('p2')}
-          >
-            <i className="ti ti-trophy" aria-hidden="true" style={{ fontSize: '12px' }} />
-            <span>Gana {getPlayerName(match.p2Id as string)}</span>
-          </button>
+          {!isCommanderPod && (
+            <button
+              className="result-button result-button-win"
+              style={{...resultBtnStyle(match.result === 'p2', 'win'), borderRadius: 'var(--border-radius-md)'}}
+              onClick={() => handleResult('p2')}
+            >
+              <i className="ti ti-trophy" aria-hidden="true" style={{ fontSize: '12px' }} />
+              <span>Gana {getPlayerName(match.p2Id as string)}</span>
+            </button>
+          )}
 
         </div>
       )}
@@ -142,6 +186,15 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
 }
 
 // ─── Subcomponentes ───────────────────────────────────────────────────────────
+
+function getMatchPlayerIds(match: Match): string[] {
+  if (match.playerIds?.length) return match.playerIds
+  return match.p2Id === 'BYE' ? [match.p1Id] : [match.p1Id, match.p2Id]
+}
+
+function resultForPlayerIndex(index: number): MatchResult {
+  return `p${index + 1}` as MatchResult
+}
 
 interface PlayerCellProps {
   name: string
@@ -183,6 +236,8 @@ function ResultBadge({ result }: { result: MatchResult }) {
   const config = {
     p1:      { label: 'Resultado registrado', bg: 'var(--color-success-bg)', color: 'var(--color-accent-secondary)', border: 'var(--color-border-success)' },
     p2:      { label: 'Resultado registrado', bg: 'var(--color-success-bg)', color: 'var(--color-accent-secondary)', border: 'var(--color-border-success)' },
+    p3:      { label: 'Resultado registrado', bg: 'var(--color-success-bg)', color: 'var(--color-accent-secondary)', border: 'var(--color-border-success)' },
+    p4:      { label: 'Resultado registrado', bg: 'var(--color-success-bg)', color: 'var(--color-accent-secondary)', border: 'var(--color-border-success)' },
     draw:    { label: 'Empate',               bg: 'var(--color-draw-bg)', color: 'var(--color-accent-primary)', border: 'var(--color-border-primary)' },
     timeout: { label: 'Tiempo agotado',       bg: 'var(--color-danger-bg)', color: 'var(--color-text-danger)', border: 'var(--color-border-danger)' },
     bye:     { label: 'BYE · +3 pts',         bg: 'var(--color-warning-bg)', color: 'var(--color-text-warning)', border: 'var(--color-border-warning)' },

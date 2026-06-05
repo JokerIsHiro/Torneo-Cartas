@@ -5,6 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useTournamentsStore } from "../store/tournamentsStore";
 import { useSwissPairings } from "../hooks/useSwissPairings";
 import type {
+  Match,
   MatchResult,
   Player,
   Round,
@@ -424,10 +425,8 @@ function RoundHistoryDialog({
                     <RoundResultRow
                       key={match.id}
                       tableNumber={match.tableNumber}
-                      p1Name={getPlayerName(match.p1Id)}
-                      p2Name={
-                        match.p2Id === "BYE" ? "BYE" : getPlayerName(match.p2Id)
-                      }
+                      playerNames={getMatchPlayerIds(match).map(getPlayerName)}
+                      winnerName={getWinnerName(match, getPlayerName)}
                       result={match.result}
                     />
                   ))}
@@ -446,28 +445,26 @@ function RoundHistoryDialog({
 
 function RoundResultRow({
   tableNumber,
-  p1Name,
-  p2Name,
+  playerNames,
+  winnerName,
   result,
 }: {
   tableNumber: number;
-  p1Name: string;
-  p2Name: string;
+  playerNames: string[];
+  winnerName: string;
   result: MatchResult;
 }) {
   const resultLabel = (() => {
     if (!result)
       return { text: "Sin resultado", color: "var(--color-text-secondary)" };
     if (result === "bye")
-      return { text: `${p1Name} BYE`, color: "var(--color-text-warning)" };
+      return { text: `${playerNames[0]} BYE`, color: "var(--color-text-warning)" };
     if (result === "draw")
       return { text: "Empate", color: "var(--color-accent-primary)" };
     if (result === "timeout")
       return { text: "Tiempo agotado", color: "var(--color-text-danger)" };
-    if (result === "p1")
-      return { text: `Gana ${p1Name}`, color: "var(--color-accent-secondary)" };
-    if (result === "p2")
-      return { text: `Gana ${p2Name}`, color: "var(--color-accent-secondary)" };
+    if (winnerName)
+      return { text: `Gana ${winnerName}`, color: "var(--color-accent-secondary)" };
     return { text: "-", color: "var(--color-text-secondary)" };
   })();
 
@@ -488,17 +485,7 @@ function RoundResultRow({
         Mesa {tableNumber}
       </span>
       <span style={{ color: "var(--color-text-primary)", fontWeight: 500 }}>
-        {p1Name}
-        <span
-          style={{
-            fontWeight: 400,
-            color: "var(--color-text-secondary)",
-            margin: "0 4px",
-          }}
-        >
-          vs
-        </span>
-        {p2Name}
+        {playerNames.join(playerNames.length > 2 ? " · " : " vs ")}
       </span>
       <span
         style={{
@@ -511,6 +498,18 @@ function RoundResultRow({
       </span>
     </div>
   );
+}
+
+function getMatchPlayerIds(match: Match): string[] {
+  if (match.playerIds?.length) return match.playerIds
+  return match.p2Id === "BYE" ? [match.p1Id] : [match.p1Id, match.p2Id]
+}
+
+function getWinnerName(match: Match, getPlayerName: (id: string) => string) {
+  if (!match.result || match.result === "draw" || match.result === "timeout" || match.result === "bye") return ""
+  const index = Number(match.result.slice(1)) - 1
+  const winnerId = getMatchPlayerIds(match)[index]
+  return winnerId ? getPlayerName(winnerId) : ""
 }
 
 function PodiumCard({

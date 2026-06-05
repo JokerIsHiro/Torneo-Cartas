@@ -105,37 +105,131 @@ function generatePairings(players: Player[], roundNumber: number, tournamentId: 
   return matches
 }
 
-function applyResult(players: Player[], match: Match, result: MatchResult): Player[] {
-  // Recalcula estadisticas de los dos jugadores afectados por una partida.
-  return players.map(p => {
-    if (p.id !== match.p1Id && p.id !== match.p2Id) return p
+function generateCommanderPairings(players: Player[], roundNumber: number, tournamentId: string): Match[] {
+  const sorted = players.filter(player => !player.droppedAt).sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points
+    return a.name.localeCompare(b.name)
+  })
 
-    const isP1 = p.id === match.p1Id
+  const podSizes = getCommanderPodSizes(sorted.length)
+  const used = new Set<string>()
+  const matches: Match[] = []
+
+  podSizes.forEach((size, index) => {
+    const pod: Player[] = []
+    const candidates = sorted.filter(player => !used.has(player.id))
+    const first = candidates[0]
+    if (!first) return
+
+    pod.push(first)
+    used.add(first.id)
+
+    while (pod.length < size) {
+      const remaining = sorted.filter(player => !used.has(player.id))
+      if (!remaining.length) break
+      const best = remaining
+        .map(player => ({
+          player,
+          repeatedOpponents: pod.filter(podPlayer => podPlayer.opponents.includes(player.id)).length,
+        }))
+        .sort((a, b) => {
+          if (a.repeatedOpponents !== b.repeatedOpponents) return a.repeatedOpponents - b.repeatedOpponents
+          if (b.player.points !== a.player.points) return b.player.points - a.player.points
+          return a.player.name.localeCompare(b.player.name)
+        })[0]?.player
+      if (!best) break
+      pod.push(best)
+      used.add(best.id)
+    }
+
+    const playerIds = pod.map(player => player.id)
+    if (playerIds.length < 2) return
+
+    matches.push({
+      id: `${tournamentId}-r${roundNumber}-t${index + 1}`,
+      tableNumber: index + 1,
+      p1Id: playerIds[0],
+      p2Id: playerIds[1],
+      playerIds,
+      result: null,
+    })
+  })
+
+  return matches
+}
+
+function getCommanderPodSizes(playerCount: number): number[] {
+  if (playerCount <= 1) return []
+  const sizes: number[] = []
+  let remaining = playerCount
+
+  while (remaining > 0) {
+    if (remaining === 2 || remaining === 3 || remaining === 4) {
+      sizes.push(remaining)
+      break
+    }
+    if (remaining === 5) {
+      sizes.push(3, 2)
+      break
+    }
+    if (remaining === 6) {
+      sizes.push(3, 3)
+      break
+    }
+    if (remaining === 7) {
+      sizes.push(4, 3)
+      break
+    }
+    sizes.push(4)
+    remaining -= 4
+  }
+
+  return sizes
+}
+
+function getMatchPlayerIds(match: Match): string[] {
+  if (match.playerIds?.length) return match.playerIds
+  return match.p2Id === 'BYE' ? [match.p1Id] : [match.p1Id, match.p2Id]
+}
+
+function getWinnerPlayerId(match: Match, result: MatchResult) {
+  if (!result || result === 'draw' || result === 'timeout' || result === 'bye') return null
+  const index = Number(result.slice(1)) - 1
+  return getMatchPlayerIds(match)[index] ?? null
+}
+
+function applyResult(players: Player[], match: Match, result: MatchResult): Player[] {
+  // Recalcula estadisticas de todos los jugadores afectados por una partida.
+  const matchPlayerIds = getMatchPlayerIds(match)
+  const previousWinnerId = getWinnerPlayerId(match, match.result)
+  const nextWinnerId = getWinnerPlayerId(match, result)
+
+  return players.map(p => {
+    if (!matchPlayerIds.includes(p.id)) return p
+
     const updated = { ...p }
 
     // Revertir resultado anterior antes de aplicar el nuevo.
     if (match.result && match.result !== 'bye') {
-      if (match.result === 'p1' && isP1)   { updated.points -= 3; updated.wins -= 1 }
-      if (match.result === 'p1' && !isP1)  { updated.losses -= 1 }
-      if (match.result === 'p2' && !isP1)  { updated.points -= 3; updated.wins -= 1 }
-      if (match.result === 'p2' && isP1)   { updated.losses -= 1 }
+      if (previousWinnerId) {
+        if (p.id === previousWinnerId) { updated.points -= 3; updated.wins -= 1 }
+        else { updated.losses -= 1 }
+      }
       if (match.result === 'draw')         { updated.points -= 1; updated.draws -= 1 }
       if (match.result === 'timeout')      { updated.losses -= 1; updated.timeoutLosses -= 1 }
     }
 
     // Aplicar nuevo resultado.
-    if (result === 'p1' && isP1)   { updated.points += 3; updated.wins += 1 }
-    if (result === 'p1' && !isP1)  { updated.losses += 1 }
-    if (result === 'p2' && !isP1)  { updated.points += 3; updated.wins += 1 }
-    if (result === 'p2' && isP1)   { updated.losses += 1 }
+    if (nextWinnerId) {
+      if (p.id === nextWinnerId) { updated.points += 3; updated.wins += 1 }
+      else { updated.losses += 1 }
+    }
     if (result === 'draw')         { updated.points += 1; updated.draws += 1 }
     if (result === 'timeout')      { updated.losses += 1; updated.timeoutLosses += 1 }
 
     if (match.p2Id !== 'BYE') {
-      const rivalId = isP1 ? match.p2Id : match.p1Id
-      if (!updated.opponents.includes(rivalId)) {
-        updated.opponents = [...updated.opponents, rivalId]
-      }
+      const rivalIds = matchPlayerIds.filter(playerId => playerId !== p.id)
+      updated.opponents = Array.from(new Set([...updated.opponents, ...rivalIds]))
     }
 
     return updated
@@ -158,7 +252,7 @@ function rebuildPlayersFromRounds(players: Player[], rounds: Round[]): Player[] 
 
   rounds.forEach(round => {
     round.matches.forEach(match => {
-      const candidates = match.p2Id === 'BYE' ? [match.p1Id] : [match.p1Id, match.p2Id]
+      const candidates = getMatchPlayerIds(match)
       candidates.forEach(playerId => {
         const previous = firstRoundByPlayer.get(playerId)
         if (!previous || round.number < previous) {
@@ -234,6 +328,10 @@ function touchTournament<T extends Tournament>(tournament: T): T {
   return { ...tournament, updatedAt: Date.now() }
 }
 
+function isCommanderTournament(tournament: Pick<Tournament, 'tcg' | 'magicFormat'>) {
+  return tournament.tcg === 'magic' && tournament.magicFormat === 'commander'
+}
+
 function createEmptyTournament(): Tournament {
   const now = Date.now()
   return {
@@ -253,6 +351,7 @@ function createEmptyTournament(): Tournament {
     currentRound: 0,
     status: 'setup',
     timerDuration: 50 * 60,
+    manualRoundCount: null,
     tiebreakerSystem: getDefaultTiebreakerSystem('magic'),
     createdAt: now,
     updatedAt: now,
@@ -391,6 +490,7 @@ interface TournamentsStore {
   setTournamentPhaseMode: (id: string, mode: TournamentPhaseMode) => void
   setTournamentTopCut: (id: string, topCut: number) => void
   setTimerDuration: (id: string, seconds: number) => void
+  setManualRoundCount: (id: string, rounds: number | null) => void
   setTiebreakerSystem: (id: string, system: TournamentTiebreakerSystem) => void
 
   // Jugadores
@@ -494,6 +594,13 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament) return
         commitTournament(set, touchTournament({ ...tournament, timerDuration: seconds }))
+      },
+
+      setManualRoundCount: (id, rounds) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament || tournament.status !== 'setup') return
+        const safeRounds = rounds === null ? null : Math.max(1, Math.min(12, Math.floor(rounds || 1)))
+        commitTournament(set, touchTournament({ ...tournament, manualRoundCount: safeRounds }))
       },
 
       setTiebreakerSystem: (id, system) => {
@@ -668,7 +775,9 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament || tournament.players.length < 2) return
 
-        const matches = generatePairings(tournament.players, 1, id)
+        const matches = isCommanderTournament(tournament)
+          ? generateCommanderPairings(tournament.players, 1, id)
+          : generatePairings(tournament.players, 1, id)
         let updatedPlayers = tournament.players
         const byeMatch = matches.find(m => m.p2Id === 'BYE')
         if (byeMatch) updatedPlayers = applyByeToPlayers(updatedPlayers, byeMatch)
@@ -704,26 +813,28 @@ export const useTournamentsStore = create<TournamentsStore>()(
         if (!firstMatch || !secondMatch) return
         if (firstMatch.p2Id === 'BYE' || secondMatch.p2Id === 'BYE') return
 
-        const firstIsP1 = firstMatch.p1Id === firstPlayerId
-        const firstIsP2 = firstMatch.p2Id === firstPlayerId
-        const secondIsP1 = secondMatch.p1Id === secondPlayerId
-        const secondIsP2 = secondMatch.p2Id === secondPlayerId
-        if ((!firstIsP1 && !firstIsP2) || (!secondIsP1 && !secondIsP2)) return
+        const firstPlayerIds = getMatchPlayerIds(firstMatch)
+        const secondPlayerIds = getMatchPlayerIds(secondMatch)
+        if (!firstPlayerIds.includes(firstPlayerId) || !secondPlayerIds.includes(secondPlayerId)) return
 
         const updatedMatches = round.matches.map(match => {
           if (match.id === firstMatchId) {
+            const playerIds = getMatchPlayerIds(match).map(playerId => playerId === firstPlayerId ? secondPlayerId : playerId)
             return {
               ...match,
-              p1Id: firstIsP1 ? secondPlayerId : match.p1Id,
-              p2Id: firstIsP2 ? secondPlayerId : match.p2Id,
+              playerIds: match.playerIds ? playerIds : match.playerIds,
+              p1Id: playerIds[0],
+              p2Id: playerIds[1] ?? 'BYE',
             }
           }
 
           if (match.id === secondMatchId) {
+            const playerIds = getMatchPlayerIds(match).map(playerId => playerId === secondPlayerId ? firstPlayerId : playerId)
             return {
               ...match,
-              p1Id: secondIsP1 ? firstPlayerId : match.p1Id,
-              p2Id: secondIsP2 ? firstPlayerId : match.p2Id,
+              playerIds: match.playerIds ? playerIds : match.playerIds,
+              p1Id: playerIds[0],
+              p2Id: playerIds[1] ?? 'BYE',
             }
           }
 
@@ -813,6 +924,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament) return
         if ((tournament.tcg ?? 'magic') === 'yugioh' && result === 'draw') return
+        if (isCommanderTournament(tournament) && result === 'draw') return
 
         const round = tournament.rounds[tournament.currentRound - 1]
         const match = round?.matches.find(m => m.id === matchId)
@@ -838,6 +950,7 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament) return
         if ((tournament.tcg ?? 'magic') === 'yugioh' && result === 'draw') return
+        if (isCommanderTournament(tournament) && result === 'draw') return
 
         const round = tournament.rounds.find(candidate => candidate.number === roundNumber)
         const match = round?.matches.find(candidate => candidate.id === matchId)
@@ -863,11 +976,12 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament || tournament.status !== 'active') return
         if ((tournament.tcg ?? 'magic') === 'yugioh' && result === 'draw') return
+        if (isCommanderTournament(tournament) && result === 'draw') return
 
         const round = tournament.rounds[tournament.currentRound - 1]
         const match = round?.matches.find(m => m.id === matchId)
         if (!match || match.result !== null || match.p2Id === 'BYE') return
-        if (match.p1Id !== playerId && match.p2Id !== playerId) return
+        if (!getMatchPlayerIds(match).includes(playerId)) return
 
         const pendingResult: PendingMatchResult = {
           id: crypto.randomUUID(),
@@ -942,7 +1056,9 @@ export const useTournamentsStore = create<TournamentsStore>()(
         if (!round.matches.every(m => m.result !== null)) return
 
         const nextRoundNumber = tournament.currentRound + 1
-        const matches = generatePairings(tournament.players, nextRoundNumber, id)
+        const matches = isCommanderTournament(tournament)
+          ? generateCommanderPairings(tournament.players, nextRoundNumber, id)
+          : generatePairings(tournament.players, nextRoundNumber, id)
 
         let updatedPlayers = tournament.players
         const byeMatch = matches.find(m => m.p2Id === 'BYE')
