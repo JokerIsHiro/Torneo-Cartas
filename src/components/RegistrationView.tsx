@@ -225,7 +225,7 @@ function PlayerPortal({
       }
     })
     .filter(Boolean)
-  const allowsDraw = tournament.tcg !== 'yugioh' && !isPodMatch
+  const allowsDraw = tournament.tcg !== 'yugioh'
   const canReport = !isDropped && tournament.status === 'active' && match && match.p2Id !== 'BYE' && match.result === null
 
   function resultFromPlayerPerspective(playerWon: boolean): Exclude<MatchResult, 'bye' | null> {

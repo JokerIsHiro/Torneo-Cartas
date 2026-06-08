@@ -35,7 +35,7 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
   const isTimeout = match.result === 'timeout'
   const isDone    = match.result !== null
   const isCommanderPod = tcg === 'magic' && magicFormat === 'commander' && playerIds.length > 2
-  const allowsDraw = tcg !== 'yugioh' && !isCommanderPod
+  const allowsDraw = tcg !== 'yugioh'
 
   function handleResult(result: MatchResult) {
     if (isBye) return
@@ -97,7 +97,7 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
                   losses={player?.losses ?? 0}
                   align="left"
                   isWinner={match.result === resultKey}
-                  isLoser={Boolean(match.result && match.result !== resultKey)}
+                  isLoser={Boolean(match.result && match.result !== 'draw' && match.result !== resultKey)}
                 />
               )
             })}

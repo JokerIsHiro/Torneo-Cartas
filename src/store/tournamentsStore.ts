@@ -924,7 +924,6 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament) return
         if ((tournament.tcg ?? 'magic') === 'yugioh' && result === 'draw') return
-        if (isCommanderTournament(tournament) && result === 'draw') return
 
         const round = tournament.rounds[tournament.currentRound - 1]
         const match = round?.matches.find(m => m.id === matchId)
@@ -950,7 +949,6 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament) return
         if ((tournament.tcg ?? 'magic') === 'yugioh' && result === 'draw') return
-        if (isCommanderTournament(tournament) && result === 'draw') return
 
         const round = tournament.rounds.find(candidate => candidate.number === roundNumber)
         const match = round?.matches.find(candidate => candidate.id === matchId)
@@ -976,7 +974,6 @@ export const useTournamentsStore = create<TournamentsStore>()(
         const tournament = get().tournaments.find(t => t.id === id)
         if (!tournament || tournament.status !== 'active') return
         if ((tournament.tcg ?? 'magic') === 'yugioh' && result === 'draw') return
-        if (isCommanderTournament(tournament) && result === 'draw') return
 
         const round = tournament.rounds[tournament.currentRound - 1]
         const match = round?.matches.find(m => m.id === matchId)
