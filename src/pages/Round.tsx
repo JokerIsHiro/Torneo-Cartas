@@ -139,33 +139,33 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
       </div>
 
       <section className="round-main-column">
-        <div className="round-section-header">
+        <div className="round-command-bar">
           <div>
-            <span>
-              <i className="ti ti-swords" aria-hidden="true" /> Ronda {currentRound}
-            </span>
+            <span>Ronda actual</span>
+            <strong><i className="ti ti-swords" aria-hidden="true" /> Ronda {currentRound}</strong>
+            <small>{visibleSummary?.matchesDone ?? currentSummary?.matchesDone ?? 0}/{visibleSummary?.matchesTotal ?? currentSummary?.matchesTotal ?? 0} resultados registrados</small>
+          </div>
+          <div className="round-command-status">
             {isFinalRound && <em>ronda final</em>}
             {!isViewingCurrentRound && <em>editando ronda {visibleRound}</em>}
           </div>
-
-          <div className="round-export-actions">
-            <span>
-              {visibleSummary?.matchesDone ?? currentSummary?.matchesDone ?? 0}/{visibleSummary?.matchesTotal ?? currentSummary?.matchesTotal ?? 0} resultados
-            </span>
-            <button
-              onClick={() => void openRoundPreview()}
-              style={exportButtonStyle}
-              title="Previsualiza una imagen con las mesas de esta ronda"
-            >
-              <i className="ti ti-photo-scan" aria-hidden="true" /> Ver emparejamientos
-            </button>
-            <button
-              onClick={() => void openStandingsPreview()}
-              style={exportButtonStyle}
-              title="Previsualiza la clasificacion actual en imagen"
-            >
-              <i className="ti ti-trophy" aria-hidden="true" /> Ver clasificacion
-            </button>
+          <div className="round-command-action">
+            {allResultsIn ? (
+              shouldFinish ? (
+                <button onClick={() => finishTournament(tournamentId)} style={actionBtnStyle('var(--color-accent-secondary)', 'var(--color-border-success)')}>
+                  <i className="ti ti-trophy" aria-hidden="true" /> {phaseMode === 'swiss-top' ? `Publicar Top ${topCut}` : 'Finalizar torneo'}
+                </button>
+              ) : (
+                <button onClick={() => nextRound(tournamentId)} style={actionBtnStyle()} title="Genera la siguiente ronda cuando todos los resultados esten listos">
+                  <i className="ti ti-arrow-right" aria-hidden="true" /> Siguiente ronda
+                </button>
+              )
+            ) : (
+              <div className="round-command-waiting">
+                <i className="ti ti-clock" aria-hidden="true" />
+                Faltan {unfinishedCount} {unfinishedCount === 1 ? 'resultado' : 'resultados'}
+              </div>
+            )}
           </div>
         </div>
 
@@ -191,11 +191,44 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
           </div>
         )}
 
+        <div className="round-match-grid">
+          {visibleMatches.map(match => (
+            <MatchCard key={match.id} match={match} tournamentId={tournamentId} roundNumber={visibleRound} />
+          ))}
+        </div>
+      </section>
+
+      <aside className="round-side-column">
+        {isViewingCurrentRound && <Timer tournamentId={tournamentId} />}
+
+        <section className="round-tools-card">
+          <header>
+            <strong><i className="ti ti-tool" aria-hidden="true" /> Herramientas</strong>
+            <span>Exportar y ajustes de ronda</span>
+          </header>
+          <div className="round-export-actions">
+            <button
+              onClick={() => void openRoundPreview()}
+              style={exportButtonStyle}
+              title="Previsualiza una imagen con las mesas de esta ronda"
+            >
+              <i className="ti ti-photo-scan" aria-hidden="true" /> Emparejamientos
+            </button>
+            <button
+              onClick={() => void openStandingsPreview()}
+              style={exportButtonStyle}
+              title="Previsualiza la clasificacion actual en imagen"
+            >
+              <i className="ti ti-trophy" aria-hidden="true" /> Clasificacion
+            </button>
+          </div>
+        </section>
+
         {canAddLatePlayer && (
           <section className="pairing-tools-panel late-player-panel">
             <header>
               <strong>Jugador tardio</strong>
-              <span>Ronda 1 entra limpio. Ronda 2 entra con 1 derrota. Desde ronda 3 no se permite.</span>
+              <span>Ronda 1 limpio. Ronda 2 con 1 derrota.</span>
             </header>
             <input
               value={latePlayerName}
@@ -223,38 +256,14 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
               }}
             >
               <i className="ti ti-user-plus" aria-hidden="true" />
-              Anadir jugador tardio
+              Anadir jugador
             </button>
             {pairingToolMessage && <p>{pairingToolMessage}</p>}
           </section>
         )}
 
-        <div className="round-match-grid">
-          {visibleMatches.map(match => (
-            <MatchCard key={match.id} match={match} tournamentId={tournamentId} roundNumber={visibleRound} />
-          ))}
-        </div>
-      </section>
-
-      <aside className="round-side-column">
-        {isViewingCurrentRound && <Timer tournamentId={tournamentId} />}
-
         {tournament && pendingResults.length > 0 && (
           <PendingResultsPanel tournament={tournament} pendingResults={pendingResults} />
-        )}
-
-        {allResultsIn && (
-          <div style={{ marginTop: '1rem' }}>
-            {shouldFinish ? (
-              <button onClick={() => finishTournament(tournamentId)} style={actionBtnStyle('var(--color-accent-secondary)', 'var(--color-border-success)')}>
-                <i className="ti ti-trophy" aria-hidden="true" /> {phaseMode === 'swiss-top' ? `Cerrar suizo y publicar Top ${topCut}` : 'Finalizar torneo y cerrar inscripcion'}
-              </button>
-            ) : (
-              <button onClick={() => nextRound(tournamentId)} style={actionBtnStyle()} title="Genera la siguiente ronda cuando todos los resultados esten listos">
-                <i className="ti ti-arrow-right" aria-hidden="true" /> Pasar a la siguiente ronda
-              </button>
-            )}
-          </div>
         )}
 
         {!allResultsIn && unfinishedCount > 0 && (
