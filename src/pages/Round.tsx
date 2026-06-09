@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
+import { Timer } from '../components/Timer'
 import { MatchCard } from '../components/MatchCard'
 import { RoundExport } from '../components/RoundExport'
 import { useExportImage } from '../hooks/useExportImage'
@@ -176,6 +177,8 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
         )}
 
         <section className="round-utility-strip">
+          {isViewingCurrentRound && <Timer tournamentId={tournamentId} variant="compact" />}
+
           <div className="round-export-actions">
             <button
               onClick={() => void openRoundPreview()}

@@ -9,9 +9,10 @@ import { CircularTimer } from './CircularTimer'
 // Temporizador embebido dentro de la ronda del admin.
 interface TimerProps {
   tournamentId: string
+  variant?: 'default' | 'compact'
 }
 
-export function Timer({ tournamentId }: TimerProps) {
+export function Timer({ tournamentId, variant = 'default' }: TimerProps) {
   const tournament = useTournamentsStore(
     s => s.tournaments.find(t => t.id === tournamentId)
   )
@@ -63,6 +64,7 @@ export function Timer({ tournamentId }: TimerProps) {
   const { formatted, status, secondsLeft, isWarning, isDanger, isFinished } = timerData
 
   const progress = secondsLeft / duration
+  const isCompact = variant === 'compact'
 
   const barColor = (() => {
     if (isFinished || isDanger) return 'var(--color-text-danger)'
@@ -91,29 +93,33 @@ export function Timer({ tournamentId }: TimerProps) {
       background: 'var(--color-background-primary)',
       border: `0.5px solid ${isFinished || isDanger ? 'var(--color-border-danger)' : 'var(--color-border-tertiary)'}`,
       borderRadius: 'var(--border-radius-lg)',
-      padding: '1.25rem 1.5rem',
-      marginBottom: '1.5rem',
+      padding: isCompact ? '10px 12px' : '1.25rem 1.5rem',
+      marginBottom: isCompact ? 0 : '1.5rem',
       transition: 'border-color .3s',
+      display: isCompact ? 'grid' : undefined,
+      gridTemplateColumns: isCompact ? 'auto minmax(0, 1fr)' : undefined,
+      alignItems: isCompact ? 'center' : undefined,
+      gap: isCompact ? '12px' : undefined,
     }}>
 
-      <div style={{ marginBottom: '1rem' }}>
+      <div style={{ marginBottom: isCompact ? 0 : '1rem' }}>
         <CircularTimer
           formatted={formatted}
           progress={progress}
           color={barColor}
           trackColor={isFinished || isDanger ? 'var(--color-danger-bg)' : isWarning ? 'var(--color-warning-bg)' : 'var(--color-success-bg)'}
           glowColor={isFinished || isDanger ? 'rgba(255, 107, 122, 0.16)' : isWarning ? 'rgba(255, 209, 102, 0.12)' : 'rgba(31, 122, 255, 0.14)'}
-          size="min(72vw, 260px)"
-          strokeWidth={6.5}
+          size={isCompact ? '82px' : 'min(72vw, 260px)'}
+          strokeWidth={isCompact ? 5.5 : 6.5}
           label={statusLabel}
           labelColor={timeColor === 'var(--color-text-primary)' ? 'var(--color-text-secondary)' : timeColor}
           timeColor={timeColor}
-          timeSize="clamp(36px, 11vw, 56px)"
+          timeSize={isCompact ? '18px' : 'clamp(36px, 11vw, 56px)'}
         />
       </div>
 
       {/* Controles */}
-      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', gap: '8px', justifyContent: isCompact ? 'flex-start' : 'center', flexWrap: 'wrap' }}>
 
         {status === 'idle' && (
           <ControlBtn onClick={() => startTimer(tournamentId)} icon="ti-player-play" label="Iniciar" />

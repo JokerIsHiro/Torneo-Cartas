@@ -58,12 +58,6 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
       : standings,
     [normalizedPlayerSearch, standings]
   )
-  const teamModeHint = teamMode === '2v2'
-    ? 'Registra cada pareja como un equipo, con capitan.'
-    : teamMode === '3v3'
-      ? 'Registra cada trio como un equipo, con capitan.'
-      : 'Registra participantes individuales.'
-
   async function handleDropPlayer(player: Player) {
     const accepted = await confirm({
       title: `Retirar a "${player.name}"`,
@@ -169,7 +163,6 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
             <div style={cardTitleStyle}>
               <i className="ti ti-user-plus" aria-hidden="true" /> Anadir {participantPlural}
             </div>
-            <span>{teamModeHint}</span>
           </div>
 
           {isTeamMode ? (

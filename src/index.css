@@ -1442,7 +1442,7 @@ button:disabled {
   line-height: 1.15;
 }
 
-.setup-advanced-panel {
+.setup-settings-panel {
   margin-top: 10px;
   border: 0.5px solid rgba(88, 215, 255, 0.18);
   border-radius: 8px;
@@ -1452,41 +1452,19 @@ button:disabled {
   overflow: hidden;
 }
 
-.setup-advanced-panel summary {
+.setup-settings-title {
   min-height: 46px;
   padding: 10px 12px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  cursor: pointer;
-  list-style: none;
-}
-
-.setup-advanced-panel summary::-webkit-details-marker {
-  display: none;
-}
-
-.setup-advanced-panel summary span {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  border-bottom: 0.5px solid rgba(88, 215, 255, 0.16);
   color: var(--color-text-primary);
   font-size: 13px;
   font-weight: 750;
 }
 
-.setup-advanced-panel summary em {
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-style: normal;
-}
-
-.setup-advanced-panel[open] summary {
-  border-bottom: 0.5px solid rgba(88, 215, 255, 0.16);
-}
-
-.setup-advanced-panel .setup-two-column {
+.setup-settings-panel .setup-two-column {
   padding: 10px;
 }
 
@@ -2093,7 +2071,7 @@ button:disabled {
 
 .round-utility-strip {
   display: grid;
-  grid-template-columns: auto minmax(320px, 1fr);
+  grid-template-columns: minmax(250px, 320px) auto minmax(320px, 1fr);
   align-items: stretch;
   gap: 10px;
   margin-bottom: 12px;
@@ -6694,6 +6672,10 @@ button:disabled {
 }
 
 @media (max-width: 1100px) {
+  .round-utility-strip {
+    grid-template-columns: 1fr;
+  }
+
   .round-command-bar {
     grid-template-columns: 1fr;
     align-items: stretch;

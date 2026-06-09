@@ -191,7 +191,6 @@ export function Setup({ tournamentId }: SetupProps) {
             <div style={cardTitleStyle}>
               <i className="ti ti-adjustments" aria-hidden="true" /> Configuracion rapida
             </div>
-            <span>Juego, modalidad y estructura en un solo panel</span>
           </div>
 
           <div className="setup-name-row">
@@ -281,24 +280,14 @@ export function Setup({ tournamentId }: SetupProps) {
               )}
             </section>
           </div>
-
-          <div className="setup-hint-strip">
-            <span><i className="ti ti-info-circle" aria-hidden="true" /> {selectedTeamMode?.description}</span>
-            <span>{selectedPhaseMode?.description}</span>
-            {tcg === 'yugioh' && <span>YuGiOh: sin empates; al acabar tiempo ambos jugadores pierden.</span>}
-            {tcg === 'magic' && <span>Magic: el formato elegido se usara en el constructor de mazos.</span>}
-            {tcg === 'chess' && <span>Ajedrez: sin constructor de mazos; solo emparejamientos y resultados.</span>}
-          </div>
         </div>
 
         <PlayerList tournamentId={tournamentId} />
 
-        <details className="setup-advanced-panel">
-          <summary>
-            <span><i className="ti ti-settings" aria-hidden="true" /> Ajustes avanzados</span>
-            <em>Formato, tiempo, rondas y desempates</em>
-          </summary>
-
+        <section className="setup-settings-panel">
+          <div className="setup-settings-title">
+            <i className="ti ti-settings" aria-hidden="true" /> Ajustes
+          </div>
           <div className="setup-two-column setup-compact-settings">
             {tcg === 'magic' && (
               <div className="setup-card" style={cardStyle}>
@@ -381,14 +370,14 @@ export function Setup({ tournamentId }: SetupProps) {
               </div>
             </div>
           </div>
-        </details>
+        </section>
       </section>
 
       <aside className="setup-side-column">
         <div className="setup-card setup-summary-card" style={cardStyle}>
           <div className="setup-card-header">
             <div style={cardTitleStyle}>
-              <i className="ti ti-chart-bar" aria-hidden="true" /> Resumen operativo
+              <i className="ti ti-chart-bar" aria-hidden="true" /> Resumen
             </div>
             <span>{playerCount >= 2 ? 'Listo para iniciar' : `Faltan ${2 - playerCount} ${teamMode === 'solo' ? 'jugador' : 'equipo'}`}</span>
           </div>
