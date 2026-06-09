@@ -1,6 +1,7 @@
 // Configuracion inicial del torneo. Ajusta aqui opciones previas al inicio:
 // juego, formato, equipos, duracion, QR y participantes.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
@@ -111,6 +112,7 @@ export function Setup({ tournamentId }: SetupProps) {
   const recommendedRoundCount = getRecommendedRoundCount(playerCount)
   const [error, setError] = useState('')
   const [inviteStatus, setInviteStatus] = useState('')
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const firebaseConfigured = hasFirebaseConfig()
   const invitationLink = getInvitationLink()
   const selectedGame = tcgOptions.find(opt => opt.value === tcg)
@@ -119,6 +121,17 @@ export function Setup({ tournamentId }: SetupProps) {
   const selectedMagicFormat = magicFormatOptions.find(option => option.value === magicFormat)
   const selectedTiebreaker = tiebreakerSystemOptions.find(option => option.value === tiebreakerSystem)
   const participantLabel = teamMode === 'solo' ? 'Jugadores' : 'Equipos'
+
+  useEffect(() => {
+    if (!settingsOpen) return
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setSettingsOpen(false)
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [settingsOpen])
 
   if (!exists) return null
 
@@ -191,6 +204,14 @@ export function Setup({ tournamentId }: SetupProps) {
             <div style={cardTitleStyle}>
               <i className="ti ti-adjustments" aria-hidden="true" /> Configuracion rapida
             </div>
+            <button
+              type="button"
+              className="setup-settings-open"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <i className="ti ti-settings" aria-hidden="true" />
+              Ajustes
+            </button>
           </div>
 
           <div className="setup-name-row">
@@ -283,94 +304,6 @@ export function Setup({ tournamentId }: SetupProps) {
         </div>
 
         <PlayerList tournamentId={tournamentId} />
-
-        <section className="setup-settings-panel">
-          <div className="setup-settings-title">
-            <i className="ti ti-settings" aria-hidden="true" /> Ajustes
-          </div>
-          <div className="setup-two-column setup-compact-settings">
-            {tcg === 'magic' && (
-              <div className="setup-card" style={cardStyle}>
-                <div style={cardTitleStyle}>
-                  <i className="ti ti-stack-2" aria-hidden="true" /> Formato de Magic
-                </div>
-                <select
-                  value={magicFormat}
-                  onChange={event => setTournamentMagicFormat(tournamentId, event.target.value as MagicFormat)}
-                  style={inputStyle}
-                >
-                  {magicFormatOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="setup-note">
-                  <i className="ti ti-info-circle" aria-hidden="true" /> {selectedMagicFormat?.description}
-                </div>
-              </div>
-            )}
-
-            <div className="setup-card" style={cardStyle}>
-              <div style={cardTitleStyle}>
-                <i className="ti ti-clock" aria-hidden="true" /> Duracion de ronda
-              </div>
-              <div className="option-grid option-grid-tight">
-                {timerOptions.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setTimerDuration(tournamentId, opt.value)}
-                    className={timerDuration === opt.value ? 'option-pill active' : 'option-pill'}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="setup-card" style={cardStyle}>
-              <div style={cardTitleStyle}>
-                <i className="ti ti-list-numbers" aria-hidden="true" /> Rondas del torneo
-              </div>
-              <select
-                value={manualRoundCount ?? 'auto'}
-                onChange={event => {
-                  const value = event.target.value
-                  setManualRoundCount(tournamentId, value === 'auto' ? null : Number(value))
-                }}
-                style={inputStyle}
-              >
-                <option value="auto">Automatico ({playerCount >= 2 ? recommendedRoundCount : '-'} rondas)</option>
-                {Array.from({ length: 12 }, (_, index) => index + 1).map(roundCount => (
-                  <option key={roundCount} value={roundCount}>
-                    {roundCount} {roundCount === 1 ? 'ronda' : 'rondas'}
-                  </option>
-                ))}
-              </select>
-              <div className="setup-note">
-                <i className="ti ti-info-circle" aria-hidden="true" /> Usalo para eventos casuales o ligas cortas; el suizo seguira ordenando por puntos.
-              </div>
-            </div>
-
-            <div className="setup-card" style={cardStyle}>
-              <div style={cardTitleStyle}>
-                <i className="ti ti-scale" aria-hidden="true" /> Desempates
-              </div>
-              <select
-                value={tiebreakerSystem}
-                onChange={event => setTiebreakerSystem(tournamentId, event.target.value as TournamentTiebreakerSystem)}
-                style={inputStyle}
-              >
-                {tiebreakerSystemOptions.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-              <div className="setup-note">
-                <i className="ti ti-info-circle" aria-hidden="true" /> {selectedTiebreaker?.description}
-              </div>
-            </div>
-          </div>
-        </section>
       </section>
 
       <aside className="setup-side-column">
@@ -467,6 +400,113 @@ export function Setup({ tournamentId }: SetupProps) {
           Comenzar torneo (ronda 1)
         </button>
       </aside>
+
+      {settingsOpen && createPortal(
+        <div
+          className="setup-settings-dialog-backdrop"
+          role="presentation"
+          onMouseDown={() => setSettingsOpen(false)}
+        >
+          <section
+            className="setup-settings-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="setup-settings-dialog-title"
+            onMouseDown={event => event.stopPropagation()}
+          >
+            <header className="setup-settings-dialog-header">
+              <div>
+                <span>Configuracion</span>
+                <h2 id="setup-settings-dialog-title">Ajustes del torneo</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+                aria-label="Cerrar ajustes"
+              >
+                <i className="ti ti-x" aria-hidden="true" />
+              </button>
+            </header>
+
+            <div className="setup-settings-dialog-body">
+              <div className="setup-two-column setup-compact-settings">
+                {tcg === 'magic' && (
+                  <div className="setup-card" style={cardStyle}>
+                    <div style={cardTitleStyle}>
+                      <i className="ti ti-stack-2" aria-hidden="true" /> Formato de Magic
+                    </div>
+                    <select
+                      value={magicFormat}
+                      onChange={event => setTournamentMagicFormat(tournamentId, event.target.value as MagicFormat)}
+                      style={inputStyle}
+                    >
+                      {magicFormatOptions.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="setup-card" style={cardStyle}>
+                  <div style={cardTitleStyle}>
+                    <i className="ti ti-clock" aria-hidden="true" /> Duracion de ronda
+                  </div>
+                  <div className="option-grid option-grid-tight">
+                    {timerOptions.map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setTimerDuration(tournamentId, opt.value)}
+                        className={timerDuration === opt.value ? 'option-pill active' : 'option-pill'}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="setup-card" style={cardStyle}>
+                  <div style={cardTitleStyle}>
+                    <i className="ti ti-list-numbers" aria-hidden="true" /> Rondas del torneo
+                  </div>
+                  <select
+                    value={manualRoundCount ?? 'auto'}
+                    onChange={event => {
+                      const value = event.target.value
+                      setManualRoundCount(tournamentId, value === 'auto' ? null : Number(value))
+                    }}
+                    style={inputStyle}
+                  >
+                    <option value="auto">Automatico ({playerCount >= 2 ? recommendedRoundCount : '-'} rondas)</option>
+                    {Array.from({ length: 12 }, (_, index) => index + 1).map(roundCount => (
+                      <option key={roundCount} value={roundCount}>
+                        {roundCount} {roundCount === 1 ? 'ronda' : 'rondas'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="setup-card" style={cardStyle}>
+                  <div style={cardTitleStyle}>
+                    <i className="ti ti-scale" aria-hidden="true" /> Desempates
+                  </div>
+                  <select
+                    value={tiebreakerSystem}
+                    onChange={event => setTiebreakerSystem(tournamentId, event.target.value as TournamentTiebreakerSystem)}
+                    style={inputStyle}
+                  >
+                    {tiebreakerSystemOptions.map(option => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

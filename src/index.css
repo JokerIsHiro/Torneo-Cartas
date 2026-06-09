@@ -1442,30 +1442,104 @@ button:disabled {
   line-height: 1.15;
 }
 
-.setup-settings-panel {
-  margin-top: 10px;
-  border: 0.5px solid rgba(88, 215, 255, 0.18);
+.setup-settings-open {
+  min-height: 32px;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0.5px solid rgba(88, 215, 255, 0.4);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(88, 215, 255, 0.035), rgba(255, 255, 255, 0.006)),
-    rgba(0, 0, 0, 0.22);
-  overflow: hidden;
+    linear-gradient(180deg, rgba(31, 122, 255, 0.18), rgba(88, 215, 255, 0.04)),
+    rgba(0, 0, 0, 0.4);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
 }
 
-.setup-settings-title {
-  min-height: 46px;
-  padding: 10px 12px;
+.setup-settings-open:hover {
+  border-color: rgba(88, 215, 255, 0.72);
+  transform: translateY(-1px);
+}
+
+.setup-settings-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(12px);
+}
+
+.setup-settings-dialog {
+  width: min(920px, 100%);
+  max-height: min(760px, calc(100vh - 36px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 0.5px solid rgba(88, 215, 255, 0.42);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(7, 20, 38, 0.98), rgba(2, 7, 14, 0.98)),
+    var(--color-background-primary);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.52);
+}
+
+.setup-settings-dialog-header {
+  min-height: 70px;
+  padding: 16px 18px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  border-bottom: 0.5px solid rgba(88, 215, 255, 0.16);
-  color: var(--color-text-primary);
-  font-size: 13px;
-  font-weight: 750;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 0.5px solid rgba(88, 215, 255, 0.22);
 }
 
-.setup-settings-panel .setup-two-column {
-  padding: 10px;
+.setup-settings-dialog-header span {
+  display: block;
+  color: var(--color-accent-secondary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.setup-settings-dialog-header h2 {
+  margin: 3px 0 0;
+  color: var(--color-text-primary);
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.setup-settings-dialog-header button {
+  width: 38px;
+  height: 38px;
+  min-height: 0;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border: 0.5px solid rgba(88, 215, 255, 0.34);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.46);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.setup-settings-dialog-body {
+  min-height: 0;
+  padding: 16px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-primary) rgba(7, 16, 31, 0.9);
+}
+
+.setup-settings-dialog-body .setup-card {
+  min-height: 110px;
 }
 
 .setup-control-grid,
@@ -6263,7 +6337,7 @@ button:disabled {
 
 .setup-main-column {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
   height: 100%;
   overflow: hidden;
@@ -6465,6 +6539,12 @@ button:disabled {
   box-shadow: inset 0 0 0 1px rgba(31, 122, 255, 0.08);
 }
 
+.player-list-card.is-empty {
+  align-self: start;
+  height: auto;
+  max-height: none;
+}
+
 .player-list-card::after {
   content: "";
   pointer-events: none;
@@ -6505,6 +6585,13 @@ button:disabled {
   scrollbar-color: var(--color-border-primary) rgba(7, 16, 31, 0.9);
 }
 
+.player-list-card.is-empty .setup-player-list-body {
+  height: auto;
+  overflow: hidden;
+  padding: 0;
+  scrollbar-gutter: auto;
+}
+
 .setup-player-list-body::-webkit-scrollbar {
   width: 9px;
 }
@@ -6539,6 +6626,15 @@ button:disabled {
 
 .player-empty-state {
   padding: 1.2rem .75rem;
+}
+
+.player-list-card.is-empty .player-empty-state {
+  min-height: 98px;
+  border-style: solid;
+  border-color: rgba(88, 215, 255, 0.14);
+  background:
+    linear-gradient(180deg, rgba(88, 215, 255, 0.035), rgba(255, 255, 255, 0.006)),
+    rgba(0, 0, 0, 0.18);
 }
 
 .setup-player-row {

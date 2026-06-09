@@ -251,7 +251,7 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
         </div>
       )}
 
-      <div className="setup-card player-list-card" style={cardStyle}>
+      <div className={`setup-card player-list-card${players.length === 0 ? ' is-empty' : ''}`} style={cardStyle}>
         <div style={listHeaderStyle}>
           <span style={cardTitleStyle}>
             <i className="ti ti-users" aria-hidden="true" /> {participantTitle}
@@ -283,8 +283,7 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
           {players.length === 0 ? (
             <div className="player-empty-state">
               <i className="ti ti-user-off" aria-hidden="true" />
-              <div>Sin {participantPlural} aun</div>
-              <span>Anade al menos 2 {participantPlural} para iniciar.</span>
+              <div>Sin {participantPlural}</div>
             </div>
           ) : isSetup ? (
             <div className="setup-player-list">
