@@ -227,6 +227,15 @@ function PlayerPortal({
     .filter(Boolean)
   const allowsDraw = tournament.tcg !== 'yugioh'
   const canReport = !isDropped && tournament.status === 'active' && match && match.p2Id !== 'BYE' && match.result === null
+  const portalStatus = isDropped
+    ? 'Retirado'
+    : tournament.status === 'finished'
+      ? 'Finalizado'
+      : tournament.status === 'setup'
+        ? 'Inscrito'
+        : match
+          ? `Mesa ${match.tableNumber}`
+          : 'Esperando ronda'
 
   function resultFromPlayerPerspective(playerWon: boolean): Exclude<MatchResult, 'bye' | null> {
     if (!match) return 'draw'
@@ -237,23 +246,13 @@ function PlayerPortal({
 
   return (
     <div className="registration-card player-portal">
-      <i className="ti ti-user-check" aria-hidden="true" />
-      <h1>{player.name}</h1>
-      <p>{tournament.name}</p>
-
-      <div className="player-panel">
-        <strong>Tu enlace personal</strong>
-        <span>Guardalo para consultar mesa, rival y resultados desde este u otro dispositivo.</span>
-        <input value={playerLink} readOnly onFocus={event => event.currentTarget.select()} />
-        <button
-          type="button"
-          onClick={() => void navigator.clipboard?.writeText(playerLink)}
-          title="Copia tu enlace personal"
-        >
-          <i className="ti ti-copy" aria-hidden="true" />
-          Copiar enlace
-        </button>
-      </div>
+      <header className="player-portal-hero">
+        <div>
+          <span>{tournament.name}</span>
+          <h1>{player.name}</h1>
+        </div>
+        <strong>{portalStatus}</strong>
+      </header>
 
       <div className="player-summary-grid">
         <div>
@@ -277,14 +276,14 @@ function PlayerPortal({
       )}
 
       {tournament.status === 'setup' && (
-        <div className="player-panel">
+        <div className="player-panel player-current-panel">
           <strong>Inscripcion confirmada</strong>
           <span>Espera a que el organizador inicie la primera ronda.</span>
         </div>
       )}
 
       {tournament.status === 'active' && match && (
-        <div className="player-panel">
+        <div className="player-panel player-current-panel">
           <div className="player-match-table">Mesa {match.tableNumber}</div>
           <strong>Ronda {tournament.currentRound}</strong>
           <span>{opponents.length ? `Mesa con ${opponents.join(' · ')}` : 'Esperando rival'}</span>
@@ -331,18 +330,34 @@ function PlayerPortal({
       )}
 
       {tournament.status === 'active' && !match && !isDropped && (
-        <div className="player-panel">
+        <div className="player-panel player-current-panel">
           <strong>Sin emparejamiento activo</strong>
           <span>Espera a que se publique la siguiente ronda.</span>
         </div>
       )}
 
       {tournament.status === 'finished' && (
-        <div className="player-panel">
+        <div className="player-panel player-current-panel">
           <strong>Torneo finalizado</strong>
           <span>{player.points} puntos finales</span>
         </div>
       )}
+
+      <details className="player-panel player-link-panel">
+        <summary>
+          <strong>Enlace personal</strong>
+          <span>Consultar desde otro dispositivo</span>
+        </summary>
+        <input value={playerLink} readOnly onFocus={event => event.currentTarget.select()} />
+        <button
+          type="button"
+          onClick={() => void navigator.clipboard?.writeText(playerLink)}
+          title="Copia tu enlace personal"
+        >
+          <i className="ti ti-copy" aria-hidden="true" />
+          Copiar enlace
+        </button>
+      </details>
 
       {playerHistory.length > 0 && (
         <div className="player-panel player-history-panel">

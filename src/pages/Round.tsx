@@ -10,6 +10,7 @@ import { RoundExport } from '../components/RoundExport'
 import { useExportImage } from '../hooks/useExportImage'
 import { ExportPreviewModal } from '../components/ExportPreviewModal'
 import type { ExportedImage } from '../hooks/useExportImage'
+import { useFeedback } from '../components/feedbackContext'
 import type { Match, MatchResult, PendingMatchResult, Tournament } from '../types/tournament'
 
 interface RoundProps {
@@ -23,6 +24,8 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
   const approvePendingResult = useTournamentsStore(s => s.approvePendingResult)
   const swapCurrentRoundPlayers = useTournamentsStore(s => s.swapCurrentRoundPlayers)
   const addLatePlayerToCurrentRound = useTournamentsStore(s => s.addLatePlayerToCurrentRound)
+  const relaunchCurrentRoundPairings = useTournamentsStore(s => s.relaunchCurrentRoundPairings)
+  const { notify } = useFeedback()
   const { currentRound, pendingResults, tournament } = useTournamentsStore(
     useShallow(s => {
       const t = s.tournaments.find(t => t.id === tournamentId)
@@ -55,6 +58,7 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
   const [secondSwapSlot, setSecondSwapSlot] = useState('')
   const [latePlayerName, setLatePlayerName] = useState('')
   const [pairingToolMessage, setPairingToolMessage] = useState('')
+  const [canRelaunchRound, setCanRelaunchRound] = useState(false)
   const [exportPreview, setExportPreview] = useState<{ title: string; image: ExportedImage; download: (image: ExportedImage) => void } | null>(null)
   const visibleRound = selectedRound && selectedRound <= currentRound ? selectedRound : currentRound
   const visibleRoundData = tournament?.rounds.find(round => round.number === visibleRound)
@@ -95,6 +99,21 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
   async function openStandingsPreview() {
     const image = await previewStandingsImage(`clasificacion-ronda-${visibleRound}`)
     if (image) setExportPreview({ title: `Clasificacion ronda ${visibleRound}`, image, download: downloadStandingsImage })
+  }
+
+  function handleRelaunchRound() {
+    const result = relaunchCurrentRoundPairings(tournamentId)
+    if (result === 'relaunched') {
+      setCanRelaunchRound(false)
+      setPairingToolMessage('Ronda 1 relanzada con los jugadores actuales.')
+      notify({ tone: 'success', title: 'Ronda relanzada', message: 'Los emparejamientos se han regenerado.' })
+      return
+    }
+    const message = result === 'has-results'
+      ? 'No se puede relanzar si ya hay resultados registrados.'
+      : 'Solo se puede relanzar la ronda 1.'
+    setPairingToolMessage(message)
+    notify({ tone: 'warning', title: 'No se ha podido relanzar', message })
   }
 
   useEffect(() => {
@@ -235,6 +254,7 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
               onChange={event => {
                 setLatePlayerName(event.target.value)
                 setPairingToolMessage('')
+                setCanRelaunchRound(false)
               }}
               placeholder="Nombre del jugador"
             />
@@ -243,13 +263,18 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
               onClick={() => {
                 const result = addLatePlayerToCurrentRound(tournamentId, latePlayerName.trim())
                 const messages = {
-                  'added-to-round': 'Jugador anadido a la ronda actual.',
-                  'added-next-round': 'Jugador anadido al torneo. No habia BYE, entrara en la siguiente ronda.',
+                  'added-to-round': currentRound === 1
+                    ? 'Jugador anadido. Puedes relanzar la ronda 1 si quieres rehacer todos los emparejamientos.'
+                    : 'Jugador anadido a la ronda actual.',
+                  'added-next-round': currentRound === 1
+                    ? 'Jugador anadido. Puedes relanzar la ronda 1 para incluirlo ahora.'
+                    : 'Jugador anadido al torneo con una derrota. Entrara en la siguiente ronda.',
                   duplicate: 'Ya existe un jugador con ese nombre.',
                   closed: 'Solo se puede anadir en ronda 1 o ronda 2.',
                   'has-results': 'No se puede anadir si ya hay resultados registrados.',
                 }
                 setPairingToolMessage(messages[result])
+                setCanRelaunchRound((result === 'added-to-round' || result === 'added-next-round') && currentRound === 1)
                 if (result === 'added-to-round' || result === 'added-next-round') {
                   setLatePlayerName('')
                 }
@@ -258,6 +283,12 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
               <i className="ti ti-user-plus" aria-hidden="true" />
               Anadir jugador
             </button>
+            {canRelaunchRound && (
+              <button type="button" className="late-player-relaunch" onClick={handleRelaunchRound}>
+                <i className="ti ti-refresh" aria-hidden="true" />
+                Relanzar ronda 1
+              </button>
+            )}
             {pairingToolMessage && <p>{pairingToolMessage}</p>}
           </section>
         )}
@@ -315,10 +346,19 @@ function PairingOrganizer({
   onSwapPlayers,
 }: PairingOrganizerProps) {
   // Vista dedicada para revisar mesas antes de publicar resultados.
+  const [organizerSearch, setOrganizerSearch] = useState('')
+  const normalizedSearch = organizerSearch.trim().toLocaleLowerCase('es-ES')
   const slotLabels = new Map(playerSlots.map(slot => [slot.value, slot.label]))
   const selectedSlotLabel = firstSwapSlot ? slotLabels.get(firstSwapSlot) : ''
   const targetSlotLabel = secondSwapSlot ? slotLabels.get(secondSwapSlot) : ''
   const canConfirmSwap = Boolean(firstSwapSlot && secondSwapSlot && canSwapSlots(firstSwapSlot, secondSwapSlot))
+  const visibleMatches = normalizedSearch
+    ? currentMatches.filter(match => {
+        const tableMatch = `mesa ${match.tableNumber}`.includes(normalizedSearch) || String(match.tableNumber) === normalizedSearch
+        const playerMatch = getMatchPlayerIds(match).some(playerId => getPlayerName(playerId).toLocaleLowerCase('es-ES').includes(normalizedSearch))
+        return tableMatch || playerMatch
+      })
+    : currentMatches
 
   function handleSlotClick(slot: string) {
     if (!editablePairings) return
@@ -378,8 +418,25 @@ function PairingOrganizer({
         </div>
       )}
 
+      <div className="pairing-organizer-toolbar">
+        <div className="player-search-row">
+          <i className="ti ti-search" aria-hidden="true" />
+          <input
+            value={organizerSearch}
+            onChange={event => setOrganizerSearch(event.target.value)}
+            placeholder="Buscar jugador o mesa..."
+          />
+          {organizerSearch && (
+            <button type="button" onClick={() => setOrganizerSearch('')} aria-label="Limpiar busqueda">
+              <i className="ti ti-x" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        <span>{visibleMatches.length}/{currentMatches.length} mesas</span>
+      </div>
+
       <div className="pairing-table-grid">
-        {currentMatches.map(match => (
+        {visibleMatches.map(match => (
           <article key={match.id} className="pairing-table-row-card">
             <header className="pairing-table-row-header">
               <div className="pairing-table-number">

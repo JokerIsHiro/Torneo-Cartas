@@ -597,6 +597,7 @@ interface TournamentsStore {
   setRoundMatchResult: (id: string, roundNumber: number, matchId: string, result: MatchResult) => void
   swapCurrentRoundPlayers: (id: string, firstMatchId: string, firstPlayerId: string, secondMatchId: string, secondPlayerId: string) => void
   addLatePlayerToCurrentRound: (id: string, name: string) => 'added-to-round' | 'added-next-round' | 'duplicate' | 'closed' | 'has-results'
+  relaunchCurrentRoundPairings: (id: string) => 'relaunched' | 'closed' | 'has-results'
   submitPlayerResult: (id: string, matchId: string, playerId: string, result: PendingMatchResult['result']) => void
   approvePendingResult: (id: string, pendingResultId: string) => void
   rejectPendingResult: (id: string, pendingResultId: string) => void
@@ -1009,6 +1010,43 @@ export const useTournamentsStore = create<TournamentsStore>()(
           pendingResults: [],
         }))
         return 'added-to-round'
+      },
+
+      relaunchCurrentRoundPairings: (id) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (!tournament || tournament.status !== 'active' || tournament.currentRound !== 1) return 'closed'
+        const round = tournament.rounds[0]
+        if (!round) return 'closed'
+        if (round.matches.some(match => match.result !== null && match.result !== 'bye')) return 'has-results'
+
+        const resetPlayers = tournament.players.map(player => ({
+          ...player,
+          points: 0,
+          wins: 0,
+          losses: 0,
+          draws: 0,
+          byes: 0,
+          timeoutLosses: 0,
+          opponents: [],
+        }))
+        const matches = isCommanderTournament(tournament)
+          ? generateCommanderPairings(resetPlayers, 1, id)
+          : generatePairings(resetPlayers, 1, id)
+        const byeMatch = matches.find(match => match.p2Id === 'BYE')
+        const updatedPlayers = byeMatch ? applyByeToPlayers(resetPlayers, byeMatch) : resetPlayers
+
+        commitTournament(set, touchTournament({
+          ...withSnapshot(tournament, 'manual-pairings', 'Antes de relanzar ronda 1'),
+          players: updatedPlayers,
+          rounds: [{
+            number: 1,
+            matches,
+            startedAt: round.startedAt,
+            endedAt: null,
+          }],
+          pendingResults: [],
+        }))
+        return 'relaunched'
       },
 
       setMatchResult: (id, matchId, result) => {

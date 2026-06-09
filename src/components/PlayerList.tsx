@@ -22,6 +22,7 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
   const [teamModalOpen, setTeamModalOpen] = useState(false)
   const [knownPlayers, setKnownPlayers] = useState<KnownPlayer[]>([])
   const [selectedKnownIds, setSelectedKnownIds] = useState<string[]>([])
+  const [playerSearch, setPlayerSearch] = useState('')
   const { confirm, notify } = useFeedback()
 
   const players = tournament?.players ?? EMPTY_PLAYERS
@@ -44,6 +45,19 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
   const participantSingular = isTeamMode ? 'equipo' : 'jugador'
   const participantPlural = isTeamMode ? 'equipos' : 'jugadores'
   const participantTitle = isTeamMode ? 'Equipos' : 'Jugadores'
+  const normalizedPlayerSearch = playerSearch.trim().toLocaleLowerCase('es-ES')
+  const visibleSetupPlayers = useMemo(
+    () => normalizedPlayerSearch
+      ? players.filter(player => player.name.toLocaleLowerCase('es-ES').includes(normalizedPlayerSearch))
+      : players,
+    [normalizedPlayerSearch, players]
+  )
+  const visibleStandings = useMemo(
+    () => normalizedPlayerSearch
+      ? standings.filter(row => row.player.name.toLocaleLowerCase('es-ES').includes(normalizedPlayerSearch))
+      : standings,
+    [normalizedPlayerSearch, standings]
+  )
   const teamModeHint = teamMode === '2v2'
     ? 'Registra cada pareja como un equipo, con capitan.'
     : teamMode === '3v3'
@@ -251,10 +265,26 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
           </span>
           <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
             {isSetup
-              ? `${players.length} ${participantPlural} - ${totalRounds} rondas estimadas`
+              ? `${visibleSetupPlayers.length}/${players.length} ${participantPlural} - ${totalRounds} rondas estimadas`
               : `${activePlayers.length}/${players.length} ${participantPlural} activos`}
           </span>
         </div>
+
+        {players.length > 8 && (
+          <div className="player-search-row">
+            <i className="ti ti-search" aria-hidden="true" />
+            <input
+              value={playerSearch}
+              onChange={event => setPlayerSearch(event.target.value)}
+              placeholder={`Buscar ${participantSingular}...`}
+            />
+            {playerSearch && (
+              <button type="button" onClick={() => setPlayerSearch('')} aria-label="Limpiar busqueda">
+                <i className="ti ti-x" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="setup-player-list-body">
           {players.length === 0 ? (
@@ -265,11 +295,11 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
             </div>
           ) : isSetup ? (
             <div className="setup-player-list">
-              {players.map((p, i) => (
+              {visibleSetupPlayers.map((p, i) => (
                 <SetupPlayerRow
                   key={p.id}
                   player={p}
-                  index={i + 1}
+                  index={players.findIndex(player => player.id === p.id) + 1 || i + 1}
                   isTeamMode={isTeamMode}
                   participantSingular={participantSingular}
                   onRemove={() => removePlayer(tournamentId, p.id)}
@@ -281,7 +311,7 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
           ) : (
             <div className="setup-player-list-active">
               <StandingsHeader participantTitle={participantTitle} />
-              {standings.map(row => (
+              {visibleStandings.map(row => (
                 <ActivePlayerRow
                   key={row.player.id}
                   player={row.player}
