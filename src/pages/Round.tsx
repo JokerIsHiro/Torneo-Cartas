@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
-import { Timer } from '../components/Timer'
 import { MatchCard } from '../components/MatchCard'
 import { RoundExport } from '../components/RoundExport'
 import { useExportImage } from '../hooks/useExportImage'
@@ -19,8 +18,6 @@ interface RoundProps {
 }
 
 export function Round({ tournamentId, mode = 'results' }: RoundProps) {
-  const nextRound = useTournamentsStore(s => s.nextRound)
-  const finishTournament = useTournamentsStore(s => s.finishTournament)
   const approvePendingResult = useTournamentsStore(s => s.approvePendingResult)
   const swapCurrentRoundPlayers = useTournamentsStore(s => s.swapCurrentRoundPlayers)
   const addLatePlayerToCurrentRound = useTournamentsStore(s => s.addLatePlayerToCurrentRound)
@@ -41,17 +38,12 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
     currentMatches,
     allResultsIn,
     unfinishedCount,
-    isFinalRound,
-    shouldFinish,
-    phaseMode,
-    topCut,
     roundSummaries,
     getPlayerName,
   } = useSwissPairings(tournamentId)
 
   const { ref: roundExportRef, previewImage: previewRoundImage, downloadImage: downloadRoundImage } = useExportImage()
   const { ref: standingsExportRef, previewImage: previewStandingsImage, downloadImage: downloadStandingsImage } = useExportImage()
-  const currentSummary = roundSummaries.find(r => r.number === currentRound)
   const previousPendingCount = useRef(pendingResults.length)
   const [selectedRound, setSelectedRound] = useState<number | null>(null)
   const [firstSwapSlot, setFirstSwapSlot] = useState('')
@@ -63,7 +55,6 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
   const visibleRound = selectedRound && selectedRound <= currentRound ? selectedRound : currentRound
   const visibleRoundData = tournament?.rounds.find(round => round.number === visibleRound)
   const visibleMatches = visibleRoundData?.matches ?? []
-  const visibleSummary = roundSummaries.find(r => r.number === visibleRound)
   const isViewingCurrentRound = visibleRound === currentRound
   const editablePairings = currentMatches.length > 0
     && currentMatches.every(match => match.result === null)
@@ -151,43 +142,13 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
   }
 
   return (
-    <div className="round-workspace">
+    <div className="round-workspace round-workspace-simple">
       <div style={exportHiddenStyle}>
         <RoundExport ref={roundExportRef} tournamentId={tournamentId} type="round" />
         <RoundExport ref={standingsExportRef} tournamentId={tournamentId} type="standings" />
       </div>
 
       <section className="round-main-column">
-        <div className="round-command-bar">
-          <div>
-            <span>Ronda actual</span>
-            <strong><i className="ti ti-swords" aria-hidden="true" /> Ronda {currentRound}</strong>
-            <small>{visibleSummary?.matchesDone ?? currentSummary?.matchesDone ?? 0}/{visibleSummary?.matchesTotal ?? currentSummary?.matchesTotal ?? 0} resultados registrados</small>
-          </div>
-          <div className="round-command-status">
-            {isFinalRound && <em>ronda final</em>}
-            {!isViewingCurrentRound && <em>editando ronda {visibleRound}</em>}
-          </div>
-          <div className="round-command-action">
-            {allResultsIn ? (
-              shouldFinish ? (
-                <button onClick={() => finishTournament(tournamentId)} style={actionBtnStyle('var(--color-accent-secondary)', 'var(--color-border-success)')}>
-                  <i className="ti ti-trophy" aria-hidden="true" /> {phaseMode === 'swiss-top' ? `Publicar Top ${topCut}` : 'Finalizar torneo'}
-                </button>
-              ) : (
-                <button onClick={() => nextRound(tournamentId)} style={actionBtnStyle()} title="Genera la siguiente ronda cuando todos los resultados esten listos">
-                  <i className="ti ti-arrow-right" aria-hidden="true" /> Siguiente ronda
-                </button>
-              )
-            ) : (
-              <div className="round-command-waiting">
-                <i className="ti ti-clock" aria-hidden="true" />
-                Faltan {unfinishedCount} {unfinishedCount === 1 ? 'resultado' : 'resultados'}
-              </div>
-            )}
-          </div>
-        </div>
-
         {roundSummaries.length > 1 && (
           <div className="round-history-tabs">
             {roundSummaries.map(summary => (
@@ -203,6 +164,10 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
           </div>
         )}
 
+        {tournament && pendingResults.length > 0 && (
+          <PendingResultsPanel tournament={tournament} pendingResults={pendingResults} />
+        )}
+
         {!isViewingCurrentRound && (
           <div className="round-edit-warning">
             <i className="ti ti-alert-triangle" aria-hidden="true" />
@@ -210,21 +175,7 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
           </div>
         )}
 
-        <div className="round-match-grid">
-          {visibleMatches.map(match => (
-            <MatchCard key={match.id} match={match} tournamentId={tournamentId} roundNumber={visibleRound} />
-          ))}
-        </div>
-      </section>
-
-      <aside className="round-side-column">
-        {isViewingCurrentRound && <Timer tournamentId={tournamentId} />}
-
-        <section className="round-tools-card">
-          <header>
-            <strong><i className="ti ti-tool" aria-hidden="true" /> Herramientas</strong>
-            <span>Exportar y ajustes de ronda</span>
-          </header>
+        <section className="round-utility-strip">
           <div className="round-export-actions">
             <button
               onClick={() => void openRoundPreview()}
@@ -241,10 +192,9 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
               <i className="ti ti-trophy" aria-hidden="true" /> Clasificacion
             </button>
           </div>
-        </section>
 
-        {canAddLatePlayer && (
-          <section className="pairing-tools-panel late-player-panel">
+          {canAddLatePlayer && (
+            <div className="late-player-panel">
             <header>
               <strong>Jugador tardio</strong>
               <span>Ronda 1 limpio. Ronda 2 con 1 derrota.</span>
@@ -290,12 +240,15 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
               </button>
             )}
             {pairingToolMessage && <p>{pairingToolMessage}</p>}
-          </section>
-        )}
+            </div>
+          )}
+        </section>
 
-        {tournament && pendingResults.length > 0 && (
-          <PendingResultsPanel tournament={tournament} pendingResults={pendingResults} />
-        )}
+        <div className="round-match-grid">
+          {visibleMatches.map(match => (
+            <MatchCard key={match.id} match={match} tournamentId={tournamentId} roundNumber={visibleRound} />
+          ))}
+        </div>
 
         {!allResultsIn && unfinishedCount > 0 && (
           <div className="round-missing-results">
@@ -303,7 +256,7 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
             {' '}Faltan {unfinishedCount} {unfinishedCount === 1 ? 'resultado' : 'resultados'} por introducir
           </div>
         )}
-      </aside>
+      </section>
 
       <ExportPreviewModal
         image={exportPreview?.image ?? null}
@@ -613,28 +566,6 @@ async function notifyOrganizer(title: string, body: string) {
 
   if (Notification.permission === 'granted') {
     new Notification(title, { body })
-  }
-}
-
-function actionBtnStyle(
-  color = 'var(--color-text-primary)',
-  borderColor = 'var(--color-border-secondary)'
-): React.CSSProperties {
-  return {
-    width: '100%',
-    padding: '10px',
-    fontSize: '14px',
-    fontWeight: 500,
-    border: `0.5px solid ${borderColor}`,
-    borderRadius: 'var(--border-radius-md)',
-    background: 'var(--color-background-secondary)',
-    color,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
-    transition: 'all .15s',
   }
 }
 
