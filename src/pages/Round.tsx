@@ -8,6 +8,8 @@ import { Timer } from '../components/Timer'
 import { MatchCard } from '../components/MatchCard'
 import { RoundExport } from '../components/RoundExport'
 import { useExportImage } from '../hooks/useExportImage'
+import { ExportPreviewModal } from '../components/ExportPreviewModal'
+import type { ExportedImage } from '../hooks/useExportImage'
 import type { Match, MatchResult, PendingMatchResult, Tournament } from '../types/tournament'
 
 interface RoundProps {
@@ -44,8 +46,8 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
     getPlayerName,
   } = useSwissPairings(tournamentId)
 
-  const { ref: roundExportRef, exportImage: exportRoundImage } = useExportImage()
-  const { ref: standingsExportRef, exportImage: exportStandingsImage } = useExportImage()
+  const { ref: roundExportRef, previewImage: previewRoundImage, downloadImage: downloadRoundImage } = useExportImage()
+  const { ref: standingsExportRef, previewImage: previewStandingsImage, downloadImage: downloadStandingsImage } = useExportImage()
   const currentSummary = roundSummaries.find(r => r.number === currentRound)
   const previousPendingCount = useRef(pendingResults.length)
   const [selectedRound, setSelectedRound] = useState<number | null>(null)
@@ -53,6 +55,7 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
   const [secondSwapSlot, setSecondSwapSlot] = useState('')
   const [latePlayerName, setLatePlayerName] = useState('')
   const [pairingToolMessage, setPairingToolMessage] = useState('')
+  const [exportPreview, setExportPreview] = useState<{ title: string; image: ExportedImage; download: (image: ExportedImage) => void } | null>(null)
   const visibleRound = selectedRound && selectedRound <= currentRound ? selectedRound : currentRound
   const visibleRoundData = tournament?.rounds.find(round => round.number === visibleRound)
   const visibleMatches = visibleRoundData?.matches ?? []
@@ -82,6 +85,16 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
     swapCurrentRoundPlayers(tournamentId, first.matchId, first.playerId, second.matchId, second.playerId)
     setFirstSwapSlot('')
     setSecondSwapSlot('')
+  }
+
+  async function openRoundPreview() {
+    const image = await previewRoundImage(`ronda-${visibleRound}`)
+    if (image) setExportPreview({ title: `Emparejamientos ronda ${visibleRound}`, image, download: downloadRoundImage })
+  }
+
+  async function openStandingsPreview() {
+    const image = await previewStandingsImage(`clasificacion-ronda-${visibleRound}`)
+    if (image) setExportPreview({ title: `Clasificacion ronda ${visibleRound}`, image, download: downloadStandingsImage })
   }
 
   useEffect(() => {
@@ -140,18 +153,18 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
               {visibleSummary?.matchesDone ?? currentSummary?.matchesDone ?? 0}/{visibleSummary?.matchesTotal ?? currentSummary?.matchesTotal ?? 0} resultados
             </span>
             <button
-              onClick={() => exportRoundImage(`ronda-${visibleRound}`)}
+              onClick={() => void openRoundPreview()}
               style={exportButtonStyle}
-              title="Descarga una imagen con las mesas de esta ronda"
+              title="Previsualiza una imagen con las mesas de esta ronda"
             >
-              <i className="ti ti-download" aria-hidden="true" /> Descargar emparejamientos
+              <i className="ti ti-photo-scan" aria-hidden="true" /> Ver emparejamientos
             </button>
             <button
-              onClick={() => exportStandingsImage(`clasificacion-ronda-${visibleRound}`)}
+              onClick={() => void openStandingsPreview()}
               style={exportButtonStyle}
-              title="Descarga la clasificacion actual en imagen"
+              title="Previsualiza la clasificacion actual en imagen"
             >
-              <i className="ti ti-trophy" aria-hidden="true" /> Descargar clasificacion
+              <i className="ti ti-trophy" aria-hidden="true" /> Ver clasificacion
             </button>
           </div>
         </div>
@@ -251,6 +264,16 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
           </div>
         )}
       </aside>
+
+      <ExportPreviewModal
+        image={exportPreview?.image ?? null}
+        title={exportPreview?.title ?? 'Vista previa'}
+        onClose={() => setExportPreview(null)}
+        onDownload={image => {
+          exportPreview?.download(image)
+          setExportPreview(null)
+        }}
+      />
     </div>
   )
 }

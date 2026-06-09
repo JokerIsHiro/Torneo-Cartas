@@ -17,6 +17,7 @@ import {
   type CardSuggestion,
 } from '../services/cardSearch'
 import { useExportImage } from '../hooks/useExportImage'
+import type { ExportedImage } from '../hooks/useExportImage'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import type { DeckList, MagicFormat, Tournament, TournamentTCG } from '../types/tournament'
 import { deckRuleConfigs, getDefaultSection, validateDeck } from '../utils/deckRules'
@@ -25,6 +26,7 @@ import { getOnePieceSectionFromKind, resolveOnePieceCard } from '../services/opt
 import { DeckCardImage } from './DeckCardImage'
 import { displayImageUrl, fetchImageAsDataUrl, proxiedImageUrl } from '../utils/imageExport'
 import { ActionButton } from './ActionButton'
+import { ExportPreviewModal } from './ExportPreviewModal'
 import { extractOnePieceCardCode } from '../utils/onePieceCardCode'
 import { resolveMagicCardsFromBulkIndex } from '../services/scryfallBulkCache'
 
@@ -129,9 +131,10 @@ function DeckBuilderEditor({
   const [exportCards, setExportCards] = useState<DeckCard[]>([])
   const exportFormat: DeckExportFormat = 'social'
   const [saveStatus, setSaveStatus] = useState('')
+  const [exportPreview, setExportPreview] = useState<ExportedImage | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const deckHydrateRef = useRef(0)
-  const { ref: exportRef, exportImage } = useExportImage({ scale: 3 })
+  const { ref: exportRef, previewImage, downloadImage } = useExportImage({ scale: 3 })
   const { standings } = useSwissPairings(tournamentId)
   const magicFormat = tournament?.magicFormat ?? 'pauper'
   const currentTournament = tournament
@@ -555,8 +558,9 @@ function DeckBuilderEditor({
       setExportCards(hydratedCards)
     })
     await waitForExportPaint()
-    await exportImage(`deck-${selectedPlayer.name}-${selectedDeckOwnerName}-${deckArchetype || deckName}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
-    setSaveStatus(`Imagen descargada (${withImages}/${hydratedCards.length} cartas con foto).`)
+    const image = await previewImage(`deck-${selectedPlayer.name}-${selectedDeckOwnerName}-${deckArchetype || deckName}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+    if (image) setExportPreview(image)
+    setSaveStatus(`Preview lista (${withImages}/${hydratedCards.length} cartas con foto).`)
     window.setTimeout(() => setSaveStatus(''), 3500)
   }
 
@@ -568,8 +572,9 @@ function DeckBuilderEditor({
       setExportCards(hydratedCards)
     })
     await waitForExportPaint()
-    await exportImage(`deck-${deck.playerName}-${deck.archetype || deck.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
-    setSaveStatus('Imagen del mazo descargada.')
+    const image = await previewImage(`deck-${deck.playerName}-${deck.archetype || deck.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+    if (image) setExportPreview(image)
+    setSaveStatus('Preview del mazo lista.')
     window.setTimeout(() => setSaveStatus(''), 3500)
   }
 
@@ -614,9 +619,9 @@ function DeckBuilderEditor({
           onClick={exportCurrentDeckImage}
           disabled={!selectedPlayer || !selectedDeckOwnerName || !deckName.trim() || cards.length === 0}
           icon="ti-photo-down"
-          title="Genera una imagen PNG lista para Instagram o WhatsApp"
+          title="Previsualiza una imagen PNG lista para Instagram o WhatsApp"
         >
-          Descargar imagen PNG
+          Ver imagen PNG
         </ActionButton>
         <ActionButton
           className="deck-action-primary"
@@ -851,8 +856,8 @@ function DeckBuilderEditor({
               <button onClick={() => loadDeckList(deck)} title="Abre esta lista en el editor">
                 Abrir en editor
               </button>
-              <button onClick={() => void exportSavedDeckImage(deck)} title="Descarga una imagen PNG de este mazo">
-                Descargar PNG
+              <button onClick={() => void exportSavedDeckImage(deck)} title="Previsualiza una imagen PNG de este mazo">
+                Ver PNG
               </button>
             </article>
           ))}
@@ -886,6 +891,18 @@ function DeckBuilderEditor({
           magicFormat={magicFormat}
         />
       </div>
+
+      <ExportPreviewModal
+        image={exportPreview}
+        title="Decklist exportada"
+        onClose={() => setExportPreview(null)}
+        onDownload={image => {
+          downloadImage(image)
+          setExportPreview(null)
+          setSaveStatus('Imagen descargada.')
+          window.setTimeout(() => setSaveStatus(''), 3500)
+        }}
+      />
     </div>
   )
 }

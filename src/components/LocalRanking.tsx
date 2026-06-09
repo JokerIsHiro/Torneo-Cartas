@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { saveRemoteLocalRanking, subscribeToRemoteLocalRanking } from '../services/firebase'
 import { useExportImage } from '../hooks/useExportImage'
+import { ExportPreviewModal } from './ExportPreviewModal'
+import type { ExportedImage } from '../hooks/useExportImage'
 import type { LocalRankingSeason, LocalRankingState, LocalRankingTournamentRecord, Tournament, TournamentTCG } from '../types/tournament'
 
 type RankingFilter = TournamentTCG
@@ -45,7 +47,8 @@ export function LocalRanking() {
   const [gameFilter, setGameFilter] = useState<RankingFilter>('magic')
   const [remoteRanking, setRemoteRanking] = useState<LocalRankingState>(createDefaultRankingState())
   const [remoteLoaded, setRemoteLoaded] = useState(false)
-  const { ref: rankingExportRef, exportImage } = useExportImage({ scale: 2 })
+  const { ref: rankingExportRef, previewImage, downloadImage } = useExportImage({ scale: 2 })
+  const [exportPreview, setExportPreview] = useState<ExportedImage | null>(null)
   const rankingState = useMemo(() => normalizeRankingSeasons(remoteRanking), [remoteRanking])
   const activeSeason = getActiveSeason(rankingState)
   const finishedTournaments = useMemo(
@@ -104,6 +107,11 @@ export function LocalRanking() {
   const leaderboardLogo = getLeaderboardLogo(selectedGame)
   const exportedRanking = ranking.slice(0, 16)
 
+  async function openRankingPreview() {
+    const image = await previewImage(formatRankingExportName(activeSeason.name, selectedGame))
+    if (image) setExportPreview(image)
+  }
+
   return (
     <section>
       <div className="tournament-header">
@@ -143,8 +151,8 @@ export function LocalRanking() {
             <i className="ti ti-file-spreadsheet" aria-hidden="true" />
             CSV
           </button>
-          <button type="button" style={resetButtonStyle} disabled={!hasAvailableGames || ranking.length === 0} onClick={() => void exportImage(formatRankingExportName(activeSeason.name, selectedGame))}>
-            <i className="ti ti-photo-down" aria-hidden="true" />
+          <button type="button" style={resetButtonStyle} disabled={!hasAvailableGames || ranking.length === 0} onClick={() => void openRankingPreview()}>
+            <i className="ti ti-photo-scan" aria-hidden="true" />
             PNG
           </button>
           <button type="button" style={resetButtonStyle} onClick={() => resetRankingSeason(rankingState)}>
@@ -194,6 +202,16 @@ export function LocalRanking() {
           ))}
         </div>
       )}
+
+      <ExportPreviewModal
+        image={exportPreview}
+        title="Top de temporada"
+        onClose={() => setExportPreview(null)}
+        onDownload={image => {
+          downloadImage(image)
+          setExportPreview(null)
+        }}
+      />
     </section>
   )
 }

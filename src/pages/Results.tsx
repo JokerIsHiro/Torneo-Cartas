@@ -1,12 +1,14 @@
 ﻿// Pantalla final del torneo. Cambia aqui acciones post-torneo, exportacion final
 // y presentacion de resultados cerrados.
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useTournamentsStore } from "../store/tournamentsStore";
 import { Standings, RoundHistoryPanel } from "../components/Standings";
 import { RoundExport } from "../components/RoundExport";
+import { ExportPreviewModal } from "../components/ExportPreviewModal";
 import { useExportImage } from "../hooks/useExportImage";
 import { useSwissPairings } from "../hooks/useSwissPairings";
+import type { ExportedImage } from "../hooks/useExportImage";
 import type { DeckList } from "../types/tournament";
 
 // Pantalla final del torneo: permite exportar el standing final y eliminar el torneo.
@@ -28,8 +30,9 @@ export function Results({ tournamentId }: ResultsProps) {
     }),
   );
   const deleteTournament = useTournamentsStore((s) => s.deleteTournament);
-  const { ref: standingsExportRef, exportImage: exportStandingsImage } =
+  const { ref: standingsExportRef, previewImage: previewStandingsImage, downloadImage: downloadStandingsImage } =
     useExportImage();
+  const [exportPreview, setExportPreview] = useState<ExportedImage | null>(null);
   const { standings } = useSwissPairings(tournamentId);
   const winner = standings[0]?.player;
   const decklistsReceived = latestDeckCount(decklists);
@@ -50,6 +53,11 @@ export function Results({ tournamentId }: ResultsProps) {
     url.searchParams.set("torneo", tournamentId);
     if (playerId) url.searchParams.set("jugador", playerId);
     window.open(url.toString(), "_blank", "noopener,noreferrer");
+  }
+
+  async function openStandingsPreview() {
+    const image = await previewStandingsImage(`standing-final-${name || "torneo"}`);
+    if (image) setExportPreview(image);
   }
 
   return (
@@ -104,12 +112,8 @@ export function Results({ tournamentId }: ResultsProps) {
         </div>
 
         <div className="results-actions-panel">
-          <button
-            onClick={() =>
-              exportStandingsImage(`standing-final-${name || "torneo"}`)
-            }
-          >
-            <i className="ti ti-download" aria-hidden="true" /> Descargar
+          <button onClick={() => void openStandingsPreview()}>
+            <i className="ti ti-photo-scan" aria-hidden="true" /> Ver
             clasificacion
           </button>
           {tcg !== "chess" && (
@@ -174,6 +178,16 @@ export function Results({ tournamentId }: ResultsProps) {
       >
         <i className="ti ti-trash" aria-hidden="true" /> Eliminar torneo
       </button>
+
+      <ExportPreviewModal
+        image={exportPreview}
+        title="Standing final"
+        onClose={() => setExportPreview(null)}
+        onDownload={(image) => {
+          downloadStandingsImage(image);
+          setExportPreview(null);
+        }}
+      />
     </div>
   );
 }
