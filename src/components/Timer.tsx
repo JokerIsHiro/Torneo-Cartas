@@ -89,7 +89,7 @@ export function Timer({ tournamentId, variant = 'default' }: TimerProps) {
   })()
 
   return (
-    <div style={{
+    <div className={isCompact ? 'timer-panel timer-panel-compact' : 'timer-panel'} style={{
       background: 'var(--color-background-primary)',
       border: `0.5px solid ${isFinished || isDanger ? 'var(--color-border-danger)' : 'var(--color-border-tertiary)'}`,
       borderRadius: 'var(--border-radius-lg)',
@@ -97,9 +97,12 @@ export function Timer({ tournamentId, variant = 'default' }: TimerProps) {
       marginBottom: isCompact ? 0 : '1.5rem',
       transition: 'border-color .3s',
       display: isCompact ? 'grid' : undefined,
-      gridTemplateColumns: isCompact ? 'auto minmax(0, 1fr)' : undefined,
+      gridTemplateColumns: isCompact ? '74px minmax(0, 1fr)' : undefined,
       alignItems: isCompact ? 'center' : undefined,
+      justifyContent: isCompact ? 'start' : undefined,
       gap: isCompact ? '12px' : undefined,
+      width: isCompact ? 'min(100%, 318px)' : undefined,
+      minHeight: isCompact ? '86px' : undefined,
     }}>
 
       <div style={{ marginBottom: isCompact ? 0 : '1rem' }}>
@@ -109,37 +112,54 @@ export function Timer({ tournamentId, variant = 'default' }: TimerProps) {
           color={barColor}
           trackColor={isFinished || isDanger ? 'var(--color-danger-bg)' : isWarning ? 'var(--color-warning-bg)' : 'var(--color-success-bg)'}
           glowColor={isFinished || isDanger ? 'rgba(255, 107, 122, 0.16)' : isWarning ? 'rgba(255, 209, 102, 0.12)' : 'rgba(31, 122, 255, 0.14)'}
-          size={isCompact ? '82px' : 'min(72vw, 260px)'}
-          strokeWidth={isCompact ? 5.5 : 6.5}
-          label={statusLabel}
+          size={isCompact ? '70px' : 'min(72vw, 260px)'}
+          strokeWidth={isCompact ? 5 : 6.5}
+          label={isCompact ? undefined : statusLabel}
           labelColor={timeColor === 'var(--color-text-primary)' ? 'var(--color-text-secondary)' : timeColor}
           timeColor={timeColor}
-          timeSize={isCompact ? '18px' : 'clamp(36px, 11vw, 56px)'}
+          timeSize={isCompact ? '16px' : 'clamp(36px, 11vw, 56px)'}
         />
       </div>
 
       {/* Controles */}
-      <div style={{ display: 'flex', gap: '8px', justifyContent: isCompact ? 'flex-start' : 'center', flexWrap: 'wrap' }}>
+      <div style={{ display: 'grid', gap: isCompact ? '7px' : '10px', minWidth: 0 }}>
+        <div style={{ display: 'flex', gap: isCompact ? '6px' : '8px', justifyContent: isCompact ? 'flex-start' : 'center', flexWrap: 'wrap' }}>
+          {status === 'idle' && (
+            <ControlBtn onClick={() => startTimer(tournamentId)} icon="ti-player-play" label="Iniciar" compact={isCompact} />
+          )}
+          {status === 'running' && (
+            <ControlBtn onClick={() => pauseTimer(tournamentId)} icon="ti-player-pause" label="Pausar" compact={isCompact} />
+          )}
+          {status === 'paused' && (
+            <ControlBtn onClick={() => resumeTimer(tournamentId)} icon="ti-player-play" label="Continuar" compact={isCompact} />
+          )}
+          {isFinished && (
+            <ControlBtn onClick={() => {}} icon="ti-clock-off" label="Tiempo agotado" disabled color="var(--color-text-danger)" compact={isCompact} />
+          )}
 
-        {status === 'idle' && (
-          <ControlBtn onClick={() => startTimer(tournamentId)} icon="ti-player-play" label="Iniciar" />
+          <ControlBtn
+            onClick={() => resetTimer(tournamentId, duration)}
+            icon="ti-rotate"
+            label="Reiniciar"
+            disabled={status === 'idle'}
+            compact={isCompact}
+          />
+        </div>
+        {isCompact && (
+          <div style={{
+            minWidth: 0,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            color: timeColor === 'var(--color-text-primary)' ? 'var(--color-text-secondary)' : timeColor,
+            fontSize: '11px',
+            lineHeight: 1.2,
+            whiteSpace: 'nowrap',
+          }}>
+            <i className="ti ti-bell" aria-hidden="true" />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{statusLabel}</span>
+          </div>
         )}
-        {status === 'running' && (
-          <ControlBtn onClick={() => pauseTimer(tournamentId)} icon="ti-player-pause" label="Pausar" />
-        )}
-        {status === 'paused' && (
-          <ControlBtn onClick={() => resumeTimer(tournamentId)} icon="ti-player-play" label="Continuar" />
-        )}
-        {isFinished && (
-          <ControlBtn onClick={() => {}} icon="ti-clock-off" label="Tiempo agotado" disabled color="var(--color-text-danger)" />
-        )}
-
-        <ControlBtn
-          onClick={() => resetTimer(tournamentId, duration)}
-          icon="ti-rotate"
-          label="Reiniciar"
-          disabled={status === 'idle'}
-        />
       </div>
     </div>
   )
@@ -151,16 +171,18 @@ interface ControlBtnProps {
   label: string
   disabled?: boolean
   color?: string
+  compact?: boolean
 }
 
-function ControlBtn({ onClick, icon, label, disabled, color }: ControlBtnProps) {
+function ControlBtn({ onClick, icon, label, disabled, color, compact }: ControlBtnProps) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
       style={{
-        padding: '7px 14px',
-        fontSize: '13px',
+        padding: compact ? '6px 9px' : '7px 14px',
+        fontSize: compact ? '12px' : '13px',
+        minHeight: compact ? '32px' : undefined,
         border: '0.5px solid var(--color-border-secondary)',
         borderRadius: 'var(--border-radius-md)',
         background: 'var(--color-background-primary)',

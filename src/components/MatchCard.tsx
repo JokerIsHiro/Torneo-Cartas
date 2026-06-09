@@ -80,6 +80,22 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
             <span>Mesa</span>
             <strong>{match.tableNumber}</strong>
           </div>
+          {allowsDraw && !isBye && !readOnly && (
+            <button
+              className="result-button result-button-draw match-draw-header"
+              style={{
+                ...resultBtnStyle(match.result === 'draw', 'draw'),
+                flex: '0 1 auto',
+                minHeight: '30px',
+                padding: '5px 10px',
+                borderRadius: 'var(--border-radius-md)',
+              }}
+              onClick={() => handleResult('draw')}
+            >
+              <i className="ti ti-equal" aria-hidden="true" style={{ fontSize: '12px' }} />
+              <span>Empate</span>
+            </button>
+          )}
           <ResultBadge result={match.result} />
         </div>
 
@@ -154,17 +170,6 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
             >
               <i className="ti ti-trophy" aria-hidden="true" style={{ fontSize: '12px' }} />
               <span>Gana {getPlayerName(match.p1Id)}</span>
-            </button>
-          )}
-
-          {allowsDraw && (
-            <button
-              className="result-button result-button-draw"
-              style={{...resultBtnStyle(match.result === 'draw', 'draw'), borderRadius: 'var(--border-radius-md)'}}
-              onClick={() => handleResult('draw')}
-            >
-              <i className="ti ti-equal" aria-hidden="true" style={{ fontSize: '12px' }} />
-              <span>Empate</span>
             </button>
           )}
 

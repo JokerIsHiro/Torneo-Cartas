@@ -143,13 +143,13 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
   }
 
   return (
-    <div className="round-workspace round-workspace-simple">
+    <div className="round-workspace round-workspace-command">
       <div style={exportHiddenStyle}>
         <RoundExport ref={roundExportRef} tournamentId={tournamentId} type="round" />
         <RoundExport ref={standingsExportRef} tournamentId={tournamentId} type="standings" />
       </div>
 
-      <section className="round-main-column">
+      <div className="round-top-row">
         {roundSummaries.length > 1 && (
           <div className="round-history-tabs">
             {roundSummaries.map(summary => (
@@ -176,28 +176,22 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
           </div>
         )}
 
-        <section className="round-utility-strip">
-          {isViewingCurrentRound && <Timer tournamentId={tournamentId} variant="compact" />}
-
-          <div className="round-export-actions">
-            <button
-              onClick={() => void openRoundPreview()}
-              style={exportButtonStyle}
-              title="Previsualiza una imagen con las mesas de esta ronda"
-            >
-              <i className="ti ti-photo-scan" aria-hidden="true" /> Emparejamientos
-            </button>
-            <button
-              onClick={() => void openStandingsPreview()}
-              style={exportButtonStyle}
-              title="Previsualiza la clasificacion actual en imagen"
-            >
-              <i className="ti ti-trophy" aria-hidden="true" /> Clasificacion
-            </button>
+        <div className="round-section-header round-current-header">
+          <div>
+            <i className="ti ti-swords" aria-hidden="true" />
+            <div>
+              <small>Ronda actual</small>
+              <span>Ronda {visibleRound}</span>
+              <p>{visibleMatches.filter(match => match.result !== null).length}/{visibleMatches.length} resultados registrados</p>
+            </div>
           </div>
+          {!allResultsIn && unfinishedCount > 0 && (
+            <em>Faltan {unfinishedCount} {unfinishedCount === 1 ? 'resultado' : 'resultados'}</em>
+          )}
+        </div>
 
-          {canAddLatePlayer && (
-            <div className="late-player-panel">
+        {canAddLatePlayer && (
+          <div className="late-player-panel">
             <header>
               <strong>Jugador tardio</strong>
               <span>Ronda 1 limpio. Ronda 2 con 1 derrota.</span>
@@ -243,23 +237,43 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
               </button>
             )}
             {pairingToolMessage && <p>{pairingToolMessage}</p>}
-            </div>
-          )}
-        </section>
+          </div>
+        )}
 
+        <section className="round-tools-card">
+          <header>
+            <strong><i className="ti ti-tool" aria-hidden="true" /> Herramientas</strong>
+          </header>
+          <div className="round-export-actions">
+            <button
+              onClick={() => void openRoundPreview()}
+              style={exportButtonStyle}
+              title="Previsualiza una imagen con las mesas de esta ronda"
+            >
+              <i className="ti ti-photo-scan" aria-hidden="true" /> Emparejamientos
+            </button>
+            <button
+              onClick={() => void openStandingsPreview()}
+              style={exportButtonStyle}
+              title="Previsualiza la clasificacion actual en imagen"
+            >
+              <i className="ti ti-trophy" aria-hidden="true" /> Clasificacion
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <section className="round-main-column">
         <div className="round-match-grid">
           {visibleMatches.map(match => (
             <MatchCard key={match.id} match={match} tournamentId={tournamentId} roundNumber={visibleRound} />
           ))}
         </div>
-
-        {!allResultsIn && unfinishedCount > 0 && (
-          <div className="round-missing-results">
-            <i className="ti ti-clock" aria-hidden="true" />
-            {' '}Faltan {unfinishedCount} {unfinishedCount === 1 ? 'resultado' : 'resultados'} por introducir
-          </div>
-        )}
       </section>
+
+      <aside className="round-side-column">
+        {isViewingCurrentRound && <Timer tournamentId={tournamentId} />}
+      </aside>
 
       <ExportPreviewModal
         image={exportPreview?.image ?? null}
