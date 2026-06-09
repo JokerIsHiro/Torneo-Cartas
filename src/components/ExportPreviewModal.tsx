@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import type { ExportedImage } from '../hooks/useExportImage'
 
 interface ExportPreviewModalProps {
@@ -10,7 +11,7 @@ interface ExportPreviewModalProps {
 export function ExportPreviewModal({ image, title, onClose, onDownload }: ExportPreviewModalProps) {
   if (!image) return null
 
-  return (
+  return createPortal(
     <div className="export-preview-backdrop" role="presentation" onMouseDown={onClose}>
       <section
         className="export-preview-card"
@@ -41,6 +42,7 @@ export function ExportPreviewModal({ image, title, onClose, onDownload }: Export
           </button>
         </footer>
       </section>
-    </div>
+    </div>,
+    document.body
   )
 }

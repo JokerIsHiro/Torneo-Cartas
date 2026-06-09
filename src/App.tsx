@@ -15,6 +15,8 @@ import { useFirebaseSync } from './hooks/useFirebaseSync'
 import { useSwissPairings } from './hooks/useSwissPairings'
 import { signInAdmin, signOutAdmin } from './services/firebase'
 import { ADMIN_AUTH_EMAIL } from './config/appConfig'
+import { FeedbackProvider } from './components/Feedback'
+import { useFeedback } from './components/feedbackContext'
 
 // Componente raiz. Decide que vista se muestra segun la ruta de la URL
 // y conecta la sincronizacion entre pestanas.
@@ -64,6 +66,14 @@ function setRoute(route: AppRoute) {
 }
 
 export default function App() {
+  return (
+    <FeedbackProvider>
+      <AppContent />
+    </FeedbackProvider>
+  )
+}
+
+function AppContent() {
   const [route, setRouteState] = useState<AppRoute>(getRouteFromPath)
   const [activeTab, setActiveTab] = useState<AdminTab>('')
   const [innerTab, setInnerTab] = useState<Record<string, TournamentInnerTab>>({})
@@ -78,6 +88,7 @@ export default function App() {
   const createTournament = useTournamentsStore(s => s.createTournament)
   const deleteTournament = useTournamentsStore(s => s.deleteTournament)
   const initTimer = useTimerStore(s => s.initTimer)
+  const { confirm, notify } = useFeedback()
 
   useEffect(() => {
     if (window.location.hash.startsWith('#/')) {
@@ -134,15 +145,23 @@ export default function App() {
     setActiveTab(id)
     setRoute('admin')
     setAdminDrawerOpen(false)
+    notify({ tone: 'success', title: 'Torneo creado', message: 'Ya puedes configurarlo y anadir jugadores.' })
   }
 
-  function handleDeleteTournament(t: Tournament) {
-    if (confirm(`Eliminar "${t.name}"?`)) {
+  async function handleDeleteTournament(t: Tournament) {
+    const accepted = await confirm({
+      title: `Eliminar "${t.name}"`,
+      message: 'Esta accion borrara el torneo y sus datos asociados.',
+      confirmLabel: 'Eliminar torneo',
+      tone: 'danger',
+    })
+    if (accepted) {
       deleteTournament(t.id)
       if (selectedTab === t.id) {
         const next = tournaments.find(candidate => candidate.id !== t.id)
         setActiveTab(next?.id ?? '')
       }
+      notify({ tone: 'success', title: 'Torneo eliminado' })
     }
   }
 

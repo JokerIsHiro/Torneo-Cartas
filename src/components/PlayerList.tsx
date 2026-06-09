@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
 import { saveRemoteKnownPlayers, subscribeToRemoteKnownPlayers } from '../services/firebase'
+import { useFeedback } from './feedbackContext'
 import type { KnownPlayer, Player, TournamentTCG, TournamentTeamMode } from '../types/tournament'
 
 interface PlayerListProps {
@@ -21,6 +22,7 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
   const [teamModalOpen, setTeamModalOpen] = useState(false)
   const [knownPlayers, setKnownPlayers] = useState<KnownPlayer[]>([])
   const [selectedKnownIds, setSelectedKnownIds] = useState<string[]>([])
+  const { confirm, notify } = useFeedback()
 
   const players = tournament?.players ?? EMPTY_PLAYERS
   const activePlayers = players.filter(player => !player.droppedAt)
@@ -47,6 +49,18 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
     : teamMode === '3v3'
       ? 'Registra cada trio como un equipo, con capitan.'
       : 'Registra participantes individuales.'
+
+  async function handleDropPlayer(player: Player) {
+    const accepted = await confirm({
+      title: `Retirar a "${player.name}"`,
+      message: 'No aparecera en las siguientes rondas, pero conservara su historial.',
+      confirmLabel: 'Retirar jugador',
+      tone: 'danger',
+    })
+    if (!accepted) return
+    dropPlayer(tournamentId, player.id)
+    notify({ tone: 'success', title: 'Jugador retirado', message: player.name })
+  }
 
   useEffect(() => {
     let isMounted = true
@@ -275,11 +289,7 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
                   isEliminated={row.isEliminated}
                   isDropped={row.isDropped}
                   isTeamMode={isTeamMode}
-                  onDrop={() => {
-                    if (confirm(`Retirar a "${row.player.name}" de las siguientes rondas?`)) {
-                      dropPlayer(tournamentId, row.player.id)
-                    }
-                  }}
+                  onDrop={() => void handleDropPlayer(row.player)}
                   onRestore={() => restorePlayer(tournamentId, row.player.id)}
                 />
               ))}

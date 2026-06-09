@@ -6,6 +6,7 @@ import { useTournamentsStore } from "../store/tournamentsStore";
 import { Standings, RoundHistoryPanel } from "../components/Standings";
 import { RoundExport } from "../components/RoundExport";
 import { ExportPreviewModal } from "../components/ExportPreviewModal";
+import { useFeedback } from "../components/feedbackContext";
 import { useExportImage } from "../hooks/useExportImage";
 import { useSwissPairings } from "../hooks/useSwissPairings";
 import type { ExportedImage } from "../hooks/useExportImage";
@@ -30,6 +31,7 @@ export function Results({ tournamentId }: ResultsProps) {
     }),
   );
   const deleteTournament = useTournamentsStore((s) => s.deleteTournament);
+  const { confirm, notify } = useFeedback();
   const { ref: standingsExportRef, previewImage: previewStandingsImage, downloadImage: downloadStandingsImage } =
     useExportImage();
   const [exportPreview, setExportPreview] = useState<ExportedImage | null>(null);
@@ -58,6 +60,18 @@ export function Results({ tournamentId }: ResultsProps) {
   async function openStandingsPreview() {
     const image = await previewStandingsImage(`standing-final-${name || "torneo"}`);
     if (image) setExportPreview(image);
+  }
+
+  async function handleDeleteTournament() {
+    const accepted = await confirm({
+      title: `Eliminar "${name}"`,
+      message: "Esta accion borrara el torneo finalizado y sus datos asociados.",
+      confirmLabel: "Eliminar torneo",
+      tone: "danger",
+    });
+    if (!accepted) return;
+    deleteTournament(tournamentId);
+    notify({ tone: "success", title: "Torneo eliminado" });
   }
 
   return (
@@ -169,11 +183,7 @@ export function Results({ tournamentId }: ResultsProps) {
       )}
 
       <button
-        onClick={() => {
-          if (confirm("Â¿Seguro que quieres eliminar este torneo?")) {
-            deleteTournament(tournamentId);
-          }
-        }}
+        onClick={() => void handleDeleteTournament()}
         className="results-delete-button"
       >
         <i className="ti ti-trash" aria-hidden="true" /> Eliminar torneo

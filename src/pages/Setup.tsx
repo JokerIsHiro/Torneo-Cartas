@@ -14,7 +14,8 @@ import type {
   TournamentTiebreakerSystem,
 } from '../types/tournament'
 import { hasFirebaseConfig } from '../services/firebase'
-import { tiebreakerSystemOptions } from '../utils/tiebreakers'
+import { getDefaultTiebreakerSystem, tiebreakerSystemOptions } from '../utils/tiebreakers'
+import { useFeedback } from '../components/feedbackContext'
 
 interface SetupProps {
   tournamentId: string
@@ -59,6 +60,23 @@ const phaseModeOptions: Array<{ label: string; shortLabel: string; value: Tourna
   { label: 'Suizo + Top', shortLabel: 'Corte final', value: 'swiss-top', description: 'Tras el suizo se juega un Top configurable.' },
 ]
 
+const tournamentPresets: Array<{
+  label: string
+  description: string
+  tcg: TournamentTCG
+  magicFormat?: MagicFormat
+  timerDuration: number
+  manualRoundCount: number | null
+  teamMode: TournamentTeamMode
+  phaseMode: TournamentPhaseMode
+  topCut: number
+}> = [
+  { label: 'YuGiOh local', description: 'Suizo rapido sin empates.', tcg: 'yugioh', timerDuration: 45 * 60, manualRoundCount: null, teamMode: 'solo', phaseMode: 'swiss', topCut: 8 },
+  { label: 'Magic Commander', description: 'Pods y rondas casuales.', tcg: 'magic', magicFormat: 'commander', timerDuration: 75 * 60, manualRoundCount: 3, teamMode: 'solo', phaseMode: 'swiss', topCut: 8 },
+  { label: 'Magic Pauper', description: 'Suizo competitivo clasico.', tcg: 'magic', magicFormat: 'pauper', timerDuration: 50 * 60, manualRoundCount: null, teamMode: 'solo', phaseMode: 'swiss', topCut: 8 },
+  { label: 'Pokemon local', description: 'Evento sencillo de tienda.', tcg: 'pokemon', timerDuration: 50 * 60, manualRoundCount: null, teamMode: 'solo', phaseMode: 'swiss', topCut: 8 },
+]
+
 export function Setup({ tournamentId }: SetupProps) {
   const { name, tcg, magicFormat, teamMode, phaseMode, topCut, timerDuration, manualRoundCount, tiebreakerSystem, playerCount, exists } = useTournamentsStore(
     useShallow(s => {
@@ -89,6 +107,7 @@ export function Setup({ tournamentId }: SetupProps) {
   const setTiebreakerSystem = useTournamentsStore(s => s.setTiebreakerSystem)
   const startTournament = useTournamentsStore(s => s.startTournament)
   const { totalRounds } = useSwissPairings(tournamentId)
+  const { notify } = useFeedback()
   const recommendedRoundCount = getRecommendedRoundCount(playerCount)
   const [error, setError] = useState('')
   const [inviteStatus, setInviteStatus] = useState('')
@@ -109,6 +128,18 @@ export function Setup({ tournamentId }: SetupProps) {
       return
     }
     startTournament(tournamentId)
+  }
+
+  function applyPreset(preset: (typeof tournamentPresets)[number]) {
+    setTournamentTCG(tournamentId, preset.tcg)
+    if (preset.magicFormat) setTournamentMagicFormat(tournamentId, preset.magicFormat)
+    setTournamentTeamMode(tournamentId, preset.teamMode)
+    setTournamentPhaseMode(tournamentId, preset.phaseMode)
+    setTournamentTopCut(tournamentId, preset.topCut)
+    setTimerDuration(tournamentId, preset.timerDuration)
+    setManualRoundCount(tournamentId, preset.manualRoundCount)
+    setTiebreakerSystem(tournamentId, getDefaultTiebreakerSystem(preset.tcg))
+    notify({ tone: 'success', title: 'Plantilla aplicada', message: preset.label })
   }
 
   function getInvitationLink() {
@@ -173,6 +204,15 @@ export function Setup({ tournamentId }: SetupProps) {
               placeholder="Mi Torneo"
               style={inputStyle}
             />
+          </div>
+
+          <div className="setup-preset-row" aria-label="Plantillas rapidas">
+            {tournamentPresets.map(preset => (
+              <button key={preset.label} type="button" onClick={() => applyPreset(preset)} title={preset.description}>
+                <strong>{preset.label}</strong>
+                <span>{preset.description}</span>
+              </button>
+            ))}
           </div>
 
           <div className="setup-control-grid">

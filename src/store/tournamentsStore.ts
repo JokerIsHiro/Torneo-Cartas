@@ -17,8 +17,18 @@ import type {
   TournamentTeamMode,
   TournamentPhaseMode,
   TournamentTiebreakerSystem,
+  LocalRankingSeason,
+  LocalRankingState,
+  LocalRankingTournamentRecord,
 } from '../types/tournament'
-import { deleteRemoteTournament, getCurrentUserId, saveRemoteTournament } from '../services/firebase'
+import {
+  deleteRemoteTournament,
+  getCurrentUserId,
+  getRemoteLocalRanking,
+  saveRemoteLocalRanking,
+  saveRemoteTournament,
+  saveRemoteTournamentArchive,
+} from '../services/firebase'
 import { getDefaultTiebreakerSystem } from '../utils/tiebreakers'
 
 // Cache en memoria de torneos. Firestore es la fuente de verdad; Zustand solo
@@ -358,6 +368,82 @@ function createEmptyTournament(): Tournament {
   }
 }
 
+function tournamentToRankingRecord(tournament: Tournament): LocalRankingTournamentRecord {
+  return {
+    id: tournament.id,
+    name: tournament.name,
+    tcg: tournament.tcg,
+    players: tournament.players,
+    updatedAt: tournament.updatedAt,
+  }
+}
+
+function normalizeRankingState(state: LocalRankingState | null): LocalRankingState {
+  const now = Date.now()
+  const defaultSeason: LocalRankingSeason = {
+    id: 'default',
+    name: 'General',
+    resetAt: state?.resetAt ?? 0,
+    records: state?.records ?? [],
+    createdAt: state?.updatedAt ?? now,
+    updatedAt: state?.updatedAt ?? now,
+  }
+  const seasons = state?.seasons?.length ? state.seasons : [defaultSeason]
+  const activeSeasonId = state?.activeSeasonId && seasons.some(season => season.id === state.activeSeasonId)
+    ? state.activeSeasonId
+    : seasons[0].id
+
+  return {
+    resetAt: state?.resetAt ?? seasons[0].resetAt,
+    records: state?.records ?? seasons[0].records,
+    activeSeasonId,
+    seasons,
+    updatedAt: state?.updatedAt ?? now,
+  }
+}
+
+function upsertRankingRecord(state: LocalRankingState, tournament: Tournament): LocalRankingState {
+  const now = Date.now()
+  const normalized = normalizeRankingState(state)
+  const seasons = normalized.seasons!.map(season => {
+    if (season.id !== normalized.activeSeasonId) return season
+    const byId = new Map(season.records.map(record => [record.id, record]))
+    const record = tournamentToRankingRecord(tournament)
+    byId.set(record.id, record)
+    return {
+      ...season,
+      records: [...byId.values()].sort((a, b) => a.updatedAt - b.updatedAt),
+      updatedAt: now,
+    }
+  })
+  const activeSeason = seasons.find(season => season.id === normalized.activeSeasonId) ?? seasons[0]
+
+  return {
+    resetAt: activeSeason.resetAt,
+    records: activeSeason.records,
+    activeSeasonId: activeSeason.id,
+    seasons,
+    updatedAt: now,
+  }
+}
+
+async function persistRankingSnapshot(tournament: Tournament) {
+  try {
+    const currentRanking = await getRemoteLocalRanking()
+    await saveRemoteLocalRanking(upsertRankingRecord(normalizeRankingState(currentRanking), tournament))
+  } catch (error) {
+    console.error('No se ha podido guardar el ranking del torneo finalizado', error)
+  }
+}
+
+async function archiveTournament(tournament: Tournament, reason: 'finished' | 'deleted') {
+  try {
+    await saveRemoteTournamentArchive(tournament, reason)
+  } catch (error) {
+    console.error('No se ha podido archivar el torneo', error)
+  }
+}
+
 function snapshotData(tournament: Tournament): TournamentSnapshotData {
   const data: Partial<Tournament> = { ...tournament }
   delete data.snapshots
@@ -531,6 +617,11 @@ export const useTournamentsStore = create<TournamentsStore>()(
       },
 
       deleteTournament: (id) => {
+        const tournament = get().tournaments.find(t => t.id === id)
+        if (tournament) {
+          void archiveTournament(tournament, 'deleted')
+          if (tournament.status === 'finished') void persistRankingSnapshot(tournament)
+        }
         commitTournamentDelete(set, id)
       },
 
@@ -1092,12 +1183,16 @@ export const useTournamentsStore = create<TournamentsStore>()(
           r.number === tournament.currentRound ? { ...r, endedAt: Date.now() } : r
         )
 
-        commitTournament(set, touchTournament({
+        const finishedTournament = touchTournament({
           ...withSnapshot(tournament, 'finish-tournament', 'Antes de finalizar torneo'),
           rounds: closedRounds,
           pendingResults: [],
           status: 'finished',
-        }))
+        })
+
+        commitTournament(set, finishedTournament)
+        void persistRankingSnapshot(finishedTournament)
+        void archiveTournament(finishedTournament, 'finished')
       },
     })
 )

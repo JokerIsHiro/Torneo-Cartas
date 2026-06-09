@@ -15,6 +15,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getFirestore,
   onSnapshot,
   setDoc,
@@ -210,6 +211,18 @@ export async function deleteRemoteTournament(tournamentId: string) {
   await deleteDoc(doc(firestore, 'timers', tournamentId))
 }
 
+export async function saveRemoteTournamentArchive(tournament: Tournament, reason: 'finished' | 'deleted') {
+  const firestore = await getDb()
+  if (!firestore) return
+  const user = await ensureFirebaseAuth()
+  await setDoc(doc(firestore, 'tournamentArchives', tournament.id), {
+    ...tournament,
+    archivedAt: Date.now(),
+    archiveReason: reason,
+    organizerUid: tournament.organizerUid ?? user?.uid,
+  })
+}
+
 export async function saveRemoteTimer(tournamentId: string, timer: SyncedTimerState) {
   const firestore = await getDb()
   if (!firestore) return
@@ -222,6 +235,14 @@ export async function saveRemoteLocalRanking(ranking: LocalRankingState) {
   if (!firestore) return
   await ensureFirebaseAuth()
   await setDoc(doc(firestore, 'ranking', 'local'), ranking)
+}
+
+export async function getRemoteLocalRanking() {
+  const firestore = await getDb()
+  if (!firestore) return null
+  await ensureFirebaseAuth()
+  const snapshot = await getDoc(doc(firestore, 'ranking', 'local'))
+  return normalizeLocalRanking(snapshot.exists() ? snapshot.data() : {})
 }
 
 export async function saveRemoteKnownPlayers(knownPlayers: KnownPlayersState) {

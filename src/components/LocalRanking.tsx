@@ -5,6 +5,7 @@ import { useTournamentsStore } from '../store/tournamentsStore'
 import { saveRemoteLocalRanking, subscribeToRemoteLocalRanking } from '../services/firebase'
 import { useExportImage } from '../hooks/useExportImage'
 import { ExportPreviewModal } from './ExportPreviewModal'
+import { useFeedback } from './feedbackContext'
 import type { ExportedImage } from '../hooks/useExportImage'
 import type { LocalRankingSeason, LocalRankingState, LocalRankingTournamentRecord, Tournament, TournamentTCG } from '../types/tournament'
 
@@ -49,6 +50,7 @@ export function LocalRanking() {
   const [remoteLoaded, setRemoteLoaded] = useState(false)
   const { ref: rankingExportRef, previewImage, downloadImage } = useExportImage({ scale: 2 })
   const [exportPreview, setExportPreview] = useState<ExportedImage | null>(null)
+  const { confirm, notify } = useFeedback()
   const rankingState = useMemo(() => normalizeRankingSeasons(remoteRanking), [remoteRanking])
   const activeSeason = getActiveSeason(rankingState)
   const finishedTournaments = useMemo(
@@ -112,6 +114,18 @@ export function LocalRanking() {
     if (image) setExportPreview(image)
   }
 
+  async function handleResetRankingSeason() {
+    const accepted = await confirm({
+      title: `Resetear "${activeSeason.name}"`,
+      message: 'Los torneos ya finalizados dejaran de contar para esta temporada desde ahora.',
+      confirmLabel: 'Resetear temporada',
+      tone: 'danger',
+    })
+    if (!accepted) return
+    resetRankingSeason(rankingState)
+    notify({ tone: 'success', title: 'Temporada reseteada' })
+  }
+
   return (
     <section>
       <div className="tournament-header">
@@ -155,7 +169,7 @@ export function LocalRanking() {
             <i className="ti ti-photo-scan" aria-hidden="true" />
             PNG
           </button>
-          <button type="button" style={resetButtonStyle} onClick={() => resetRankingSeason(rankingState)}>
+          <button type="button" style={resetButtonStyle} onClick={() => void handleResetRankingSeason()}>
             <i className="ti ti-refresh" aria-hidden="true" />
             Resetear temporada
           </button>
@@ -346,8 +360,6 @@ function createRankingSeason(state: LocalRankingState) {
 }
 
 function resetRankingSeason(state: LocalRankingState) {
-  const activeSeason = getActiveSeason(state)
-  if (!confirm(`Resetear la temporada "${activeSeason.name}"? Los torneos ya finalizados dejaran de contar para esta temporada.`)) return
   const now = Date.now()
   void saveRemoteLocalRanking(updateActiveSeason(state, {
     resetAt: now,

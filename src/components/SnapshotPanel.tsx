@@ -2,6 +2,7 @@
 // puntos de recuperacion antes de acciones peligrosas.
 import { useMemo, useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
+import { useFeedback } from './feedbackContext'
 import type { Match, Player, TournamentSnapshot } from '../types/tournament'
 
 interface SnapshotPanelProps {
@@ -13,6 +14,7 @@ const EMPTY_SNAPSHOTS: TournamentSnapshot[] = []
 export function SnapshotPanel({ tournamentId }: SnapshotPanelProps) {
   const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
   const restoreSnapshot = useTournamentsStore(s => s.restoreSnapshot)
+  const { confirm, notify } = useFeedback()
   const [isOpen, setIsOpen] = useState(false)
   const [selectedSnapshotId, setSelectedSnapshotId] = useState('')
   const snapshots = tournament?.snapshots ?? EMPTY_SNAPSHOTS
@@ -22,6 +24,20 @@ export function SnapshotPanel({ tournamentId }: SnapshotPanelProps) {
   )
 
   if (!tournament || snapshots.length === 0) return null
+
+  async function handleRestoreSelected() {
+    if (!selectedSnapshot) return
+    const accepted = await confirm({
+      title: `Restaurar "${selectedSnapshot.label}"`,
+      message: 'Se guardara una copia del estado actual antes de volver atras.',
+      confirmLabel: 'Restaurar estado',
+      tone: 'danger',
+    })
+    if (!accepted) return
+    restoreSnapshot(tournamentId, selectedSnapshot.id)
+    setIsOpen(false)
+    notify({ tone: 'success', title: 'Estado restaurado' })
+  }
 
   return (
     <>
@@ -71,12 +87,7 @@ export function SnapshotPanel({ tournamentId }: SnapshotPanelProps) {
               </button>
               <button
                 className="danger"
-                onClick={() => {
-                  if (confirm(`Restaurar "${selectedSnapshot.label}"? Se guardara una copia del estado actual antes de volver atras.`)) {
-                    restoreSnapshot(tournamentId, selectedSnapshot.id)
-                    setIsOpen(false)
-                  }
-                }}
+                onClick={() => void handleRestoreSelected()}
               >
                 <i className="ti ti-restore" aria-hidden="true" />
                 Restaurar este estado
