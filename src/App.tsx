@@ -24,6 +24,24 @@ type AppRoute = 'admin' | 'proyeccion' | 'temporizadores' | 'inscripcion' | 'jug
 type AdminTab = string
 type TournamentInnerTab = 'ronda' | 'organizar' | 'clasificacion'
 
+interface ManagedScreen {
+  availLeft: number
+  availTop: number
+  availWidth: number
+  availHeight: number
+  isPrimary?: boolean
+}
+
+interface WindowManagementDetails {
+  screens: ManagedScreen[]
+}
+
+declare global {
+  interface Window {
+    getScreenDetails?: () => Promise<WindowManagementDetails>
+  }
+}
+
 const ADMIN_SESSION_KEY = 'torneo-admin-session'
 const ADMIN_SESSION_VALUE = 'firebase-admin-v1'
 const MIN_ADMIN_CODE_LENGTH = 8
@@ -77,6 +95,42 @@ function setRoute(route: AppRoute) {
     window.history.pushState(null, '', targetPath)
   }
   window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
+function openRegularWindow(url: URL) {
+  window.open(url.toString(), '_blank', 'noopener,noreferrer')
+}
+
+async function openOnSecondMonitor(url: URL) {
+  const openedWindow = window.open('about:blank', '_blank', 'popup=yes')
+  if (!openedWindow) {
+    openRegularWindow(url)
+    return
+  }
+
+  try {
+    openedWindow.opener = null
+
+    if (!window.getScreenDetails) {
+      openedWindow.location.href = url.toString()
+      return
+    }
+
+    const details = await window.getScreenDetails()
+    const secondaryScreen = details.screens.find(screen => !screen.isPrimary) ?? details.screens[1]
+
+    if (!secondaryScreen) {
+      openedWindow.location.href = url.toString()
+      return
+    }
+
+    openedWindow.moveTo(secondaryScreen.availLeft, secondaryScreen.availTop)
+    openedWindow.resizeTo(secondaryScreen.availWidth, secondaryScreen.availHeight)
+    openedWindow.location.href = url.toString()
+    openedWindow.focus()
+  } catch {
+    openedWindow.location.href = url.toString()
+  }
 }
 
 export default function App() {
@@ -182,7 +236,11 @@ function AppContent() {
   function openPublicTab(target: 'proyeccion' | 'temporizadores' | 'organizar') {
     const url = new URL(routePaths[target], window.location.origin)
     if (target === 'proyeccion' && selectedTab) url.searchParams.set('torneo', selectedTab)
-    window.open(url.toString(), '_blank', 'noopener,noreferrer')
+    if (target === 'proyeccion' || target === 'temporizadores') {
+      void openOnSecondMonitor(url)
+      return
+    }
+    openRegularWindow(url)
   }
 
   async function handleAdminLogin(code: string) {
@@ -777,7 +835,11 @@ function TournamentDayBar({
     if (target === 'proyeccion' || target === 'organizar') {
       url.searchParams.set('torneo', tournament.id)
     }
-    window.open(url.toString(), '_blank', 'noopener,noreferrer')
+    if (target === 'proyeccion' || target === 'temporizadores') {
+      void openOnSecondMonitor(url)
+      return
+    }
+    openRegularWindow(url)
   }
 
   function handleRoundAction() {
