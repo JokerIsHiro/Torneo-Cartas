@@ -197,56 +197,59 @@ export function PlayerList({ tournamentId }: PlayerListProps) {
 
       {isSetup && (
         <div className="setup-card known-player-card" style={cardStyle}>
-          <div style={listHeaderStyle}>
+          <div className="known-player-card-header" style={listHeaderStyle}>
             <span style={cardTitleStyle}>
               <i className="ti ti-address-book" aria-hidden="true" /> Habituales de este juego
             </span>
-            <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
-              {gameKnownPlayers.length} guardados
-            </span>
+            <div className="known-player-card-actions">
+              <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                {gameKnownPlayers.length} guardados
+              </span>
+              {gameKnownPlayers.length > 0 && (
+                <button
+                  type="button"
+                  className="known-player-add-selected"
+                  onClick={addSelectedKnownPlayers}
+                  disabled={selectedKnownIds.length === 0}
+                  title="Anade al torneo los jugadores habituales seleccionados"
+                >
+                  <i className="ti ti-user-check" aria-hidden="true" />
+                  Anadir seleccionados
+                </button>
+              )}
+            </div>
           </div>
 
           {gameKnownPlayers.length === 0 ? (
             <div className="known-player-empty">Guarda jugadores desde la lista de inscritos para anadirlos rapido en proximos torneos.</div>
           ) : (
-            <>
-              <div className="known-player-list">
-                {gameKnownPlayers.map(player => {
-                  const isRegistered = registeredNames.has(player.name.toLowerCase())
-                  return (
-                  <label key={player.id} className="known-player-pill">
-                    <input
-                      type="checkbox"
-                      checked={selectedKnownIds.includes(player.id)}
-                      disabled={isRegistered}
-                      onChange={() => toggleKnownPlayer(player.id)}
-                    />
-                    <span>{player.name}</span>
-                    {isRegistered && <em>inscrito</em>}
-                    <button
-                      type="button"
-                      onClick={event => {
-                        event.stopPropagation()
-                        forgetKnownPlayer(player.id)
-                      }}
-                      title={`Quitar ${player.name} de habituales`}
-                    >
-                      <i className="ti ti-x" aria-hidden="true" />
-                    </button>
-                  </label>
-                  )
-                })}
-              </div>
-              <button
-                onClick={addSelectedKnownPlayers}
-                disabled={selectedKnownIds.length === 0}
-                style={{ ...btnStyle, marginTop: 8 }}
-                title="Anade al torneo los jugadores habituales seleccionados"
-              >
-                <i className="ti ti-user-check" aria-hidden="true" />
-                Anadir seleccionados
-              </button>
-            </>
+            <div className="known-player-list">
+              {gameKnownPlayers.map(player => {
+                const isRegistered = registeredNames.has(player.name.toLowerCase())
+                return (
+                <label key={player.id} className="known-player-pill">
+                  <input
+                    type="checkbox"
+                    checked={selectedKnownIds.includes(player.id)}
+                    disabled={isRegistered}
+                    onChange={() => toggleKnownPlayer(player.id)}
+                  />
+                  <span>{player.name}</span>
+                  {isRegistered && <em>inscrito</em>}
+                  <button
+                    type="button"
+                    onClick={event => {
+                      event.stopPropagation()
+                      forgetKnownPlayer(player.id)
+                    }}
+                    title={`Quitar ${player.name} de habituales`}
+                  >
+                    <i className="ti ti-x" aria-hidden="true" />
+                  </button>
+                </label>
+                )
+              })}
+            </div>
           )}
         </div>
       )}
