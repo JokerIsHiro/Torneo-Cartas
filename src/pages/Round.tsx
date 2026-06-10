@@ -37,8 +37,6 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
 
   const {
     currentMatches,
-    allResultsIn,
-    unfinishedCount,
     roundSummaries,
     getPlayerName,
   } = useSwissPairings(tournamentId)
@@ -63,6 +61,7 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
   const canAddLatePlayer = currentMatches.length > 0
     && currentRound <= 2
     && currentMatches.every(match => match.result === null || match.result === 'bye')
+  const hasTopNotices = roundSummaries.length > 1 || pendingResults.length > 0 || !isViewingCurrentRound
   const playerSlots = useMemo(() => {
     // Lista plana de jugadores movibles: cada item sabe en que mesa y slot esta.
     return currentMatches
@@ -149,47 +148,45 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
         <RoundExport ref={standingsExportRef} tournamentId={tournamentId} type="standings" />
       </div>
 
-      <div className="round-top-row">
-        {roundSummaries.length > 1 && (
-          <div className="round-history-tabs">
-            {roundSummaries.map(summary => (
-              <button
-                key={summary.number}
-                onClick={() => setSelectedRound(summary.number === currentRound ? null : summary.number)}
-                className={visibleRound === summary.number ? 'active' : ''}
-              >
-                <i className={summary.isComplete ? 'ti ti-circle-check' : 'ti ti-circle'} aria-hidden="true" />
-                Ronda {summary.number}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {tournament && pendingResults.length > 0 && (
-          <PendingResultsPanel tournament={tournament} pendingResults={pendingResults} />
-        )}
-
-        {!isViewingCurrentRound && (
-          <div className="round-edit-warning">
-            <i className="ti ti-alert-triangle" aria-hidden="true" />
-            Corrige solo lo necesario: la clasificacion se recalcula, pero las rondas posteriores ya creadas no se regeneran automaticamente.
-          </div>
-        )}
-
-        <div className="round-section-header round-current-header">
-          <div>
-            <i className="ti ti-swords" aria-hidden="true" />
-            <div>
-              <small>Ronda actual</small>
-              <span>Ronda {visibleRound}</span>
-              <p>{visibleMatches.filter(match => match.result !== null).length}/{visibleMatches.length} resultados registrados</p>
+      {hasTopNotices && (
+        <div className="round-top-row">
+          {roundSummaries.length > 1 && (
+            <div className="round-history-tabs">
+              {roundSummaries.map(summary => (
+                <button
+                  key={summary.number}
+                  onClick={() => setSelectedRound(summary.number === currentRound ? null : summary.number)}
+                  className={visibleRound === summary.number ? 'active' : ''}
+                >
+                  <i className={summary.isComplete ? 'ti ti-circle-check' : 'ti ti-circle'} aria-hidden="true" />
+                  Ronda {summary.number}
+                </button>
+              ))}
             </div>
-          </div>
-          {!allResultsIn && unfinishedCount > 0 && (
-            <em>Faltan {unfinishedCount} {unfinishedCount === 1 ? 'resultado' : 'resultados'}</em>
+          )}
+
+          {tournament && pendingResults.length > 0 && (
+            <PendingResultsPanel tournament={tournament} pendingResults={pendingResults} />
+          )}
+
+          {!isViewingCurrentRound && (
+            <div className="round-edit-warning">
+              <i className="ti ti-alert-triangle" aria-hidden="true" />
+              Corrige solo lo necesario: la clasificacion se recalcula, pero las rondas posteriores ya creadas no se regeneran automaticamente.
+            </div>
           )}
         </div>
+      )}
 
+      <section className="round-main-column">
+        <div className={`round-match-grid ${visibleMatches.length > 6 ? 'is-scrollable' : ''}`}>
+          {visibleMatches.map(match => (
+            <MatchCard key={match.id} match={match} tournamentId={tournamentId} roundNumber={visibleRound} />
+          ))}
+        </div>
+      </section>
+
+      <aside className="round-side-column">
         {canAddLatePlayer && (
           <div className="late-player-panel">
             <header>
@@ -261,17 +258,6 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
             </button>
           </div>
         </section>
-      </div>
-
-      <section className="round-main-column">
-        <div className="round-match-grid">
-          {visibleMatches.map(match => (
-            <MatchCard key={match.id} match={match} tournamentId={tournamentId} roundNumber={visibleRound} />
-          ))}
-        </div>
-      </section>
-
-      <aside className="round-side-column">
         {isViewingCurrentRound && <Timer tournamentId={tournamentId} />}
       </aside>
 
