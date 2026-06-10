@@ -3276,6 +3276,16 @@ body:has(.global-organizer-page) {
   overflow: visible;
 }
 
+.pairing-organizer-page.pairing-organizer-page-embedded {
+  grid-template-rows: auto auto auto auto;
+  height: auto;
+  overflow: visible;
+}
+
+.pairing-organizer-page.pairing-organizer-page-embedded .pairing-table-grid.is-scrollable {
+  max-height: calc((var(--pairing-table-row-height) * 3) + 24px);
+}
+
 .pairing-organizer-page {
   display: grid;
   grid-template-rows: auto auto auto minmax(0, 1fr);

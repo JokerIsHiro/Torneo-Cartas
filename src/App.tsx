@@ -39,6 +39,10 @@ const gameLabels: Record<TournamentTCG, string> = {
   chess: 'Ajedrez',
 }
 
+function getGameLabel(game: TournamentTCG | string) {
+  return gameLabels[game as TournamentTCG] ?? game
+}
+
 const ProjectorView = lazy(() => import('./components/ProjectorView').then(module => ({ default: module.ProjectorView })))
 const TimersView = lazy(() => import('./components/TimersView').then(module => ({ default: module.TimersView })))
 const RegistrationView = lazy(() => import('./components/RegistrationView').then(module => ({ default: module.RegistrationView })))
@@ -206,8 +210,10 @@ function AppContent() {
   const selectedTab = activeTab || tournaments[0]?.id || ''
   const activeTournament = tournaments.find(t => t.id === selectedTab)
   const rankingSelected = selectedTab === RANKING_TAB_ID
-  const mobileBlocked = isMobileDevice && route !== 'inscripcion' && route !== 'jugador' && route !== 'organizar'
-  const adminLocked = (route === 'admin' || route === 'deckbuilder' || route === 'organizar') && !adminUnlocked
+  const pathRoute = getRouteFromPath()
+  const effectiveRoute = route === pathRoute ? route : pathRoute
+  const mobileBlocked = isMobileDevice && effectiveRoute !== 'inscripcion' && effectiveRoute !== 'jugador' && effectiveRoute !== 'organizar'
+  const adminLocked = (effectiveRoute === 'admin' || effectiveRoute === 'deckbuilder' || effectiveRoute === 'organizar') && !adminUnlocked
 
   return (
     <div className="app-shell">
@@ -219,7 +225,7 @@ function AppContent() {
           />
         </div>
 
-        {route === 'admin' && !adminLocked && (
+        {effectiveRoute === 'admin' && !adminLocked && (
           <>
             <TournamentTopTabs
               tournaments={tournaments}
@@ -240,15 +246,15 @@ function AppContent() {
           </>
         )}
 
-        {route !== 'admin' && route !== 'inscripcion' && route !== 'jugador' && route !== 'organizar' && (
+        {effectiveRoute !== 'admin' && effectiveRoute !== 'inscripcion' && effectiveRoute !== 'jugador' && effectiveRoute !== 'organizar' && (
           <div className="public-nav">
-            {route === 'proyeccion' && (
+            {effectiveRoute === 'proyeccion' && (
               <button onClick={() => setRoute('temporizadores')} title="Ver relojes de ronda">
                 <i className="ti ti-clock" aria-hidden="true" />
                 Ir a temporizadores
               </button>
             )}
-            {route === 'temporizadores' && (
+            {effectiveRoute === 'temporizadores' && (
               <button onClick={() => setRoute('proyeccion')} title="Ver mesas y rivales">
                 <i className="ti ti-swords" aria-hidden="true" />
                 Ir a emparejamientos
@@ -258,7 +264,7 @@ function AppContent() {
         )}
       </div>}
 
-      {route === 'admin' && !adminLocked && (
+      {effectiveRoute === 'admin' && !adminLocked && (
         <AdminDrawer
           open={adminDrawerOpen}
           tournaments={tournaments}
@@ -268,25 +274,29 @@ function AppContent() {
           onClose={() => setAdminDrawerOpen(false)}
           onSelectRanking={() => selectAdminTab(RANKING_TAB_ID)}
           onCreateTournament={handleCreateTournament}
+          onOpenOrganizer={() => {
+            setRoute('organizar')
+            setAdminDrawerOpen(false)
+          }}
           onOpenPublicTab={openPublicTab}
           onLogout={handleAdminLogout}
         />
       )}
 
-      <main className={route !== 'admin' ? 'main-content projector-content' : 'main-content'}>
+      <main className={effectiveRoute !== 'admin' ? 'main-content projector-content' : 'main-content'}>
         {mobileBlocked && <MobilePlayerOnly />}
         {!mobileBlocked && adminLocked && <AdminLogin onSubmit={handleAdminLogin} configured={Boolean(ADMIN_AUTH_EMAIL)} />}
-        {!mobileBlocked && route === 'proyeccion' && <LazyView><ProjectorView /></LazyView>}
-        {!mobileBlocked && route === 'temporizadores' && <LazyView><TimersView /></LazyView>}
-        {route === 'inscripcion' && <LazyView><RegistrationView /></LazyView>}
-        {route === 'jugador' && <LazyView><RegistrationView /></LazyView>}
-        {!mobileBlocked && route === 'organizar' && !adminLocked && <OrganizerRoute />}
-        {!mobileBlocked && route === 'qr' && <QrView />}
-        {!mobileBlocked && route === 'deckbuilder' && !adminLocked && <LazyView><DeckBuilderView /></LazyView>}
+        {!mobileBlocked && effectiveRoute === 'proyeccion' && <LazyView><ProjectorView /></LazyView>}
+        {!mobileBlocked && effectiveRoute === 'temporizadores' && <LazyView><TimersView /></LazyView>}
+        {effectiveRoute === 'inscripcion' && <LazyView><RegistrationView /></LazyView>}
+        {effectiveRoute === 'jugador' && <LazyView><RegistrationView /></LazyView>}
+        {!mobileBlocked && effectiveRoute === 'organizar' && !adminLocked && <OrganizerRoute />}
+        {!mobileBlocked && effectiveRoute === 'qr' && <QrView />}
+        {!mobileBlocked && effectiveRoute === 'deckbuilder' && !adminLocked && <LazyView><DeckBuilderView /></LazyView>}
 
-        {!mobileBlocked && route === 'admin' && !adminLocked && rankingSelected && <LazyView><LocalRanking /></LazyView>}
+        {!mobileBlocked && effectiveRoute === 'admin' && !adminLocked && rankingSelected && <LazyView><LocalRanking /></LazyView>}
 
-        {!mobileBlocked && route === 'admin' && !adminLocked && activeTournament && !rankingSelected && (
+        {!mobileBlocked && effectiveRoute === 'admin' && !adminLocked && activeTournament && !rankingSelected && (
           <TournamentView
             tournament={activeTournament}
             innerTab={getInnerTab(activeTournament.id)}
@@ -294,14 +304,14 @@ function AppContent() {
           />
         )}
 
-        {!mobileBlocked && route === 'admin' && !adminLocked && syncEnabled && !syncLoaded && (
+        {!mobileBlocked && effectiveRoute === 'admin' && !adminLocked && syncEnabled && !syncLoaded && (
           <div className="empty-state">
             <i className="ti ti-loader-2" aria-hidden="true" />
             <div>Cargando torneos...</div>
           </div>
         )}
 
-        {!mobileBlocked && route === 'admin' && !adminLocked && syncLoaded && !activeTournament && !rankingSelected && (
+        {!mobileBlocked && effectiveRoute === 'admin' && !adminLocked && syncLoaded && !activeTournament && !rankingSelected && (
           <div className="empty-state">
             <i className="ti ti-trophy-off" aria-hidden="true" />
             <div>No hay torneos creados</div>
@@ -325,6 +335,7 @@ interface AdminDrawerProps {
   onClose: () => void
   onSelectRanking: () => void
   onCreateTournament: () => void
+  onOpenOrganizer: () => void
   onOpenPublicTab: (target: 'proyeccion' | 'temporizadores' | 'organizar') => void
   onLogout: () => void
 }
@@ -338,6 +349,7 @@ function AdminDrawer({
   onClose,
   onSelectRanking,
   onCreateTournament,
+  onOpenOrganizer,
   onOpenPublicTab,
   onLogout,
 }: AdminDrawerProps) {
@@ -367,7 +379,7 @@ function AdminDrawer({
               <i className="ti ti-chart-bar" aria-hidden="true" />
               Ranking local
             </button>
-            <button className="admin-drawer-link" disabled={!tournaments.length} onClick={() => onOpenPublicTab('organizar')}>
+            <button className="admin-drawer-link" disabled={!tournaments.length} onClick={onOpenOrganizer}>
               <i className="ti ti-arrows-shuffle" aria-hidden="true" />
               Organizador global
             </button>
@@ -401,11 +413,15 @@ function AdminDrawer({
 
 function OrganizerRoute() {
   const tournamentId = new URLSearchParams(window.location.search).get('torneo') ?? ''
-  const activeTournaments = useTournamentsStore(s => s.tournaments.filter(tournament => tournament.status === 'active'))
+  const tournaments = useTournamentsStore(s => s.tournaments)
+  const activeTournaments = useMemo(
+    () => tournaments.filter(tournament => tournament.status === 'active'),
+    [tournaments],
+  )
   const requestedTournament = activeTournaments.find(tournament => tournament.id === tournamentId)
   const availableGames = useMemo(
     () => [...new Set(activeTournaments.map(tournament => tournament.tcg))]
-      .sort((a, b) => gameLabels[a].localeCompare(gameLabels[b])),
+      .sort((a, b) => getGameLabel(a).localeCompare(getGameLabel(b))),
     [activeTournaments],
   )
   const [selectedGame, setSelectedGame] = useState<TournamentTCG | ''>(() => requestedTournament?.tcg ?? '')
@@ -432,7 +448,7 @@ function OrganizerRoute() {
           <h2>Organizador global de mesas</h2>
           <p>
             {currentGame
-              ? `${visibleTournaments.length} torneo${visibleTournaments.length === 1 ? '' : 's'} activo${visibleTournaments.length === 1 ? '' : 's'} de ${gameLabels[currentGame]}`
+              ? `${visibleTournaments.length} torneo${visibleTournaments.length === 1 ? '' : 's'} activo${visibleTournaments.length === 1 ? '' : 's'} de ${getGameLabel(currentGame)}`
               : 'Selecciona un juego para organizar sus torneos activos'}
           </p>
         </div>
@@ -443,7 +459,7 @@ function OrganizerRoute() {
           aria-label="Juego a organizar"
         >
           {availableGames.map(game => (
-            <option key={game} value={game}>{gameLabels[game]}</option>
+            <option key={game} value={game}>{getGameLabel(game)}</option>
           ))}
         </select>
       </div>
@@ -454,11 +470,11 @@ function OrganizerRoute() {
             <header>
               <div>
                 <strong>{tournament.name}</strong>
-                <span>Ronda {tournament.currentRound} - {gameLabels[tournament.tcg]}</span>
+                <span>Ronda {tournament.currentRound} - {getGameLabel(tournament.tcg)}</span>
               </div>
               <StatusBadge status={tournament.status} />
             </header>
-            <Round tournamentId={tournament.id} mode="organize" />
+            <Round tournamentId={tournament.id} mode="organize" embedded />
           </section>
         ))}
       </div>

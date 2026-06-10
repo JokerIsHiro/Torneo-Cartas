@@ -16,9 +16,10 @@ import type { Match, MatchResult, PendingMatchResult, Tournament } from '../type
 interface RoundProps {
   tournamentId: string
   mode?: 'results' | 'organize'
+  embedded?: boolean
 }
 
-export function Round({ tournamentId, mode = 'results' }: RoundProps) {
+export function Round({ tournamentId, mode = 'results', embedded = false }: RoundProps) {
   const approvePendingResult = useTournamentsStore(s => s.approvePendingResult)
   const swapCurrentRoundPlayers = useTournamentsStore(s => s.swapCurrentRoundPlayers)
   const addLatePlayerToCurrentRound = useTournamentsStore(s => s.addLatePlayerToCurrentRound)
@@ -137,6 +138,7 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
           setSecondSwapSlot('')
         }}
         onSwapPlayers={handleSwapPlayers}
+        embedded={embedded}
       />
     )
   }
@@ -286,6 +288,7 @@ interface PairingOrganizerProps {
   onSelectTargetSlot: (slot: string) => void
   onClearSelection: () => void
   onSwapPlayers: (firstSlot: string, secondSlot: string) => void
+  embedded?: boolean
 }
 
 function PairingOrganizer({
@@ -300,6 +303,7 @@ function PairingOrganizer({
   onSelectTargetSlot,
   onClearSelection,
   onSwapPlayers,
+  embedded = false,
 }: PairingOrganizerProps) {
   // Vista dedicada para revisar mesas antes de publicar resultados.
   const [organizerSearch, setOrganizerSearch] = useState('')
@@ -331,7 +335,7 @@ function PairingOrganizer({
   }
 
   return (
-    <section className="pairing-organizer-page">
+    <section className={embedded ? 'pairing-organizer-page pairing-organizer-page-embedded' : 'pairing-organizer-page'}>
       <div className="round-section-header">
         <div>
           <span>
