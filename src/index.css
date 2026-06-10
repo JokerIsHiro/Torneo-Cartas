@@ -2385,7 +2385,8 @@ body:has(.pairing-organizer-page) {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  --round-match-row-height: 250px;
+  --round-match-row-height: 162px;
+  grid-auto-rows: minmax(var(--round-match-row-height), auto);
   min-height: 0;
   overflow-y: visible;
   overflow-x: hidden;
@@ -2397,8 +2398,7 @@ body:has(.pairing-organizer-page) {
 }
 
 .round-match-grid.is-scrollable {
-  height: 100%;
-  max-height: 100%;
+  max-height: calc((var(--round-match-row-height) * 3) + 28px);
   overflow-y: auto;
   padding-right: 6px;
 }
@@ -2427,6 +2427,7 @@ body:has(.pairing-organizer-page) {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   align-items: stretch;
   gap: 8px;
   padding: 10px 12px;
@@ -2463,6 +2464,7 @@ body:has(.pairing-organizer-page) {
   min-width: 0;
   display: grid;
   gap: 8px;
+  min-height: 0;
 }
 
 .match-card.done {
@@ -2526,7 +2528,7 @@ body:has(.pairing-organizer-page) {
   grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  min-height: 78px;
+  min-height: 52px;
   margin-bottom: 0;
 }
 
@@ -3321,6 +3323,8 @@ body:has(.pairing-organizer-page) {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  --pairing-table-row-height: 160px;
+  grid-auto-rows: minmax(var(--pairing-table-row-height), auto);
   min-height: 0;
   overflow-y: visible;
   overflow-x: hidden;
@@ -3332,8 +3336,7 @@ body:has(.pairing-organizer-page) {
 }
 
 .pairing-table-grid.is-scrollable {
-  height: 100%;
-  max-height: 100%;
+  max-height: calc((var(--pairing-table-row-height) * 3) + 24px);
   overflow-y: auto;
   padding-right: 6px;
 }

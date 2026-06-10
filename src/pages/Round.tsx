@@ -179,7 +179,7 @@ export function Round({ tournamentId, mode = 'results' }: RoundProps) {
       )}
 
       <section className="round-main-column">
-        <div className={`round-match-grid ${visibleMatches.length > 6 ? 'is-scrollable' : ''}`}>
+        <div className={`round-match-grid ${visibleMatches.length > 9 ? 'is-scrollable' : ''}`}>
           {visibleMatches.map(match => (
             <MatchCard key={match.id} match={match} tournamentId={tournamentId} roundNumber={visibleRound} />
           ))}
@@ -391,7 +391,7 @@ function PairingOrganizer({
         <span>{visibleMatches.length}/{currentMatches.length} mesas</span>
       </div>
 
-      <div className={`pairing-table-grid ${visibleMatches.length > 6 ? 'is-scrollable' : ''}`}>
+      <div className={`pairing-table-grid ${visibleMatches.length > 9 ? 'is-scrollable' : ''}`}>
         {visibleMatches.map(match => (
           <article key={match.id} className="pairing-table-row-card">
             <header className="pairing-table-row-header">

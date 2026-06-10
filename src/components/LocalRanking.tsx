@@ -1,13 +1,13 @@
 // Ranking local acumulado por temporadas. Cambia aqui filtros, exportacion CSV/PNG
 // o reglas de puntuacion historica entre torneos finalizados.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { saveRemoteLocalRanking, subscribeToRemoteLocalRanking } from '../services/firebase'
 import { useExportImage } from '../hooks/useExportImage'
 import { ExportPreviewModal } from './ExportPreviewModal'
 import { useFeedback } from './feedbackContext'
 import type { ExportedImage } from '../hooks/useExportImage'
-import type { LocalRankingSeason, LocalRankingState, LocalRankingTournamentRecord, Tournament, TournamentTCG } from '../types/tournament'
+import type { LocalRankingSeason, LocalRankingState, LocalRankingTournamentRecord, Player, Tournament, TournamentTCG } from '../types/tournament'
 
 type RankingFilter = TournamentTCG
 
@@ -45,6 +45,7 @@ const storeLogoUrl = '/subterra-logo.jpg'
 
 export function LocalRanking() {
   const tournaments = useTournamentsStore(s => s.tournaments)
+  const importInputRef = useRef<HTMLInputElement | null>(null)
   const [gameFilter, setGameFilter] = useState<RankingFilter>('magic')
   const [remoteRanking, setRemoteRanking] = useState<LocalRankingState>(createDefaultRankingState())
   const [remoteLoaded, setRemoteLoaded] = useState(false)
@@ -126,6 +127,39 @@ export function LocalRanking() {
     notify({ tone: 'success', title: 'Temporada reseteada' })
   }
 
+  async function handleImportRankingCsv(file: File) {
+    const text = await file.text()
+    const importedRecord = parseRankingCsv(text, file.name, activeSeason, selectedGame)
+    if (!importedRecord) {
+      notify({
+        tone: 'warning',
+        title: 'CSV no valido',
+        message: 'No he encontrado columnas de Jugador y Puntos.',
+      })
+      return
+    }
+
+    const accepted = await confirm({
+      title: 'Importar ranking CSV',
+      message: `Se importaran ${importedRecord.players.length} jugadores en "${activeSeason.name}" para ${gameLabels[importedRecord.tcg]}.`,
+      confirmLabel: 'Importar CSV',
+      tone: 'default',
+    })
+    if (!accepted) return
+
+    const nextRecords = [
+      ...activeSeason.records.filter(record => record.id !== importedRecord.id),
+      importedRecord,
+    ].sort((a, b) => a.updatedAt - b.updatedAt)
+    await saveRemoteLocalRanking(updateActiveSeason(rankingState, { records: nextRecords }))
+    setGameFilter(importedRecord.tcg)
+    notify({
+      tone: 'success',
+      title: 'Ranking importado',
+      message: `${importedRecord.players.length} jugadores recuperados desde CSV.`,
+    })
+  }
+
   return (
     <section>
       <div className="tournament-header">
@@ -165,6 +199,21 @@ export function LocalRanking() {
             <i className="ti ti-file-spreadsheet" aria-hidden="true" />
             CSV
           </button>
+          <button type="button" style={resetButtonStyle} onClick={() => importInputRef.current?.click()}>
+            <i className="ti ti-file-import" aria-hidden="true" />
+            Importar CSV
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            hidden
+            onChange={event => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+              if (file) void handleImportRankingCsv(file)
+            }}
+          />
           <button type="button" style={resetButtonStyle} disabled={!hasAvailableGames || ranking.length === 0} onClick={() => void openRankingPreview()}>
             <i className="ti ti-photo-scan" aria-hidden="true" />
             PNG
@@ -386,6 +435,147 @@ function exportRankingCsv(ranking: RankingEntry[], season: LocalRankingSeason, f
   link.download = `ranking-${season.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.csv'
   link.click()
   URL.revokeObjectURL(link.href)
+}
+
+function parseRankingCsv(
+  text: string,
+  fileName: string,
+  season: LocalRankingSeason,
+  fallbackGame: RankingFilter,
+): LocalRankingTournamentRecord | null {
+  const delimiter = guessCsvDelimiter(text)
+  const rows = parseCsvRows(text, delimiter).filter(row => row.some(cell => cell.trim()))
+  const game = getImportedRankingGame(rows) ?? fallbackGame
+  const headerIndex = rows.findIndex(row => {
+    const normalized = row.map(normalizeCsvHeader)
+    return normalized.some(cell => ['jugador', 'nombre', 'player'].includes(cell))
+      && normalized.some(cell => ['puntos', 'pts', 'points'].includes(cell))
+  })
+  if (headerIndex < 0) return null
+
+  const header = rows[headerIndex].map(normalizeCsvHeader)
+  const nameIndex = findCsvColumn(header, ['jugador', 'nombre', 'player'])
+  const pointsIndex = findCsvColumn(header, ['puntos', 'pts', 'points'])
+  const winsIndex = findCsvColumn(header, ['v', 'victorias', 'wins'])
+  const drawsIndex = findCsvColumn(header, ['e', 'empates', 'draws'])
+  const lossesIndex = findCsvColumn(header, ['d', 'derrotas', 'losses'])
+  const byesIndex = findCsvColumn(header, ['bye', 'byes'])
+  if (nameIndex < 0 || pointsIndex < 0) return null
+
+  const players: Player[] = rows.slice(headerIndex + 1)
+    .flatMap(row => {
+      const name = (row[nameIndex] ?? '').trim()
+      if (!name) return []
+      const points = parseCsvNumber(row[pointsIndex])
+      return [{
+        id: `csv-player-${hashString(`${name}-${points}-${row.join('|')}`)}`,
+        name,
+        playerKind: 'regular' as const,
+        points,
+        wins: winsIndex >= 0 ? parseCsvNumber(row[winsIndex]) : 0,
+        draws: drawsIndex >= 0 ? parseCsvNumber(row[drawsIndex]) : 0,
+        losses: lossesIndex >= 0 ? parseCsvNumber(row[lossesIndex]) : 0,
+        byes: byesIndex >= 0 ? parseCsvNumber(row[byesIndex]) : 0,
+        timeoutLosses: 0,
+        opponents: [],
+      }]
+    })
+
+  if (!players.length) return null
+
+  const importedAt = Date.now()
+  const contentHash = hashString(`${season.id}-${game}-${text}`)
+  return {
+    id: `csv-import-${season.id}-${game}-${contentHash}`,
+    name: `CSV ${fileName.replace(/\.[^.]+$/, '')}`,
+    tcg: game,
+    players,
+    updatedAt: importedAt,
+  }
+}
+
+function guessCsvDelimiter(text: string) {
+  const sample = text.split(/\r?\n/).find(line => line.trim()) ?? ''
+  return countChar(sample, ';') > countChar(sample, ',') ? ';' : ','
+}
+
+function parseCsvRows(text: string, delimiter: string) {
+  const rows: string[][] = []
+  let row: string[] = []
+  let cell = ''
+  let inQuotes = false
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index]
+    const next = text[index + 1]
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"'
+        index += 1
+      } else {
+        inQuotes = !inQuotes
+      }
+      continue
+    }
+    if (char === delimiter && !inQuotes) {
+      row.push(cell)
+      cell = ''
+      continue
+    }
+    if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && next === '\n') index += 1
+      row.push(cell)
+      rows.push(row)
+      row = []
+      cell = ''
+      continue
+    }
+    cell += char
+  }
+
+  row.push(cell)
+  rows.push(row)
+  return rows
+}
+
+function getImportedRankingGame(rows: string[][]): RankingFilter | null {
+  const gameRow = rows.find(row => normalizeCsvHeader(row[0] ?? '') === 'juego')
+  const value = normalizeCsvHeader(gameRow?.[1] ?? '')
+  const match = (Object.keys(gameLabels) as RankingFilter[]).find(game => (
+    normalizeCsvHeader(game) === value || normalizeCsvHeader(gameLabels[game]) === value
+  ))
+  return match ?? null
+}
+
+function findCsvColumn(header: string[], candidates: string[]) {
+  return header.findIndex(cell => candidates.includes(cell))
+}
+
+function normalizeCsvHeader(value: string) {
+  return value
+    .trim()
+    .toLocaleLowerCase('es-ES')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '')
+}
+
+function parseCsvNumber(value: string | undefined) {
+  const normalized = (value ?? '').trim().replace(',', '.')
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function countChar(value: string, target: string) {
+  return [...value].filter(char => char === target).length
+}
+
+function hashString(value: string) {
+  let hash = 5381
+  for (let index = 0; index < value.length; index += 1) {
+    hash = ((hash << 5) + hash) ^ value.charCodeAt(index)
+  }
+  return (hash >>> 0).toString(36)
 }
 
 function formatRankingExportName(seasonName: string, game: RankingFilter) {
