@@ -1,6 +1,6 @@
 // Orquestador principal de la app: decide la vista segun la URL, controla el acceso admin
 // y conecta sincronizacion global. Si anades una pantalla nueva, registra aqui su ruta.
-import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useTournamentsStore } from './store/tournamentsStore'
 import { syncTimersFromStorage, TIMER_SYNC_KEY, useTimerData, useTimerStore } from './store/timerStore'
@@ -9,7 +9,7 @@ import { Round } from './pages/Round'
 import { Results } from './pages/Results'
 import { Standings } from './components/Standings'
 import { SnapshotPanel } from './components/SnapshotPanel'
-import type { Tournament } from './types/tournament'
+import type { Tournament, TournamentTCG } from './types/tournament'
 import { unlockTimerSound } from './utils/timerSound'
 import { useFirebaseSync } from './hooks/useFirebaseSync'
 import { useSwissPairings } from './hooks/useSwissPairings'
@@ -28,6 +28,16 @@ const ADMIN_SESSION_KEY = 'torneo-admin-session'
 const ADMIN_SESSION_VALUE = 'firebase-admin-v1'
 const MIN_ADMIN_CODE_LENGTH = 8
 const RANKING_TAB_ID = '__ranking__'
+
+const gameLabels: Record<TournamentTCG, string> = {
+  magic: 'Magic',
+  riftbound: 'Riftbound',
+  pokemon: 'Pokemon',
+  yugioh: 'YuGiOh',
+  lorcana: 'Lorcana',
+  'one-piece': 'One Piece',
+  chess: 'Ajedrez',
+}
 
 const ProjectorView = lazy(() => import('./components/ProjectorView').then(module => ({ default: module.ProjectorView })))
 const TimersView = lazy(() => import('./components/TimersView').then(module => ({ default: module.TimersView })))
@@ -167,7 +177,7 @@ function AppContent() {
 
   function openPublicTab(target: 'proyeccion' | 'temporizadores' | 'organizar') {
     const url = new URL(routePaths[target], window.location.origin)
-    if ((target === 'proyeccion' || target === 'organizar') && selectedTab) url.searchParams.set('torneo', selectedTab)
+    if (target === 'proyeccion' && selectedTab) url.searchParams.set('torneo', selectedTab)
     window.open(url.toString(), '_blank', 'noopener,noreferrer')
   }
 
@@ -357,6 +367,10 @@ function AdminDrawer({
               <i className="ti ti-chart-bar" aria-hidden="true" />
               Ranking local
             </button>
+            <button className="admin-drawer-link" disabled={!tournaments.length} onClick={() => onOpenPublicTab('organizar')}>
+              <i className="ti ti-arrows-shuffle" aria-hidden="true" />
+              Organizador global
+            </button>
           </div>
         </section>
 
@@ -370,10 +384,6 @@ function AdminDrawer({
             <button disabled={!tournaments.length} onClick={() => onOpenPublicTab('temporizadores')}>
               <i className="ti ti-clock" aria-hidden="true" />
               Temporizadores
-            </button>
-            <button disabled={!tournaments.length} onClick={() => onOpenPublicTab('organizar')}>
-              <i className="ti ti-arrows-shuffle" aria-hidden="true" />
-              Organizar mesas
             </button>
           </div>
         </section>
@@ -391,36 +401,67 @@ function AdminDrawer({
 
 function OrganizerRoute() {
   const tournamentId = new URLSearchParams(window.location.search).get('torneo') ?? ''
-  const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
+  const activeTournaments = useTournamentsStore(s => s.tournaments.filter(tournament => tournament.status === 'active'))
+  const requestedTournament = activeTournaments.find(tournament => tournament.id === tournamentId)
+  const availableGames = useMemo(
+    () => [...new Set(activeTournaments.map(tournament => tournament.tcg))]
+      .sort((a, b) => gameLabels[a].localeCompare(gameLabels[b])),
+    [activeTournaments],
+  )
+  const [selectedGame, setSelectedGame] = useState<TournamentTCG | ''>(() => requestedTournament?.tcg ?? '')
+  const currentGame = selectedGame && availableGames.includes(selectedGame)
+    ? selectedGame
+    : requestedTournament?.tcg ?? availableGames[0] ?? ''
+  const visibleTournaments = currentGame
+    ? activeTournaments.filter(tournament => tournament.tcg === currentGame)
+    : []
 
-  if (!tournamentId || !tournament) {
+  if (!activeTournaments.length) {
     return (
       <div className="empty-state">
         <i className="ti ti-arrows-shuffle" aria-hidden="true" />
-        <div>No se ha encontrado el torneo para organizar.</div>
-      </div>
-    )
-  }
-
-  if (tournament.status !== 'active') {
-    return (
-      <div className="empty-state">
-        <i className="ti ti-lock" aria-hidden="true" />
-        <div>Solo se pueden organizar emparejamientos con el torneo activo.</div>
+        <div>No hay torneos activos para organizar.</div>
       </div>
     )
   }
 
   return (
-    <div>
+    <div className="global-organizer-page">
       <div className="tournament-header">
         <div>
-          <h2>{tournament.name}</h2>
-          <p>Organizar emparejamientos de la ronda {tournament.currentRound}</p>
+          <h2>Organizador global de mesas</h2>
+          <p>
+            {currentGame
+              ? `${visibleTournaments.length} torneo${visibleTournaments.length === 1 ? '' : 's'} activo${visibleTournaments.length === 1 ? '' : 's'} de ${gameLabels[currentGame]}`
+              : 'Selecciona un juego para organizar sus torneos activos'}
+          </p>
         </div>
-        <StatusBadge status={tournament.status} />
+        <select
+          value={currentGame}
+          onChange={event => setSelectedGame(event.target.value as TournamentTCG)}
+          className="global-organizer-game-select"
+          aria-label="Juego a organizar"
+        >
+          {availableGames.map(game => (
+            <option key={game} value={game}>{gameLabels[game]}</option>
+          ))}
+        </select>
       </div>
-      <Round tournamentId={tournament.id} mode="organize" />
+
+      <div className="global-organizer-list">
+        {visibleTournaments.map(tournament => (
+          <section key={tournament.id} className="global-organizer-tournament">
+            <header>
+              <div>
+                <strong>{tournament.name}</strong>
+                <span>Ronda {tournament.currentRound} - {gameLabels[tournament.tcg]}</span>
+              </div>
+              <StatusBadge status={tournament.status} />
+            </header>
+            <Round tournamentId={tournament.id} mode="organize" />
+          </section>
+        ))}
+      </div>
     </div>
   )
 }
@@ -659,10 +700,7 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
       </div>
 
       {status === 'active' && (
-        <TournamentDayBar
-          tournament={tournament}
-          onInnerTabChange={onInnerTabChange}
-        />
+        <TournamentDayBar tournament={tournament} />
       )}
 
       {status === 'active' && (
@@ -695,10 +733,8 @@ function TournamentView({ tournament, innerTab, onInnerTabChange }: TournamentVi
 
 function TournamentDayBar({
   tournament,
-  onInnerTabChange,
 }: {
   tournament: Tournament
-  onInnerTabChange: (tab: TournamentInnerTab) => void
 }) {
   const nextRound = useTournamentsStore(s => s.nextRound)
   const finishTournament = useTournamentsStore(s => s.finishTournament)
@@ -759,13 +795,6 @@ function TournamentDayBar({
         <button type="button" onClick={() => openTournamentScreen('temporizadores')} title="Abre la pantalla de temporizadores">
           <i className="ti ti-clock" aria-hidden="true" />
           Timer
-        </button>
-        <button type="button" onClick={() => {
-          onInnerTabChange('organizar')
-          openTournamentScreen('organizar')
-        }} title="Abre la pantalla de organizar mesas">
-          <i className="ti ti-arrows-shuffle" aria-hidden="true" />
-          Organizar
         </button>
         <button
           type="button"
