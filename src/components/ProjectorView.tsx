@@ -47,19 +47,16 @@ function getTargetTournamentId() {
 }
 
 function ProjectedTournament({ tournament }: { tournament: Tournament }) {
-  const { currentMatches, roundSummaries } = useSwissPairings(tournament.id)
-  const currentSummary = roundSummaries.find(r => r.number === tournament.currentRound)
+  const { currentMatches } = useSwissPairings(tournament.id)
 
   return (
     <section className="projector-section">
       <header className="projector-section-header">
         <div>
           <h2>{tournament.name}</h2>
-          <p>Ronda {tournament.currentRound} &middot; Swiss</p>
+          <p>Swiss</p>
         </div>
-        <span>
-          {currentSummary?.matchesDone ?? 0}/{currentSummary?.matchesTotal ?? 0}
-        </span>
+        <strong>Ronda {tournament.currentRound}</strong>
       </header>
 
       <div className="projector-match-list">

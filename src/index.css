@@ -589,9 +589,9 @@ button:disabled {
 }
 
 .projector-content {
-  max-width: min(1680px, 100vw);
-  padding-left: clamp(0.75rem, 2vw, 2rem);
-  padding-right: clamp(0.75rem, 2vw, 2rem);
+  max-width: min(1880px, 100vw);
+  padding-left: clamp(0.75rem, 3vw, 3.25rem);
+  padding-right: clamp(0.75rem, 3vw, 3.25rem);
 }
 
 html:has(.round-workspace-command),
@@ -855,43 +855,55 @@ body:has(.pairing-organizer-page) {
 }
 
 .projector-section-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1.125rem;
 }
 
-.projector-section-header span {
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  border: 0.5px solid var(--color-border-tertiary);
-  border-radius: var(--border-radius-md);
-  padding: 4px 10px;
-  background: var(--color-background-primary);
-  flex-shrink: 0;
+.projector-section-header strong {
+  justify-self: center;
+  color: var(--color-text-primary);
+  font-size: clamp(34px, 4vw, 68px);
+  font-weight: 800;
+  line-height: .95;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  text-align: center;
+  text-shadow: 0 0 24px rgba(88, 215, 255, 0.18);
+}
+
+.projector-match-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+  gap: clamp(0.75rem, 1vw, 1rem);
+  align-items: stretch;
 }
 
 .projector-match-card {
-  padding: 1.125rem 1.25rem !important;
-  margin-bottom: 0.875rem !important;
+  min-height: 168px;
+  padding: 0.9rem 1rem !important;
+  margin-bottom: 0 !important;
 }
 
 .projector-match-card .match-card-header {
-  margin-bottom: 0.875rem !important;
+  margin-bottom: 0.45rem !important;
 }
 
 .projector-match-card .match-table-badge {
-  min-width: 132px;
-  padding: 9px 13px;
+  min-width: 96px;
+  min-height: 42px;
+  padding: 7px 11px;
 }
 
 .projector-match-card .match-table-badge strong {
-  font-size: clamp(30px, 2.6vw, 42px);
+  font-size: clamp(24px, 2vw, 32px);
 }
 
 .projector-match-card .match-players {
   gap: clamp(0.75rem, 1.4vw, 1.25rem) !important;
+  min-height: 72px;
   margin-bottom: 0 !important;
 }
 
@@ -901,14 +913,13 @@ body:has(.pairing-organizer-page) {
 }
 
 .projector-match-card .player-name {
-  font-size: clamp(17px, 1.45vw, 24px) !important;
+  font-size: clamp(16px, 1.15vw, 21px) !important;
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
 .projector-match-card .player-meta {
-  font-size: clamp(12px, 0.9vw, 14px) !important;
-  margin-top: 5px !important;
+  display: none;
 }
 
 /* Estados vacios y acciones generales. */
@@ -6248,7 +6259,7 @@ body:has(.pairing-organizer-page) {
 
 @media (min-width: 1400px) {
   .projector-pairings.single {
-    max-width: 1180px;
+    max-width: 100%;
     margin-left: auto;
     margin-right: auto;
   }

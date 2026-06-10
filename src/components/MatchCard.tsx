@@ -72,7 +72,7 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
   }
 
   return (
-    <div className={`${readOnly ? 'match-card projector-match-card' : 'match-card'} ${isDone && !isTimeout ? 'done' : ''} ${isBye || readOnly ? 'no-actions' : ''}`}>
+    <div className={`${readOnly ? 'match-card projector-match-card' : 'match-card'} ${!readOnly && isDone && !isTimeout ? 'done' : ''} ${isBye || readOnly ? 'no-actions' : ''}`}>
       <div className="match-main">
         {/* Cabecera */}
         <div className="match-card-header">
@@ -96,7 +96,7 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
               <span>Empate</span>
             </button>
           )}
-          <ResultBadge result={match.result} />
+          {!readOnly && <ResultBadge result={match.result} />}
         </div>
 
         {/* Jugadores */}
@@ -112,8 +112,8 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
                   points={player?.points ?? 0}
                   losses={player?.losses ?? 0}
                   align="left"
-                  isWinner={match.result === resultKey}
-                  isLoser={Boolean(match.result && match.result !== 'draw' && match.result !== resultKey)}
+                  isWinner={!readOnly && match.result === resultKey}
+                  isLoser={!readOnly && Boolean(match.result && match.result !== 'draw' && match.result !== resultKey)}
                 />
               )
             })}
@@ -125,8 +125,8 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
               points={p1?.points ?? 0}
               losses={p1?.losses ?? 0}
               align="left"
-              isWinner={match.result === 'p1'}
-              isLoser={match.result === 'p2' || match.result === 'timeout'}
+              isWinner={!readOnly && match.result === 'p1'}
+              isLoser={!readOnly && (match.result === 'p2' || match.result === 'timeout')}
             />
             <span className="match-versus">
               vs
@@ -136,8 +136,8 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
               points={p2?.points ?? 0}
               losses={p2?.losses ?? 0}
               align="right"
-              isWinner={match.result === 'p2'}
-              isLoser={match.result === 'p1' || match.result === 'timeout'}
+              isWinner={!readOnly && match.result === 'p2'}
+              isLoser={!readOnly && (match.result === 'p1' || match.result === 'timeout')}
               isBye={isBye}
             />
           </div>
