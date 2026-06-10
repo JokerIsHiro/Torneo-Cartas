@@ -391,7 +391,7 @@ function PairingOrganizer({
         <span>{visibleMatches.length}/{currentMatches.length} mesas</span>
       </div>
 
-      <div className="pairing-table-grid">
+      <div className={`pairing-table-grid ${visibleMatches.length > 6 ? 'is-scrollable' : ''}`}>
         {visibleMatches.map(match => (
           <article key={match.id} className="pairing-table-row-card">
             <header className="pairing-table-row-header">

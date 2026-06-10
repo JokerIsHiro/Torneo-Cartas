@@ -3,7 +3,6 @@
 import { forwardRef } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
-import { formatTiebreakerValue, getTiebreakerMetricLabel, getTiebreakerValue } from '../utils/tiebreakers'
 import type { Match } from '../types/tournament'
 
 // Plantilla oculta que se renderiza para exportar imagenes de ronda o clasificacion.
@@ -15,7 +14,7 @@ interface RoundExportProps {
 export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
   ({ tournamentId, type }, ref) => {
     const tournament = useTournamentsStore(s => s.tournaments.find(t => t.id === tournamentId))
-    const { currentMatches, standings, getPlayerName, primaryTiebreakerMetric } = useSwissPairings(tournamentId)
+    const { currentMatches, standings, getPlayerName } = useSwissPairings(tournamentId)
 
     if (!tournament) return null
 
@@ -27,8 +26,8 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
     const subtitle = type === 'round' ? 'Emparejamientos' : `Tras la ronda ${tournament.currentRound}`
     const hasDraws = tournament.tcg !== 'yugioh'
     const exportStandingsColumns = hasDraws
-      ? '36px 1fr 52px 48px 48px 48px 62px'
-      : '36px 1fr 52px 48px 48px 62px'
+      ? '36px 1fr 52px 48px 48px 48px'
+      : '36px 1fr 52px 48px 48px'
 
     return (
       <div ref={ref} style={exportShellStyle}>
@@ -75,7 +74,6 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
               <span style={{ textAlign: 'center' }}>V</span>
               {hasDraws && <span style={{ textAlign: 'center' }}>E</span>}
               <span style={{ textAlign: 'center' }}>D</span>
-              <span style={{ textAlign: 'center' }}>{primaryTiebreakerMetric ? getTiebreakerMetricLabel(primaryTiebreakerMetric) : 'Des'}</span>
             </div>
 
             {standings.map(row => (
@@ -90,9 +88,6 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
                 <span style={mutedScoreStyle}>{row.player.wins}</span>
                 {hasDraws && <span style={mutedScoreStyle}>{row.player.draws}</span>}
                 <span style={mutedScoreStyle}>{row.player.losses}</span>
-                <span style={mutedScoreStyle}>
-                  {formatTiebreakerValue(primaryTiebreakerMetric, getTiebreakerValue(row.tiebreakers, primaryTiebreakerMetric))}
-                </span>
               </div>
             ))}
           </div>

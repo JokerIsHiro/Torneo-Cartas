@@ -595,11 +595,14 @@ button:disabled {
 }
 
 html:has(.round-workspace-command),
-body:has(.round-workspace-command) {
+html:has(.pairing-organizer-page),
+body:has(.round-workspace-command),
+body:has(.pairing-organizer-page) {
   overflow: hidden;
 }
 
-.app-shell:has(.round-workspace-command) {
+.app-shell:has(.round-workspace-command),
+.app-shell:has(.pairing-organizer-page) {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   height: 100vh;
@@ -607,13 +610,15 @@ body:has(.round-workspace-command) {
   overflow: hidden;
 }
 
-.main-content:has(.round-workspace-command) {
+.main-content:has(.round-workspace-command),
+.main-content:has(.pairing-organizer-page) {
   height: 100%;
   min-height: 0;
   overflow: hidden;
 }
 
-.main-content:has(.round-workspace-command) > div {
+.main-content:has(.round-workspace-command) > div,
+.main-content:has(.pairing-organizer-page) > div {
   display: grid;
   grid-template-rows: auto auto auto minmax(0, 1fr);
   height: 100%;
@@ -3127,7 +3132,11 @@ body:has(.round-workspace-command) {
 
 .pairing-organizer-page {
   display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 12px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .pairing-swap-bar {
@@ -3265,21 +3274,53 @@ body:has(.round-workspace-command) {
 
 .pairing-table-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  min-height: 0;
+  overflow-y: visible;
+  overflow-x: hidden;
+  padding-right: 0;
+  align-content: start;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-primary) rgba(7, 16, 31, 0.9);
+}
+
+.pairing-table-grid.is-scrollable {
+  height: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.pairing-table-grid::-webkit-scrollbar {
+  width: 9px;
+}
+
+.pairing-table-grid::-webkit-scrollbar-track {
+  background: rgba(7, 16, 31, 0.88);
+  border-radius: var(--border-radius-md);
+}
+
+.pairing-table-grid::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(180deg, rgba(88, 215, 255, 0.72), rgba(31, 122, 255, 0.86));
+  border: 2px solid rgba(7, 16, 31, 0.95);
+  border-radius: var(--border-radius-md);
 }
 
 .pairing-table-row-card {
   min-width: 0;
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  min-height: 70px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 8px;
+  min-height: 0;
   padding: 10px 12px;
   border: 0.5px solid var(--color-border-tertiary);
-  border-radius: var(--border-radius-lg);
+  border-radius: 8px;
   background:
+    linear-gradient(90deg, rgba(88, 215, 255, 0.1), transparent 38%),
     linear-gradient(180deg, rgba(88, 215, 255, 0.035), transparent 46%),
     var(--color-background-primary);
 }
@@ -3287,9 +3328,10 @@ body:has(.round-workspace-command) {
 .pairing-table-row-header {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   gap: 8px;
   min-width: 0;
+  min-height: 34px;
 }
 
 .pairing-table-number {
@@ -3297,6 +3339,13 @@ body:has(.round-workspace-command) {
   grid-template-columns: auto auto;
   align-items: baseline;
   gap: 7px;
+  min-width: 82px;
+  min-height: 32px;
+  justify-content: center;
+  padding: 3px 10px;
+  border: 0.5px solid rgba(88, 215, 255, 0.42);
+  border-radius: 8px;
+  background: rgba(88, 215, 255, 0.1);
   color: var(--color-accent-secondary);
 }
 
@@ -3309,7 +3358,7 @@ body:has(.round-workspace-command) {
 
 .pairing-table-number strong {
   color: var(--color-accent-secondary);
-  font-size: 26px;
+  font-size: 20px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
@@ -3325,10 +3374,11 @@ body:has(.round-workspace-command) {
 
 .pairing-table-row-players {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr);
-  align-items: center;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
   gap: 8px;
   min-width: 0;
+  min-height: 78px;
 }
 
 .pairing-table-row-players-pod {
@@ -3342,8 +3392,8 @@ body:has(.round-workspace-command) {
 .pairing-player-slot {
   position: relative;
   width: 100%;
-  min-height: 44px;
-  padding: 9px 11px;
+  min-height: 52px;
+  padding: 8px 10px;
   border: 0.5px solid var(--color-border-secondary);
   border-radius: var(--border-radius-md);
   background: var(--color-background-secondary);
@@ -3379,10 +3429,11 @@ body:has(.round-workspace-command) {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .pairing-table-versus {
+  display: none;
   text-align: center;
   color: var(--color-text-muted);
   font-size: 12px;
@@ -6774,7 +6825,7 @@ body:has(.round-workspace-command) {
 
 .setup-player-panel {
   display: grid;
-  grid-template-rows: auto auto minmax(120px, 1fr);
+  grid-template-rows: auto auto minmax(190px, 1fr);
   gap: 8px;
   box-sizing: border-box;
   min-height: 0;
@@ -6782,6 +6833,10 @@ body:has(.round-workspace-command) {
   max-height: 100%;
   padding-bottom: 10px;
   overflow: hidden;
+}
+
+.setup-player-panel .setup-card {
+  margin-bottom: 0 !important;
 }
 
 .setup-main-column:has(.player-list-card.is-empty) {
@@ -6802,7 +6857,7 @@ body:has(.round-workspace-command) {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   align-self: stretch;
-  min-height: 0;
+  min-height: 190px;
   height: 100%;
   max-height: 100%;
   overflow: hidden;
@@ -6849,7 +6904,7 @@ body:has(.round-workspace-command) {
   max-height: none;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 8px 12px 0;
+  padding: 2px 8px 12px 0;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
@@ -6891,7 +6946,7 @@ body:has(.round-workspace-command) {
   max-height: none;
   overflow: visible;
   padding-right: 0;
-  padding-bottom: 2px;
+  padding-bottom: 6px;
   align-content: start;
 }
 
