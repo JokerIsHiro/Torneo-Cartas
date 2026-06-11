@@ -812,6 +812,7 @@ function TournamentDayBar({
 }) {
   const nextRound = useTournamentsStore(s => s.nextRound)
   const finishTournament = useTournamentsStore(s => s.finishTournament)
+  const { notify } = useFeedback()
   const timerData = useTimerData(tournament.id)
   const {
     allResultsIn,
@@ -825,6 +826,10 @@ function TournamentDayBar({
   const pendingCount = tournament.pendingResults?.length ?? 0
   const completedMatches = currentSummary?.matchesDone ?? 0
   const totalMatches = currentSummary?.matchesTotal ?? 0
+  const currentRound = tournament.rounds.find(round => round.number === tournament.currentRound)
+  const pendingTables = currentRound?.matches
+    .filter(match => match.result === null && match.p2Id !== 'BYE')
+    .map(match => match.tableNumber) ?? []
   const canCloseRound = allResultsIn && pendingCount === 0
   const roundActionLabel = shouldFinish
     ? phaseMode === 'swiss-top' ? `Publicar Top ${topCut}` : 'Finalizar torneo'
@@ -851,6 +856,29 @@ function TournamentDayBar({
     nextRound(tournament.id)
   }
 
+  async function copyRoundSummary() {
+    const pendingText = pendingTables.length
+      ? `Mesas pendientes: ${pendingTables.join(', ')}.`
+      : 'Todas las mesas tienen resultado.'
+    const confirmationText = pendingCount > 0
+      ? `Resultados por confirmar: ${pendingCount}.`
+      : 'Sin resultados por confirmar.'
+    const summary = [
+      `${tournament.name} - Ronda ${tournament.currentRound}`,
+      `Resultados: ${completedMatches}/${totalMatches}.`,
+      `Faltan: ${Math.max(0, unfinishedCount)}.`,
+      pendingText,
+      confirmationText,
+    ].join(' ')
+
+    try {
+      await navigator.clipboard.writeText(summary)
+      notify({ tone: 'success', title: 'Resumen copiado', message: pendingTables.length ? pendingText : 'La ronda esta lista.' })
+    } catch {
+      notify({ tone: 'danger', title: 'No se pudo copiar', message: 'El navegador no permitio acceder al portapapeles.' })
+    }
+  }
+
   return (
     <section className="tournament-day-bar" aria-label="Estado rapido del torneo">
       <div className="day-bar-status">
@@ -866,6 +894,10 @@ function TournamentDayBar({
       </div>
 
       <div className="day-bar-actions">
+        <button type="button" onClick={() => void copyRoundSummary()} title="Copia un resumen rapido de la ronda actual">
+          <i className="ti ti-copy" aria-hidden="true" />
+          Resumen
+        </button>
         <button type="button" onClick={() => openTournamentScreen('proyeccion')} title="Abre la pantalla publica de emparejamientos">
           <i className="ti ti-external-link" aria-hidden="true" />
           Emparejamientos
