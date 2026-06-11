@@ -1,6 +1,7 @@
 // Panel de snapshots del torneo. Usa este archivo para mostrar, crear o restaurar
 // puntos de recuperacion antes de acciones peligrosas.
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useFeedback } from './feedbackContext'
 import type { Match, Player, TournamentSnapshot } from '../types/tournament'
@@ -49,7 +50,7 @@ export function SnapshotPanel({ tournamentId }: SnapshotPanelProps) {
         </button>
       </section>
 
-      {isOpen && selectedSnapshot && (
+      {isOpen && selectedSnapshot && createPortal(
         <div className="snapshot-dialog-backdrop" role="presentation" onMouseDown={() => setIsOpen(false)}>
           <div className="snapshot-dialog" role="dialog" aria-modal="true" aria-label="Restaurar torneo" onMouseDown={event => event.stopPropagation()}>
             <header>
@@ -94,7 +95,8 @@ export function SnapshotPanel({ tournamentId }: SnapshotPanelProps) {
               </button>
             </footer>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   )

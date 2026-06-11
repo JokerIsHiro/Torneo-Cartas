@@ -1,6 +1,7 @@
 // Clasificacion visual del torneo actual. Cambia aqui columnas, podium o resumen
 // de rondas; los calculos de desempate salen de useSwissPairings.
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useShallow } from "zustand/react/shallow";
 import { useTournamentsStore } from "../store/tournamentsStore";
 import { useSwissPairings } from "../hooks/useSwissPairings";
@@ -294,11 +295,12 @@ export function RoundHistoryPanel({
 }) {
   const [historyOpen, setHistoryOpen] = useState(false)
 
-  const { rounds } = useTournamentsStore(
+  const { rounds, tcg } = useTournamentsStore(
     useShallow(s => {
       const t = s.tournaments.find(t => t.id === tournamentId)
       return {
         rounds: t?.rounds ?? [],
+        tcg: t?.tcg ?? "magic",
       }
     })
   )
@@ -338,7 +340,9 @@ export function RoundHistoryPanel({
 
       {historyOpen && (
         <RoundHistoryDialog
+          tournamentId={tournamentId}
           rounds={rounds}
+          allowsDraw={tcg !== "yugioh"}
           roundSummaries={roundSummaries}
           totalRounds={totalRounds}
           getPlayerName={getPlayerName}
@@ -361,13 +365,17 @@ const selectStyle: React.CSSProperties = {
 };
 
 function RoundHistoryDialog({
+  tournamentId,
   rounds,
+  allowsDraw,
   roundSummaries,
   totalRounds,
   getPlayerName,
   onClose,
 }: {
+  tournamentId: string;
   rounds: Round[];
+  allowsDraw: boolean;
   roundSummaries: Array<{
     number: number;
     matchesTotal: number;
@@ -378,7 +386,10 @@ function RoundHistoryDialog({
   getPlayerName: (id: string) => string;
   onClose: () => void;
 }) {
-  return (
+  const [correctionMode, setCorrectionMode] = useState(false)
+  const setRoundMatchResult = useTournamentsStore((s) => s.setRoundMatchResult)
+
+  return createPortal(
     <div
       className="history-dialog-backdrop"
       role="presentation"
@@ -394,11 +405,22 @@ function RoundHistoryDialog({
         <header>
           <div>
             <strong>Historial de rondas</strong>
-            <span>Resultados registrados durante el torneo.</span>
+            <span>{correctionMode ? "Modo correccion activo. Cada cambio guarda snapshot." : "Resultados registrados durante el torneo."}</span>
           </div>
-          <button onClick={onClose} aria-label="Cerrar historial de rondas">
-            <i className="ti ti-x" aria-hidden="true" />
-          </button>
+          <div className="history-dialog-actions">
+            <button
+              type="button"
+              className={correctionMode ? "active" : ""}
+              onClick={() => setCorrectionMode(value => !value)}
+              title="Permite corregir resultados ya guardados"
+            >
+              <i className="ti ti-edit" aria-hidden="true" />
+              Corregir
+            </button>
+            <button onClick={onClose} aria-label="Cerrar historial de rondas">
+              <i className="ti ti-x" aria-hidden="true" />
+            </button>
+          </div>
         </header>
 
         <div className="history-dialog-body">
@@ -424,10 +446,16 @@ function RoundHistoryDialog({
                   {matches.map((match) => (
                     <RoundResultRow
                       key={match.id}
+                      match={match}
+                      roundNumber={summary.number}
                       tableNumber={match.tableNumber}
                       playerNames={getMatchPlayerIds(match).map(getPlayerName)}
                       winnerName={getWinnerName(match, getPlayerName)}
                       result={match.result}
+                      correctionMode={correctionMode}
+                      allowsDraw={allowsDraw}
+                      getPlayerName={getPlayerName}
+                      onChangeResult={(result) => setRoundMatchResult(tournamentId, summary.number, match.id, result)}
                     />
                   ))}
                   {!matches.length && (
@@ -439,20 +467,33 @@ function RoundHistoryDialog({
           })}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
 function RoundResultRow({
+  match,
+  roundNumber,
   tableNumber,
   playerNames,
   winnerName,
   result,
+  correctionMode,
+  allowsDraw,
+  getPlayerName,
+  onChangeResult,
 }: {
+  match: Match;
+  roundNumber: number;
   tableNumber: number;
   playerNames: string[];
   winnerName: string;
   result: MatchResult;
+  correctionMode: boolean;
+  allowsDraw: boolean;
+  getPlayerName: (id: string) => string;
+  onChangeResult: (result: MatchResult) => void;
 }) {
   const resultLabel = (() => {
     if (!result)
@@ -467,39 +508,60 @@ function RoundResultRow({
       return { text: `Gana ${winnerName}`, color: "var(--color-accent-secondary)" };
     return { text: "-", color: "var(--color-text-secondary)" };
   })();
+  const playerIds = getMatchPlayerIds(match)
+  const isBye = match.p2Id === "BYE"
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "48px 1fr auto",
-        alignItems: "center",
-        gap: "8px",
-        padding: "5px 8px",
-        borderRadius: "var(--border-radius-md)",
-        background: "var(--color-background-secondary)",
-        fontSize: "12px",
-      }}
-    >
-      <span style={{ color: "var(--color-text-secondary)" }}>
-        Mesa {tableNumber}
-      </span>
-      <span style={{ color: "var(--color-text-primary)", fontWeight: 500 }}>
-        {playerNames.join(playerNames.length > 2 ? " · " : " vs ")}
-      </span>
-      <span
-        style={{
-          color: resultLabel.color,
-          fontWeight: 500,
-          whiteSpace: "nowrap",
-        }}
-      >
-        {resultLabel.text}
-      </span>
+    <div className={correctionMode ? "history-result-row correcting" : "history-result-row"}>
+      <div className="history-result-summary">
+        <span>Mesa {tableNumber}</span>
+        <strong>{playerNames.join(playerNames.length > 2 ? " - " : " vs ")}</strong>
+        <em style={{ color: resultLabel.color }}>{resultLabel.text}</em>
+      </div>
+
+      {correctionMode && !isBye && (
+        <div className="history-result-editor" aria-label={`Corregir resultado de mesa ${tableNumber} ronda ${roundNumber}`}>
+          {playerIds.map((playerId, index) => {
+            const value = resultForPlayerIndex(index)
+            return (
+              <button
+                key={playerId}
+                type="button"
+                className={result === value ? "active" : ""}
+                onClick={() => onChangeResult(value)}
+              >
+                <i className="ti ti-trophy" aria-hidden="true" />
+                {getPlayerName(playerId)}
+              </button>
+            )
+          })}
+          {allowsDraw && (
+            <button
+              type="button"
+              className={result === "draw" ? "active" : ""}
+              onClick={() => onChangeResult("draw")}
+            >
+              <i className="ti ti-equal" aria-hidden="true" />
+              Empate
+            </button>
+          )}
+          <button
+            type="button"
+            className={result === null ? "active muted" : "muted"}
+            onClick={() => onChangeResult(null)}
+          >
+            <i className="ti ti-eraser" aria-hidden="true" />
+            Sin resultado
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
+function resultForPlayerIndex(index: number): MatchResult {
+  return `p${index + 1}` as MatchResult
+}
 function getMatchPlayerIds(match: Match): string[] {
   if (match.playerIds?.length) return match.playerIds
   return match.p2Id === "BYE" ? [match.p1Id] : [match.p1Id, match.p2Id]

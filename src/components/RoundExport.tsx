@@ -3,9 +3,8 @@
 import { forwardRef } from 'react'
 import { useTournamentsStore } from '../store/tournamentsStore'
 import { useSwissPairings } from '../hooks/useSwissPairings'
-import type { Match } from '../types/tournament'
+import type { Match, Tournament } from '../types/tournament'
 
-// Plantilla oculta que se renderiza para exportar imagenes de ronda o clasificacion.
 interface RoundExportProps {
   tournamentId: string
   type: 'round' | 'standings'
@@ -19,34 +18,35 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
     if (!tournament) return null
 
     const now = new Date().toLocaleDateString('es-ES', {
-      day: '2-digit', month: 'long', year: 'numeric',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
     })
-
-    const title = type === 'round' ? `Ronda ${tournament.currentRound}` : 'Clasificación'
-    const subtitle = type === 'round' ? 'Emparejamientos' : `Tras la ronda ${tournament.currentRound}`
+    const title = type === 'round' ? `Ronda ${tournament.currentRound}` : 'Clasificacion'
+    const subtitle = type === 'round' ? 'Emparejamientos oficiales' : `Tras la ronda ${tournament.currentRound}`
     const hasDraws = tournament.tcg !== 'yugioh'
     const exportStandingsColumns = hasDraws
-      ? '36px 1fr 52px 48px 48px 48px'
-      : '36px 1fr 52px 48px 48px'
+      ? '44px 1fr 64px 54px 54px 54px'
+      : '44px 1fr 64px 54px 54px'
 
     return (
       <div ref={ref} style={exportShellStyle}>
         <ExportHeader
-          tournamentName={tournament.name}
+          tournament={tournament}
           title={title}
           subtitle={subtitle}
           date={now}
         />
 
         {type === 'round' && (
-          <div>
+          <div style={pairingListStyle}>
             {currentMatches.map(match => {
               const playerNames = getMatchPlayerIds(match).map(getPlayerName)
               const isPod = playerNames.length > 2
 
               return (
                 <div key={match.id} style={isPod ? pairingPodRowStyle : pairingRowStyle}>
-                  <span style={tableNumberStyle}>Mesa {match.tableNumber}</span>
+                  <TableBadge tableNumber={match.tableNumber} />
                   {isPod ? (
                     <div style={podPlayerGridStyle}>
                       {playerNames.map(name => (
@@ -69,7 +69,8 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
         {type === 'standings' && (
           <div>
             <div style={{ ...standingsHeaderStyle, gridTemplateColumns: exportStandingsColumns }}>
-              <span>#</span><span>Jugador</span>
+              <span>#</span>
+              <span>Jugador</span>
               <span style={{ textAlign: 'center' }}>Pts</span>
               <span style={{ textAlign: 'center' }}>V</span>
               {hasDraws && <span style={{ textAlign: 'center' }}>E</span>}
@@ -80,10 +81,10 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
               <div key={row.player.id} style={{
                 ...standingRowStyle,
                 gridTemplateColumns: exportStandingsColumns,
-                background: row.position % 2 === 0 ? '#000000' : '#05070c',
+                background: row.position % 2 === 0 ? '#02060c' : '#07101d',
               }}>
                 <span style={positionStyle}>{row.position}</span>
-                <span style={{ fontWeight: 600 }}>{row.player.name}</span>
+                <span style={{ fontWeight: 700 }}>{row.player.name}</span>
                 <span style={scoreStyle}>{row.player.points}</span>
                 <span style={mutedScoreStyle}>{row.player.wins}</span>
                 {hasDraws && <span style={mutedScoreStyle}>{row.player.draws}</span>}
@@ -94,11 +95,12 @@ export const RoundExport = forwardRef<HTMLDivElement, RoundExportProps>(
         )}
 
         <div style={footerStyle}>
-          Subterra TCG · {now}
+          <span>SUBTERRA TCG</span>
+          <span>{type === 'round' ? 'Emparejamientos' : 'Standing'} - {now}</span>
         </div>
       </div>
     )
-  }
+  },
 )
 
 RoundExport.displayName = 'RoundExport'
@@ -109,44 +111,88 @@ function getMatchPlayerIds(match: Match): string[] {
 }
 
 function ExportHeader({
-  tournamentName,
+  tournament,
   title,
   subtitle,
   date,
 }: {
-  tournamentName: string
+  tournament: Tournament
   title: string
   subtitle: string
   date: string
 }) {
   return (
     <div style={headerStyle}>
-      <div>
-        <div style={tournamentNameStyle}>{tournamentName}</div>
-        <div style={titleStyle}>{title}</div>
-        <div style={subtitleStyle}>{subtitle}</div>
+      <div style={brandHeaderStyle}>
+        <img src="/subterra-logo.jpg" alt="Subterra TCG" style={logoStyle} />
+        <div>
+          <div style={tournamentNameStyle}>{tournament.name}</div>
+          <div style={titleStyle}>{title}</div>
+          <div style={subtitleStyle}>{subtitle}</div>
+        </div>
       </div>
-      <div style={dateStyle}>{date}</div>
+      <div style={exportMetaStyle}>
+        <span>{getTournamentGameLabel(tournament)}</span>
+        <span>{date}</span>
+      </div>
     </div>
   )
 }
 
+function TableBadge({ tableNumber }: { tableNumber: number }) {
+  return (
+    <span style={tableNumberStyle}>
+      <em style={tableNumberLabelStyle}>Mesa</em>
+      <strong style={tableNumberValueStyle}>{tableNumber}</strong>
+    </span>
+  )
+}
+
+function getTournamentGameLabel(tournament: Tournament) {
+  if (tournament.tcg === 'magic' && tournament.magicFormat === 'commander') return 'Magic Commander'
+  if (tournament.tcg === 'magic') return 'Magic'
+  if (tournament.tcg === 'yugioh') return 'YuGiOh'
+  if (tournament.tcg === 'one-piece') return 'One Piece'
+  if (tournament.tcg === 'chess') return 'Ajedrez'
+  return tournament.tcg
+}
+
 const exportShellStyle: React.CSSProperties = {
-  width: '720px',
-  background: '#05070c',
-  padding: '2rem',
+  width: '900px',
+  background: '#04080f',
+  padding: '28px',
   fontFamily: 'system-ui, sans-serif',
   color: '#f2f7ff',
+  border: '1px solid #123a70',
+  boxShadow: '0 24px 80px rgba(0, 0, 0, 0.45)',
 }
 
 const headerStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
-  alignItems: 'flex-start',
-  gap: '1rem',
-  marginBottom: '1.5rem',
-  paddingBottom: '1rem',
-  borderBottom: '1px solid #0d274f',
+  alignItems: 'center',
+  gap: '18px',
+  marginBottom: '22px',
+  padding: '16px 18px',
+  border: '1px solid #123a70',
+  borderRadius: '10px',
+  background: 'linear-gradient(90deg, #07162a, #04080f 72%)',
+}
+
+const brandHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '14px',
+  minWidth: 0,
+}
+
+const logoStyle: React.CSSProperties = {
+  width: '54px',
+  height: '54px',
+  objectFit: 'contain',
+  background: '#000',
+  border: '1px solid #123a70',
+  borderRadius: '7px',
 }
 
 const tournamentNameStyle: React.CSSProperties = {
@@ -156,39 +202,48 @@ const tournamentNameStyle: React.CSSProperties = {
 }
 
 const titleStyle: React.CSSProperties = {
-  fontSize: '28px',
-  fontWeight: 700,
+  fontSize: '34px',
+  fontWeight: 800,
   lineHeight: 1,
   color: '#f2f7ff',
 }
 
 const subtitleStyle: React.CSSProperties = {
   fontSize: '13px',
-  color: '#7c9ad0',
+  color: '#58d7ff',
   marginTop: '8px',
 }
 
-const dateStyle: React.CSSProperties = {
+const exportMetaStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: '8px',
+  justifyItems: 'end',
   fontSize: '12px',
-  color: '#516b9a',
+  color: '#7c9ad0',
   textAlign: 'right',
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+}
+
+const pairingListStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: '10px',
 }
 
 const pairingRowStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '82px 1fr auto 1fr',
+  gridTemplateColumns: '96px 1fr auto 1fr',
   alignItems: 'center',
   gap: '14px',
-  padding: '15px 16px',
-  marginBottom: '8px',
-  border: '1px solid #0d274f',
-  borderRadius: '8px',
-  background: '#000000',
+  padding: '16px 18px',
+  border: '1px solid #123a70',
+  borderRadius: '10px',
+  background: 'linear-gradient(90deg, rgba(14, 48, 82, 0.72), #03060b 46%)',
 }
 
 const pairingPodRowStyle: React.CSSProperties = {
   ...pairingRowStyle,
-  gridTemplateColumns: '82px 1fr',
+  gridTemplateColumns: '96px 1fr',
 }
 
 const podPlayerGridStyle: React.CSSProperties = {
@@ -199,59 +254,82 @@ const podPlayerGridStyle: React.CSSProperties = {
 }
 
 const tableNumberStyle: React.CSSProperties = {
-  fontSize: '12px',
+  display: 'grid',
+  placeItems: 'center',
+  minHeight: '58px',
+  border: '1px solid #2fbbff',
+  borderRadius: '9px',
+  background: '#061b32',
   color: '#58d7ff',
-  fontWeight: 700,
+}
+
+const tableNumberLabelStyle: React.CSSProperties = {
+  fontSize: '10px',
+  fontStyle: 'normal',
+  fontWeight: 800,
+  lineHeight: 1,
   textTransform: 'uppercase',
 }
 
+const tableNumberValueStyle: React.CSSProperties = {
+  color: '#f2f7ff',
+  fontSize: '29px',
+  lineHeight: 1,
+}
+
 const playerNameStyle: React.CSSProperties = {
-  fontSize: '18px',
-  fontWeight: 650,
+  fontSize: '20px',
+  fontWeight: 700,
   color: '#f2f7ff',
   minWidth: 0,
 }
 
 const vsStyle: React.CSSProperties = {
+  display: 'grid',
+  placeItems: 'center',
+  width: '34px',
+  height: '34px',
+  border: '1px solid #123a70',
+  borderRadius: '50%',
   fontSize: '12px',
-  color: '#516b9a',
-  fontWeight: 700,
+  color: '#58d7ff',
+  fontWeight: 800,
   textTransform: 'uppercase',
 }
 
 const standingsHeaderStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '36px 1fr 52px 48px 48px 48px',
+  gridTemplateColumns: '44px 1fr 64px 54px 54px 54px',
   gap: '6px',
-  padding: '6px 12px',
+  padding: '8px 14px',
   fontSize: '11px',
   color: '#7c9ad0',
-  fontWeight: 700,
+  fontWeight: 800,
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
 }
 
 const standingRowStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '36px 1fr 52px 48px 48px 48px',
+  gridTemplateColumns: '44px 1fr 64px 54px 54px 54px',
   gap: '6px',
   alignItems: 'center',
-  padding: '10px 12px',
-  borderRadius: '7px',
-  fontSize: '15px',
+  padding: '12px 14px',
+  borderRadius: '8px',
+  fontSize: '17px',
   color: '#f2f7ff',
 }
 
 const positionStyle: React.CSSProperties = {
   color: '#58d7ff',
   textAlign: 'center',
-  fontSize: '13px',
-  fontWeight: 700,
+  fontSize: '14px',
+  fontWeight: 800,
 }
 
 const scoreStyle: React.CSSProperties = {
   textAlign: 'center',
-  fontWeight: 750,
+  fontWeight: 800,
   color: '#f2f7ff',
 }
 
@@ -261,10 +339,13 @@ const mutedScoreStyle: React.CSSProperties = {
 }
 
 const footerStyle: React.CSSProperties = {
-  marginTop: '1.5rem',
-  paddingTop: '1rem',
-  borderTop: '1px solid #0d274f',
+  display: 'flex',
+  justifyContent: 'space-between',
+  marginTop: '22px',
+  paddingTop: '14px',
+  borderTop: '1px solid #123a70',
   fontSize: '11px',
   color: '#516b9a',
-  textAlign: 'center',
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
 }

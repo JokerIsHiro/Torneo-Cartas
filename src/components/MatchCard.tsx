@@ -72,13 +72,16 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
   }
 
   return (
-    <div className={`${readOnly ? 'match-card projector-match-card' : 'match-card'} ${!readOnly && isDone && !isTimeout ? 'done' : ''} ${isBye || readOnly ? 'no-actions' : ''}`}>
+    <div className={`${readOnly ? 'match-card projector-match-card' : 'match-card'} ${isCommanderPod ? 'match-card-commander-pod' : ''} ${!readOnly && isDone && !isTimeout ? 'done' : ''} ${isBye || readOnly ? 'no-actions' : ''}`}>
       <div className="match-main">
         {/* Cabecera */}
         <div className="match-card-header">
-          <div className="match-table-badge" aria-label={`Mesa ${match.tableNumber}`}>
-            <span>Mesa</span>
-            <strong>{match.tableNumber}</strong>
+          <div className="match-card-heading">
+            <div className="match-table-badge" aria-label={`Mesa ${match.tableNumber}`}>
+              <span>Mesa</span>
+              <strong>{match.tableNumber}</strong>
+            </div>
+            {isCommanderPod && <span className="commander-pod-label">Commander pod</span>}
           </div>
           {allowsDraw && !isBye && !readOnly && (
             <button
@@ -158,7 +161,7 @@ export function MatchCard({ match, tournamentId, readOnly = false, roundNumber }
                   onClick={() => handleResult(resultKey)}
                 >
                   <i className="ti ti-trophy" aria-hidden="true" style={{ fontSize: '12px' }} />
-                  <span>Gana {getPlayerName(playerId)}</span>
+                  <span>{isCommanderPod ? getPlayerName(playerId) : `Gana ${getPlayerName(playerId)}`}</span>
                 </button>
               )
             })
