@@ -260,7 +260,7 @@ export function Round({ tournamentId, mode = 'results', embedded = false }: Roun
             </button>
           </div>
         </section>
-        {isViewingCurrentRound && <Timer tournamentId={tournamentId} />}
+        {isViewingCurrentRound && <Timer tournamentId={tournamentId} variant="compact" />}
       </aside>
 
       <ExportPreviewModal

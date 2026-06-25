@@ -2183,8 +2183,29 @@ body:has(.global-organizer-page) {
   min-width: 0;
   min-height: 0;
   max-width: 100%;
+  height: 100%;
   max-height: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-primary) rgba(7, 16, 31, 0.9);
+}
+
+.round-side-column::-webkit-scrollbar {
+  width: 9px;
+}
+
+.round-side-column::-webkit-scrollbar-track {
+  background: rgba(7, 16, 31, 0.88);
+  border-radius: var(--border-radius-md);
+}
+
+.round-side-column::-webkit-scrollbar-thumb {
+  background:
+    linear-gradient(180deg, rgba(88, 215, 255, 0.72), rgba(31, 122, 255, 0.86));
+  border: 2px solid rgba(7, 16, 31, 0.95);
+  border-radius: var(--border-radius-md);
 }
 
 .round-side-column > * {
@@ -2289,7 +2310,6 @@ body:has(.global-organizer-page) {
 
 .round-side-column .timer-panel {
   margin-bottom: 0 !important;
-  overflow: hidden;
 }
 
 .round-side-column .timer-panel > div:first-child {

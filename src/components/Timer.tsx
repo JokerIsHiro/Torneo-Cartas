@@ -3,7 +3,6 @@
 import { useEffect, useRef } from 'react'
 import { useTimerStore, useTimerData } from '../store/timerStore'
 import { useTournamentsStore } from '../store/tournamentsStore'
-import { useSwissPairings } from '../hooks/useSwissPairings'
 import { CircularTimer } from './CircularTimer'
 
 // Temporizador embebido dentro de la ronda del admin.
@@ -24,10 +23,6 @@ export function Timer({ tournamentId, variant = 'default' }: TimerProps) {
   const resumeTimer = useTimerStore(s => s.resumeTimer)
   const resetTimer  = useTimerStore(s => s.resetTimer)
 
-  // Solo el status como string primitivo, no el objeto timerData entero
-  const timerStatus = useTimerStore(s => s.timers[tournamentId]?.status ?? 'idle')
-
-  const { allResultsIn } = useSwissPairings(tournamentId)
   const timerData = useTimerData(tournamentId)
 
   const duration     = tournament?.timerDuration ?? 50 * 60
@@ -51,14 +46,6 @@ export function Timer({ tournamentId, variant = 'default' }: TimerProps) {
     }
   }, [currentRound, tournamentId, duration, resetTimer, startTimer])
 
-  // 3. Pausar cuando entran todos los resultados
-  //    timerStatus es un string primitivo → React compara por valor, no por referencia
-  useEffect(() => {
-    if (allResultsIn && timerStatus === 'running') {
-      pauseTimer(tournamentId)
-    }
-  }, [allResultsIn, timerStatus, tournamentId, pauseTimer])
-
   if (!timerData) return null
 
   const { formatted, status, secondsLeft, isWarning, isDanger, isFinished } = timerData
@@ -81,7 +68,6 @@ export function Timer({ tournamentId, variant = 'default' }: TimerProps) {
   const statusLabel = (() => {
     if (isFinished)                          return '¡Tiempo agotado!'
     if (status === 'idle')                   return 'Esperando inicio'
-    if (status === 'paused' && allResultsIn) return 'Todos los resultados introducidos'
     if (status === 'paused')                 return 'Pausado'
     if (isDanger)                            return 'Menos de 5 minutos'
     if (isWarning)                           return 'Menos de 10 minutos'
